@@ -21,15 +21,13 @@ export function PlatformLayout({ children }: { children: React.ReactNode }) {
         {showPlatformAdminDashboard ? (
           <SidebarProvider open={true} style={PLATFORM_SIDEBAR_STYLE}>
             <PlatformSidebar />
-            <SidebarInset className="flex flex-col h-full overflow-hidden bg-gray-2">
-              <div className="flex-1 flex flex-col pr-2 pt-3 pb-3 overflow-hidden">
-                <div
-                  id="dashboard-content-container"
-                  className="relative flex flex-col h-full bg-gray-1 rounded-xl shadow-panel border overflow-clip"
-                >
-                  <div className="flex flex-col flex-1 overflow-auto">
-                    {children}
-                  </div>
+            <SidebarInset className="flex flex-col h-full overflow-hidden bg-gray-1">
+              <div
+                id="dashboard-content-container"
+                className="relative flex flex-col h-full overflow-clip bg-gray-1"
+              >
+                <div className="flex flex-col flex-1 overflow-auto">
+                  {children}
                 </div>
               </div>
             </SidebarInset>

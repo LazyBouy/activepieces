@@ -4,7 +4,6 @@ import { useEmbedding } from '@/components/providers/embed-provider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar-shadcn';
 import { ManagePlanDialog } from '@/features/billing';
 import { flagsHooks } from '@/hooks/flags-hooks';
-import { cn } from '@/lib/utils';
 
 import {
   GlobalSearchProvider,
@@ -26,30 +25,16 @@ function BuilderLayoutInner({ children }: { children: React.ReactNode }) {
   const { open: searchOpen } = useGlobalSearch();
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden bg-gray-1">
       {!embedState.isEmbedded && <PrimaryRail />}
       <SidebarProvider
         hoverMode={!searchOpen}
         defaultOpen={false}
         className="flex-1 min-w-0 w-auto will-change-transform"
       >
-        <SidebarInset className="flex flex-col h-full overflow-hidden bg-gray-2">
-          <div
-            className={cn(
-              'flex-1 flex flex-col overflow-hidden',
-              !embedState.isEmbedded && 'p-1.5',
-            )}
-          >
-            <div
-              className={cn(
-                'flex flex-col h-full bg-gray-1 overflow-hidden',
-                embedState.isEmbedded
-                  ? 'border-l'
-                  : 'rounded-xl shadow-panel border',
-              )}
-            >
-              {children}
-            </div>
+        <SidebarInset className="flex flex-col h-full overflow-hidden bg-gray-1">
+          <div className="flex flex-col h-full min-h-0 overflow-hidden">
+            {children}
           </div>
           {edition !== ApEdition.COMMUNITY && <ManagePlanDialog />}
         </SidebarInset>

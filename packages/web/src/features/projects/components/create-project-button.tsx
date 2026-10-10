@@ -23,6 +23,8 @@ export function CreateProjectButton({
   projects,
   onCreate,
   className,
+  open,
+  onOpenChange,
 }: CreateProjectButtonProps) {
   const { hasReachedLimit, teamProjectLimitContent } = useTeamProjectLimitGuard(
     { projects },
@@ -42,6 +44,8 @@ export function CreateProjectButton({
 
   return (
     <NewProjectDialog
+      open={open}
+      onOpenChange={onOpenChange}
       onCreate={onCreate}
       onBlocked={() =>
         capture({
@@ -67,6 +71,8 @@ function triggerFor({ variant, className, crown, locked }: TriggerForParams) {
     locked ? undefined : AdminControl.PROJECTS_NEW_OPEN,
   );
   switch (variant) {
+    case 'dialog':
+      return null;
     case 'icon':
       return (
         <Button
@@ -116,7 +122,7 @@ function triggerFor({ variant, className, crown, locked }: TriggerForParams) {
   }
 }
 
-type CreateProjectButtonVariant = 'icon' | 'full' | 'sidebar-menu';
+type CreateProjectButtonVariant = 'icon' | 'full' | 'sidebar-menu' | 'dialog';
 
 type TriggerForParams = {
   variant: CreateProjectButtonVariant;
@@ -130,4 +136,6 @@ type CreateProjectButtonProps = {
   projects: Pick<ProjectWithLimits, 'type'>[];
   onCreate?: (project: ProjectWithLimits) => void;
   className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };

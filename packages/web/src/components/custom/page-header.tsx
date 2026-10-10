@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 
+import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { cn } from '@/lib/utils';
 
@@ -18,15 +19,20 @@ export const PageHeader = ({
 
   return (
     <div
+      data-slot="page-header"
       className={cn(
-        'sticky top-0 z-30 flex items-center justify-between py-3 px-4 w-full bg-gray-1',
+        'sticky top-0 z-30 flex min-h-20 w-full shrink-0 items-start justify-between gap-4 bg-gray-1 px-4 pt-4 md:min-h-22 md:pt-6',
         className,
       )}
     >
-      <div className="flex items-center gap-1 grow">
-        <div className="grow">
+      <div className="flex min-w-0 grow items-center gap-1">
+        <div className="flex min-w-0 grow flex-col">
           {typeof title === 'string' ? (
-            <h1 className="text-base font-semibold">{title}</h1>
+            <TextWithTooltip tooltipMessage={title}>
+              <h1 className="text-xl font-semibold leading-tight text-gray-12">
+                {title}
+              </h1>
+            </TextWithTooltip>
           ) : (
             title
           )}
@@ -36,7 +42,9 @@ export const PageHeader = ({
         </div>
         {leftContent}
       </div>
-      {rightContent}
+      {rightContent && (
+        <div className="flex shrink-0 items-center gap-2">{rightContent}</div>
+      )}
     </div>
   );
 };

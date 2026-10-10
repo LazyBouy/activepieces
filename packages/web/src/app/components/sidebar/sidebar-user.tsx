@@ -1,7 +1,7 @@
 import { isNil } from '@activepieces/core-utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { t } from 'i18next';
-import { ChevronsUpDown, LogOut, UserCogIcon } from 'lucide-react';
+import { ChevronRight, LogOut, UserCogIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import { UserAvatar } from '@/components/custom/user-avatar';
@@ -49,35 +49,37 @@ export function SidebarUser() {
       <SidebarMenuItem>
         <DropdownMenu modal>
           <DropdownMenuTrigger asChild className="w-full">
-            <SidebarMenuButton className="h-10! pl-2! group-data-[collapsible=icon]:h-10! group-data-[collapsible=icon]:pl-2!">
-              <div className="size-[22px] shrink-0 overflow-hidden flex items-center justify-center rounded-full">
-                <UserAvatar
-                  className={cn('size-full object-cover', {
-                    'scale-150': isNil(user.imageUrl),
-                  })}
-                  name={user.firstName + ' ' + user.lastName}
-                  email={user.email}
-                  imageUrl={user.imageUrl}
-                  size={22}
-                  disableTooltip={true}
-                />
-              </div>
+            <SidebarMenuButton className="group/nav-item h-auto min-h-8 gap-1 rounded-sm p-1 text-gray-12 hover:bg-gray-3 active:bg-gray-3 data-[state=open]:bg-gray-3 group-data-[collapsible=icon]:p-1">
+              <span className="flex size-6 shrink-0 items-center justify-center">
+                <span className="size-5 shrink-0 overflow-hidden rounded-full">
+                  <UserAvatar
+                    className={cn('size-full object-cover', {
+                      'scale-150': isNil(user.imageUrl),
+                    })}
+                    name={user.firstName + ' ' + user.lastName}
+                    email={user.email}
+                    imageUrl={user.imageUrl}
+                    size={20}
+                    disableTooltip={true}
+                  />
+                </span>
+              </span>
 
               {!isCollapsed && (
                 <>
-                  <span className="truncate">
+                  <span className="min-w-0 flex-1 truncate leading-4.5">
                     {user.firstName + ' ' + user.lastName}
                   </span>
-                  <ChevronsUpDown className="ml-auto size-4" />
+                  <ChevronRight className="ml-auto size-4 text-gray-10" />
                 </>
               )}
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg z-999"
-            side="top"
-            align="start"
-            sideOffset={10}
+            className="min-w-65"
+            side="right"
+            align="end"
+            sideOffset={19}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">

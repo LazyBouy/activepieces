@@ -1,122 +1,66 @@
 import { isNil, Permission } from '@activepieces/core-utils';
 import { t } from 'i18next';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
-import { BoxIcon } from '@/components/icons/box';
-import { ConnectIcon } from '@/components/icons/connect';
-import { HistoryIcon } from '@/components/icons/history';
-import { ShieldIcon } from '@/components/icons/shield';
-import { VariableIcon } from '@/components/icons/variable';
-import { WorkflowIcon } from '@/components/icons/workflow';
 import { useEmbedding } from '@/components/providers/embed-provider';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { tabsListVariants, tabsTriggerVariants } from '@/components/ui/tabs';
 import { flowApprovalsHooks } from '@/features/flow-approvals';
 import { projectCollectionUtils } from '@/features/projects';
 import { useAuthorization } from '@/hooks/authorization-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
+import { useScrollEdges } from '@/hooks/use-scroll-edges';
 import { authenticationSession } from '@/lib/authentication-session';
+import { cn } from '@/lib/utils';
 
 import { ProjectDashboardPageHeader } from './project-dashboard-page-header';
 
 import { ProjectDashboardLayoutHeaderTab } from '.';
 
-type AnimatedIconHandle = {
-  startAnimation: () => void;
-  stopAnimation: () => void;
-};
-
-const AnimatedTab = ({
-  tab,
-  isActive,
-  onClick,
+export const ProjectDashboardLayoutHeader = ({
+  headerClassName,
 }: {
-  tab: ProjectDashboardLayoutHeaderTab;
-  isActive: boolean;
-  onClick: () => void;
+  headerClassName?: string;
 }) => {
-  const iconRef = useRef<AnimatedIconHandle>(null);
-  const IconComponent = tab.icon as React.ForwardRefExoticComponent<
-    {
-      className?: string;
-      size?: number;
-    } & React.RefAttributes<AnimatedIconHandle>
-  >;
-
-  return (
-    <TabsTrigger
-      value={tab.to}
-      variant="outline"
-      className="pb-3"
-      onClick={onClick}
-      data-state={isActive ? 'active' : 'inactive'}
-      onMouseEnter={() => iconRef.current?.startAnimation()}
-      onMouseLeave={() => iconRef.current?.stopAnimation()}
-    >
-      <IconComponent ref={iconRef} size={16} className="mr-2" />
-      {tab.label}
-      {tab.beta && (
-        <span className="ml-1.5 rounded-full bg-accent-3 px-1.5 py-0.5 text-[10px] font-medium leading-none text-accent-11">
-          Beta
-        </span>
-      )}
-      {!isNil(tab.badgeCount) && tab.badgeCount > 0 && (
-        <span className="ml-1.5 rounded-full bg-accent-9 px-1.5 py-0.5 text-[10px] font-medium leading-none text-on-accent">
-          {tab.badgeCount > 10 ? '10+' : tab.badgeCount}
-        </span>
-      )}
-    </TabsTrigger>
-  );
-};
-
-export const ProjectDashboardLayoutHeader = () => {
   const { project } = projectCollectionUtils.useCurrentProject();
   const { checkAccess, isFetchingProjectRole } = useAuthorization();
   const { platform } = platformHooks.useCurrentPlatform();
   const { embedState } = useEmbedding();
   const location = useLocation();
-  const navigate = useNavigate();
   const isEmbedded = embedState.isEmbedded;
   const { data: pendingApprovalsBadge } =
     flowApprovalsHooks.usePendingApprovalsBadge();
   const pendingCount = pendingApprovalsBadge?.data.length ?? 0;
 
-  const primaryTabs: ProjectDashboardLayoutHeaderTab[] = [
+  const tabs: ProjectDashboardLayoutHeaderTab[] = [
     {
       to: authenticationSession.appendProjectRoutePrefix('/automations'),
       label: t('Automations'),
-      icon: WorkflowIcon,
       hasPermission: checkAccess(Permission.READ_FLOW),
       show: true,
     },
-  ];
-
-  const secondaryTabs: ProjectDashboardLayoutHeaderTab[] = [
     {
       to: authenticationSession.appendProjectRoutePrefix('/runs'),
       label: t('Runs'),
-      icon: HistoryIcon,
       hasPermission: checkAccess(Permission.READ_RUN),
       show: true,
     },
     {
       to: authenticationSession.appendProjectRoutePrefix('/connections'),
       label: t('Connections'),
-      icon: ConnectIcon,
       hasPermission: checkAccess(Permission.READ_APP_CONNECTION),
       show: true,
     },
     {
       to: authenticationSession.appendProjectRoutePrefix('/variables'),
       label: t('Variables'),
-      icon: VariableIcon,
       hasPermission: checkAccess(Permission.READ_VARIABLE),
       show: true,
     },
     {
       to: authenticationSession.appendProjectRoutePrefix('/releases'),
-      icon: BoxIcon,
       label: t('Releases'),
       hasPermission:
         project.releasesEnabled &&
@@ -126,7 +70,6 @@ export const ProjectDashboardLayoutHeader = () => {
     },
     {
       to: authenticationSession.appendProjectRoutePrefix('/approvals'),
-      icon: ShieldIcon,
       label: t('Pending approvals'),
       hasPermission:
         !isFetchingProjectRole &&
@@ -136,47 +79,123 @@ export const ProjectDashboardLayoutHeader = () => {
     },
   ];
 
-  const visiblePrimaryTabs = primaryTabs.filter(
-    (tab) => tab.show && tab.hasPermission,
-  );
-  const visibleSecondaryTabs = secondaryTabs.filter(
-    (tab) => tab.show && tab.hasPermission,
-  );
+  const visibleTabs = tabs.filter((tab) => tab.show && tab.hasPermission);
 
   return (
-    <div className="flex flex-col">
-      {!isEmbedded && <ProjectDashboardPageHeader />}
-      {!embedState.hideSideNav && (
-        <Tabs className="px-3 pt-2 border-b">
-          <TabsList variant="outline">
-            {visiblePrimaryTabs.map((tab) => (
-              <AnimatedTab
-                key={tab.to}
-                tab={tab}
-                isActive={location.pathname.includes(tab.to)}
-                onClick={() => navigate(tab.to)}
-              />
-            ))}
-            {visiblePrimaryTabs.length > 0 &&
-              visibleSecondaryTabs.length > 0 && (
-                <Separator
-                  orientation="vertical"
-                  className="mx-2 h-5 self-center mb-2"
-                />
-              )}
-            {visibleSecondaryTabs.map((tab) => (
-              <AnimatedTab
-                key={tab.to}
-                tab={tab}
-                isActive={location.pathname.includes(tab.to)}
-                onClick={() => navigate(tab.to)}
-              />
-            ))}
-          </TabsList>
-        </Tabs>
+    <>
+      {!isEmbedded && (
+        <ProjectDashboardPageHeader className={headerClassName} />
       )}
-    </div>
+      {!embedState.hideSideNav && (
+        <ProjectTabsRow
+          tabs={visibleTabs}
+          isActive={(tab) => location.pathname.includes(tab.to)}
+        />
+      )}
+    </>
   );
 };
 
 ProjectDashboardLayoutHeader.displayName = 'ProjectDashboardLayoutHeader';
+
+function ProjectTabsRow({
+  tabs,
+  isActive,
+}: {
+  tabs: ProjectDashboardLayoutHeaderTab[];
+  isActive: (tab: ProjectDashboardLayoutHeaderTab) => boolean;
+}) {
+  const scrollRef = useRef<HTMLElement>(null);
+  const { overflowing, atStart, atEnd } = useScrollEdges({
+    ref: scrollRef,
+    axis: 'x',
+  });
+
+  const scrollByPage = (direction: 1 | -1) => {
+    const element = scrollRef.current;
+    if (!element) {
+      return;
+    }
+    element.scrollBy({
+      left: direction * Math.round(element.clientWidth * 0.8),
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    <div className="mt-2 mb-1.5 flex shrink-0 items-stretch">
+      {overflowing && (
+        <TabsScrollButton
+          direction="left"
+          disabled={atStart}
+          onClick={() => scrollByPage(-1)}
+        />
+      )}
+      <nav
+        ref={scrollRef}
+        className={cn(
+          tabsListVariants({ variant: 'outline' }),
+          'min-w-0 flex-1',
+        )}
+      >
+        {tabs.map((tab) => {
+          const active = isActive(tab);
+          return (
+            <Link
+              key={tab.to}
+              to={tab.to}
+              data-state={active ? 'active' : 'inactive'}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                tabsTriggerVariants({ variant: 'outline' }),
+                'leading-5 focus-visible:rounded-sm',
+              )}
+            >
+              {tab.label}
+              {tab.beta && (
+                <Badge variant="secondary" size="sm">
+                  {t('Beta')}
+                </Badge>
+              )}
+              {!isNil(tab.badgeCount) && tab.badgeCount > 0 && (
+                <Badge size="sm">
+                  {tab.badgeCount > 10 ? '10+' : tab.badgeCount}
+                </Badge>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+      {overflowing && (
+        <TabsScrollButton
+          direction="right"
+          disabled={atEnd}
+          onClick={() => scrollByPage(1)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TabsScrollButton({
+  direction,
+  disabled,
+  onClick,
+}: {
+  direction: 'left' | 'right';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const Icon = direction === 'left' ? ChevronLeft : ChevronRight;
+  return (
+    <button
+      type="button"
+      aria-label={direction === 'left' ? t('Scroll left') : t('Scroll right')}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex w-2.5 shrink-0 items-center justify-center text-gray-11 outline-hidden hover:text-gray-12 focus-visible:outline-1 focus-visible:outline-solid focus-visible:outline-focus disabled:cursor-not-allowed disabled:text-gray-8"
+    >
+      <Icon className="size-2.5" />
+    </button>
+  );
+}

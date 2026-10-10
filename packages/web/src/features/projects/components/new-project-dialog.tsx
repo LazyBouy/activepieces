@@ -8,8 +8,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { Crown } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useLatest } from 'react-use';
 import { z } from 'zod';
 
 import { DefaultTag } from '@/components/custom/global-connection-utils';
@@ -43,7 +44,9 @@ import { userHooks } from '@/hooks/user-hooks';
 import { AdminControl, adminControl } from '@/lib/admin-control';
 
 type NewProjectDialogProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onCreate?: (project: ProjectWithLimits) => void;
   onBlocked?: () => void;
   gate?: {
@@ -53,7 +56,12 @@ type NewProjectDialogProps = {
 };
 
 export const NewProjectDialog = (props: NewProjectDialogProps) => {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = props.open ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    setUncontrolledOpen(next);
+    props.onOpenChange?.(next);
+  };
   const [blockedOnSubmit, setBlockedOnSubmit] = useState(false);
   const showGate = props.gate?.locked === true || blockedOnSubmit;
   const { platform } = platformHooks.useCurrentPlatform();
@@ -66,10 +74,19 @@ export const NewProjectDialog = (props: NewProjectDialogProps) => {
     });
 
   const globalConnections = globalConnectionsPage?.data ?? [];
+  const controlledOpen = props.open;
+  const gateLocked = props.gate?.locked === true;
+  const onBlockedRef = useLatest(props.onBlocked);
+
+  useEffect(() => {
+    if (controlledOpen === true && gateLocked) {
+      onBlockedRef.current?.();
+    }
+  }, [controlledOpen, gateLocked, onBlockedRef]);
 
   const changeOpen = (next: boolean) => {
     setOpen(next);
-    if (next && props.gate?.locked === true) {
+    if (next && controlledOpen === undefined && gateLocked) {
       props.onBlocked?.();
     }
     if (!next) {
@@ -83,7 +100,9 @@ export const NewProjectDialog = (props: NewProjectDialogProps) => {
       open={open}
       onOpenChange={changeOpen}
     >
-      <DialogTrigger asChild>{props.children}</DialogTrigger>
+      {props.children && (
+        <DialogTrigger asChild>{props.children}</DialogTrigger>
+      )}
       <DialogContent>
         {showGate && props.gate !== undefined ? (
           props.gate.content({ onClose: () => changeOpen(false) })
@@ -132,7 +151,10 @@ const NewProjectForm = ({
   globalConnections,
   globalConnectionsEnabled,
   gate,
-}: Omit<NewProjectDialogProps, 'children' | 'gate'> & {
+}: Omit<
+  NewProjectDialogProps,
+  'children' | 'gate' | 'open' | 'onOpenChange'
+> & {
   setOpen: (open: boolean) => void;
   globalConnections: AppConnectionWithoutSensitiveData[];
   globalConnectionsEnabled: boolean;

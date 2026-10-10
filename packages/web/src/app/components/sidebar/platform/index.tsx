@@ -25,7 +25,6 @@ import { SparklesIcon } from '@/components/icons/sparkles';
 import { SquareDashedBottomCodeIcon } from '@/components/icons/square-dashed-bottom-code';
 import { UnplugIcon } from '@/components/icons/unplug';
 import { UsersIcon } from '@/components/icons/users';
-import { buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sidebar,
@@ -287,19 +286,20 @@ export function PlatformSidebar() {
   ];
 
   return (
-    <Sidebar className="border-r-0!">
-      <SidebarHeader className="px-3 pb-0">
+    <Sidebar className="[&>[data-sidebar=sidebar]]:bg-panel">
+      <SidebarHeader className="gap-0 p-0">
         <Link
           to={defaultRoute}
-          className={cn(
-            buttonVariants({ variant: 'ghost' }),
-            'w-full justify-start gap-2 px-2',
-          )}
+          className="group/back flex w-full items-center gap-1.5 p-3 text-sm font-medium text-gray-12 outline-hidden hover:text-accent-9 focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus"
           onMouseEnter={() => chevronRef.current?.startAnimation()}
           onMouseLeave={() => chevronRef.current?.stopAnimation()}
         >
-          <ChevronLeftIcon ref={chevronRef} className="size-4" size={16} />
-          <span className="truncate text-sm">{t('Back to app')}</span>
+          <ChevronLeftIcon
+            ref={chevronRef}
+            className="flex size-4 shrink-0 items-center justify-center"
+            size={16}
+          />
+          <span className="truncate">{t('Back to app')}</span>
         </Link>
       </SidebarHeader>
       <SidebarContent className="gap-0 overflow-hidden">
@@ -314,15 +314,15 @@ export function PlatformSidebar() {
             <SidebarGroup
               key={group.label}
               className={cn(
-                'cursor-default shrink-0 px-3 py-0',
-                idx > 0 && 'mt-4',
+                'cursor-default shrink-0 px-1.5 py-0',
+                idx > 0 ? 'mt-3' : 'mt-1',
               )}
             >
-              <SidebarGroupLabel className="h-8 text-sm">
+              <SidebarGroupLabel className="h-auto rounded-sm px-1.5 py-1 text-xs font-medium text-gray-11">
                 {group.label}
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu>
+                <SidebarMenu className="gap-0.5">
                   {group.items.map((item) => (
                     <ApSidebarItem
                       type="link"
@@ -342,7 +342,7 @@ export function PlatformSidebar() {
         </ScrollArea>
       </SidebarContent>
 
-      <SidebarFooter className="px-3 pb-3">
+      <SidebarFooter className="gap-0 p-1.5">
         <SidebarUser />
       </SidebarFooter>
     </Sidebar>

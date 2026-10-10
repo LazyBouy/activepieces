@@ -1,37 +1,32 @@
 import { isNil } from '@activepieces/core-utils';
 import {
-  Agent,
   FlowOperationType,
   PopulatedFlow,
   Table,
   UncategorizedFolderId,
 } from '@activepieces/shared';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { agentsApi } from '@/features/agents/api/agents';
 import { describeUsage } from '@/features/agents/delete-agent-dialog';
-import { blankAgentUtils } from '@/features/agents/lib/blank-agent';
 import { flowsApi } from '@/features/flows/api/flows-api';
 import { flowHooks } from '@/features/flows/hooks/flow-hooks';
 import { foldersApi } from '@/features/folders/api/folders-api';
 import { tablesUtils } from '@/features/tables';
 import { tablesApi } from '@/features/tables/api/tables-api';
-import { tableHooks } from '@/features/tables/hooks/table-hooks';
-import { authenticationSession } from '@/lib/authentication-session';
 import { useNewWindow } from '@/lib/navigation-utils';
-import { NEW_FLOW_QUERY_PARAM, NEW_TABLE_QUERY_PARAM } from '@/lib/route-utils';
 
 import { SelectedItemsMap, TreeItem } from '../lib/types';
+import { toFolderId } from '../lib/utils';
 
+import { useAutomationsCreate } from './use-automations-create';
 import { getSelectedIdsByType } from './use-automations-selection';
 
 type MutationDeps = {
   invalidateAll: () => void;
-  invalidateRoot: () => void;
   invalidateFolder: (folderId: string) => void;
   clearSelection: () => void;
   treeItems: TreeItem[];
@@ -40,64 +35,8 @@ type MutationDeps = {
 
 export function useAutomationsMutations(deps: MutationDeps) {
   const openNewWindow = useNewWindow();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  const projectId = authenticationSession.getProjectId() ?? '';
 
-  const { mutate: startFromScratch, isPending: isCreateFlowPending } =
-    useMutation<PopulatedFlow, Error, string | undefined>({
-      mutationFn: async (folderId) => {
-        return flowsApi.create({
-          projectId,
-          displayName: t('Untitled'),
-          folderId:
-            !folderId || folderId === UncategorizedFolderId
-              ? undefined
-              : folderId,
-        });
-      },
-      onSuccess: (flow) => {
-        deps.invalidateRoot();
-        navigate(`/flows/${flow.id}?${NEW_FLOW_QUERY_PARAM}=true`);
-      },
-    });
-
-  const { mutate: createTableMutation, isPending: isCreatingTable } =
-    useMutation<Table, Error, { name: string; folderId?: string }>({
-      mutationFn: async ({ name, folderId }) => {
-        return tableHooks.createTableWithDefaults({
-          name,
-          folderId,
-          projectId,
-        });
-      },
-      onSuccess: (table) => {
-        queryClient.invalidateQueries({ queryKey: ['tables'] });
-        deps.invalidateRoot();
-        navigate(
-          `/projects/${projectId}/tables/${table.id}?${NEW_TABLE_QUERY_PARAM}=true`,
-        );
-      },
-    });
-
-  const { mutate: createAgentMutation, isPending: isCreatingAgent } =
-    useMutation<Agent, Error, string | undefined>({
-      mutationFn: async (folderId) =>
-        agentsApi.create(
-          blankAgentUtils.request({
-            projectId,
-            folderId: toFolderId(folderId),
-          }),
-        ),
-      onSuccess: (agent) => {
-        deps.invalidateRoot();
-        navigate(`/projects/${agent.projectId}/agents/${agent.id}`, {
-          state: { backTo: `${location.pathname}${location.search}` },
-        });
-      },
-      onError: () => toast.error(t('Failed to create agent')),
-    });
+  const creation = useAutomationsCreate();
 
   const { mutate: exportFlows, isPending: isExportFlowsPending } =
     flowHooks.useExportFlows();
@@ -322,13 +261,7 @@ export function useAutomationsMutations(deps: MutationDeps) {
   );
 
   return {
-    createFlow: (folderId?: string) => startFromScratch(folderId),
-    createTable: (name: string, folderId?: string) =>
-      createTableMutation({ name, folderId }),
-    createAgent: (folderId?: string) => createAgentMutation(folderId),
-    isCreateFlowPending,
-    isCreatingTable,
-    isCreatingAgent,
+    ...creation,
     handleDeleteItem: deleteItem,
     handleBulkDelete: bulkDelete,
     handleBulkMoveTo: (
@@ -366,14 +299,6 @@ async function assertAgentsNotInUse(agentIds: string[]): Promise<void> {
       }),
     );
   }
-}
-
-function toFolderId(folderId: string | undefined): string | null {
-  return isNil(folderId) ||
-    folderId === '' ||
-    folderId === UncategorizedFolderId
-    ? null
-    : folderId;
 }
 
 function isFlowTreeItem(

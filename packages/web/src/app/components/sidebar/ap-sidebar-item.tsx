@@ -77,10 +77,13 @@ export const ApSidebarItem = (item: SidebarItemType) => {
   const button = (
     <SidebarMenuButton
       asChild
-      className={cn('h-8 [&_svg]:block [&_svg]:size-5', {
-        'bg-gray-4 hover:bg-gray-4!': isRowHighlighted,
-        'pr-8': hasSubItems && !isCollapsed,
-      })}
+      className={cn(
+        'group/nav-item h-auto min-h-8 gap-1 rounded-sm p-1 text-gray-12 hover:bg-gray-3 active:bg-gray-3 [&_svg]:block [&_svg]:size-4',
+        {
+          'bg-gray-3 hover:bg-gray-3!': isRowHighlighted,
+          'pr-8': hasSubItems && !isCollapsed,
+        },
+      )}
     >
       <Link
         to={keepSearchWithinSection(item.to)}
@@ -99,14 +102,19 @@ export const ApSidebarItem = (item: SidebarItemType) => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {item.icon && renderIcon({ Icon: item.icon, ref: iconRef })}
+        {item.icon && (
+          <span
+            className={cn(
+              'flex size-6 shrink-0 items-center justify-center text-gray-11 group-hover/nav-item:text-gray-12',
+              isRowHighlighted && 'text-gray-12',
+            )}
+          >
+            {renderIcon({ Icon: item.icon, ref: iconRef })}
+          </span>
+        )}
         {!isCollapsed && (
           <span className="flex min-w-0 items-center gap-1.5">
-            <span
-              className={cn('truncate', { 'font-medium': isRowHighlighted })}
-            >
-              {item.label}
-            </span>
+            <span className="truncate leading-4.5">{item.label}</span>
             {isCrowned && <CrownMark />}
           </span>
         )}
@@ -123,7 +131,7 @@ export const ApSidebarItem = (item: SidebarItemType) => {
       )}
       {!isCollapsed && hasSubItems && (
         <SidebarMenuAction
-          className="right-1.5 text-gray-9"
+          className="right-1.5 rounded-sm text-gray-10 hover:bg-gray-4"
           aria-label={isExpanded ? t('Collapse') : t('Expand')}
           aria-expanded={isExpanded}
           onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -136,7 +144,7 @@ export const ApSidebarItem = (item: SidebarItemType) => {
         </SidebarMenuAction>
       )}
       {showSubItems && (
-        <SidebarMenuSub className="mx-0 ml-7 border-0 px-0 py-1">
+        <SidebarMenuSub className="mx-0 gap-0.5 border-0 py-0.5 pr-0 pl-7">
           {subItems.map((subItem) => {
             const shut = isSubItemLocked(subItem);
             const subItemTier = subItem.tier ?? item.tier;
@@ -149,7 +157,7 @@ export const ApSidebarItem = (item: SidebarItemType) => {
               <SidebarMenuSubButton
                 asChild
                 isActive={subItemActive}
-                className="h-8"
+                className="h-8 rounded-sm px-1 hover:bg-gray-3 active:bg-gray-3 data-[active=true]:bg-gray-3 data-[active=true]:font-normal"
               >
                 <Link
                   to={keepSearchWithinSection(subItem.to)}
@@ -207,7 +215,7 @@ function LockedTooltip({ tier, children }: LockedTooltipProps) {
 function CrownMark() {
   return (
     <>
-      <Crown aria-hidden className="size-3.5! shrink-0 text-gray-9" />
+      <Crown aria-hidden className="size-3.5! shrink-0 text-gray-10" />
       <span className="sr-only">{t('Requires a plan upgrade')}</span>
     </>
   );
@@ -233,7 +241,8 @@ function renderIcon({
   ref: React.RefObject<AnimatedIconHandle | null>;
 }) {
   return React.createElement(Icon, {
-    className: 'size-5 shrink-0 pointer-events-none',
+    className:
+      'flex size-4 shrink-0 items-center justify-center pointer-events-none',
     ref,
   } as { className: string });
 }

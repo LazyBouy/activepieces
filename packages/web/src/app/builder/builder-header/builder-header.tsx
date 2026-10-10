@@ -218,7 +218,7 @@ export const BuilderHeader = () => {
         title={titleContent}
         rightContent={rightContent}
         leftContent={leftContent}
-        className="select-none border-b"
+        className="min-h-0 select-none items-center gap-0 border-b py-3 md:min-h-0 md:py-3"
       />
     </div>
   );

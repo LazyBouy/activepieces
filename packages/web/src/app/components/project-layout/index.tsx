@@ -1,19 +1,18 @@
 import { isNil } from '@activepieces/core-utils';
 import { ApEdition, ApFlagId } from '@activepieces/shared';
-import { Unplug } from 'lucide-react';
-import React, { ComponentType } from 'react';
-import { useTranslation } from 'react-i18next';
+import React from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { BotIcon } from '@/components/icons/bot';
-import { ChartLineIcon } from '@/components/icons/chart-line';
-import { CompassIcon } from '@/components/icons/compass';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar-shadcn';
 import { CreditsUsageAlert, ManagePlanDialog } from '@/features/billing';
 import { projectHooks } from '@/features/projects';
 import { flagsHooks } from '@/hooks/flags-hooks';
-import { cn } from '@/lib/utils';
+import {
+  cn,
+  DASHBOARD_PAGE_CONTAINER_CLASS,
+  DASHBOARD_PAGE_CONTAINER_STYLE,
+} from '@/lib/utils';
 
 import { authenticationSession } from '../../../lib/authentication-session';
 import {
@@ -23,16 +22,6 @@ import {
 import { PrimaryRail } from '../primary-rail';
 
 import { ProjectDashboardLayoutHeader } from './project-dashboard-layout-header';
-
-export type ProjectDashboardLayoutHeaderTab = {
-  to: string;
-  label: string;
-  icon: ComponentType<{ className?: string; size?: number }>;
-  hasPermission: boolean;
-  show: boolean;
-  beta?: boolean;
-  badgeCount?: number;
-};
 
 const ProjectChangedRedirector = ({
   currentProjectId,
@@ -52,53 +41,14 @@ export function ProjectDashboardLayout({
 }) {
   const { data: edition } = flagsHooks.useFlag<ApEdition>(ApFlagId.EDITION);
   const currentProjectId = authenticationSession.getProjectId();
-  const { t } = useTranslation();
   const location = useLocation();
   const isPlatformPage = location.pathname.includes('/platform/');
   const isEmbedded = useEmbedding().embedState.isEmbedded;
   const hasNoProject = isNil(currentProjectId) || currentProjectId === '';
 
-  const itemsWithoutHeader: ProjectDashboardLayoutHeaderTab[] = [
-    {
-      to: '/templates',
-      label: t('Explore'),
-      show: !isEmbedded,
-      icon: CompassIcon,
-      hasPermission: true,
-    },
-    {
-      to: '/impact',
-      label: t('Impact'),
-      show: !isEmbedded,
-      icon: ChartLineIcon,
-      hasPermission: true,
-    },
-    {
-      to: '/chat',
-      label: t('Chat'),
-      show: !isEmbedded,
-      icon: CompassIcon,
-      hasPermission: true,
-    },
-    {
-      to: '/agents',
-      label: t('Agents'),
-      show: !isEmbedded,
-      icon: BotIcon,
-      hasPermission: true,
-    },
-    {
-      to: '/mcp-server',
-      label: t('MCP'),
-      show: !isEmbedded,
-      icon: Unplug,
-      hasPermission: true,
-    },
-  ];
-
   const hideHeader =
     hasNoProject ||
-    itemsWithoutHeader.some((item) => location.pathname.includes(item.to)) ||
+    ROUTES_WITHOUT_HEADER.some((route) => location.pathname.includes(route)) ||
     isPlatformPage;
 
   const inner = (
@@ -137,38 +87,65 @@ function ProjectDashboardLayoutInner({
   children: React.ReactNode;
 }) {
   const { open: searchOpen } = useGlobalSearch();
+  const { embedState } = useEmbedding();
+  const showsPageHeader = !isEmbedded && !embedState.hidePageHeader;
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden bg-gray-1">
       {!isEmbedded && <PrimaryRail />}
       <SidebarProvider
         defaultOpen={false}
         hoverMode={!searchOpen}
         className="flex-1 min-w-0 w-auto will-change-transform"
       >
-        <SidebarInset className="flex flex-col h-full overflow-hidden bg-gray-2">
+        <SidebarInset className="flex flex-col h-full overflow-hidden bg-gray-1">
           <div
-            className={cn(
-              'flex-1 flex flex-col overflow-hidden',
-              !isEmbedded && 'pr-2 pt-3 pb-3',
-            )}
+            id="dashboard-content-container"
+            className="relative flex flex-col h-full overflow-clip bg-gray-1"
           >
-            <div
-              id="dashboard-content-container"
-              className={cn(
-                'relative flex flex-col h-full bg-gray-1 overflow-clip',
-                !isEmbedded && 'rounded-xl shadow-panel border',
-              )}
-            >
-              {!hideHeader && (
-                <ProjectDashboardLayoutHeader key={currentProjectId} />
-              )}
-              <CreditsUsageAlert />
-              <div className="flex-1 overflow-auto">{children}</div>
-            </div>
+            {hideHeader ? (
+              <>
+                <CreditsUsageAlert />
+                <div className="flex-1 overflow-auto">{children}</div>
+              </>
+            ) : (
+              <div className="flex-1 overflow-auto">
+                <div
+                  className={cn(
+                    DASHBOARD_PAGE_CONTAINER_CLASS,
+                    !showsPageHeader && 'pt-4 md:pt-6',
+                  )}
+                  style={DASHBOARD_PAGE_CONTAINER_STYLE}
+                >
+                  <ProjectDashboardLayoutHeader
+                    key={currentProjectId}
+                    headerClassName="px-0"
+                  />
+                  <CreditsUsageAlert />
+                  {children}
+                </div>
+              </div>
+            )}
           </div>
         </SidebarInset>
       </SidebarProvider>
     </div>
   );
 }
+
+const ROUTES_WITHOUT_HEADER = [
+  '/templates',
+  '/impact',
+  '/chat',
+  '/agents',
+  '/mcp-server',
+];
+
+export type ProjectDashboardLayoutHeaderTab = {
+  to: string;
+  label: string;
+  hasPermission: boolean;
+  show: boolean;
+  beta?: boolean;
+  badgeCount?: number;
+};

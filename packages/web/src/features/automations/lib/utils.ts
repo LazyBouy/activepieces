@@ -1,8 +1,10 @@
+import { isNil } from '@activepieces/core-utils';
 import {
   AgentSummary,
   FolderDto,
   PopulatedFlow,
   Table,
+  UncategorizedFolderId,
 } from '@activepieces/shared';
 
 import {
@@ -341,6 +343,14 @@ export function hasNonFolderFilters(filters: AutomationsFilters): boolean {
     filters.connectionFilter.length > 0 ||
     filters.ownerFilter.length > 0
   );
+}
+
+export function toFolderId(folderId: string | undefined): string | null {
+  return isNil(folderId) ||
+    folderId === '' ||
+    folderId === UncategorizedFolderId
+    ? null
+    : folderId;
 }
 
 export function getItemKey(item: TreeItem): string {

@@ -1,7 +1,7 @@
 import { Permission } from '@activepieces/core-utils';
 import { UncategorizedFolderId } from '@activepieces/shared';
 import { t } from 'i18next';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   useLocation,
   useNavigate,
@@ -32,6 +32,7 @@ import {
   hasMovableItems,
 } from '@/features/automations/hooks/use-automations-selection';
 import { usePinnedItems } from '@/features/automations/hooks/use-pinned-items';
+import { useAutomationsPageCreateActions } from '@/features/automations/lib/page-create-actions';
 import { AutomationsSort, TreeItem } from '@/features/automations/lib/types';
 import { ROOT_ITEMS_LIMIT } from '@/features/automations/lib/utils';
 import { appConnectionsQueries } from '@/features/connections';
@@ -65,7 +66,6 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
   const { checkAccess } = useAuthorization();
   const userHasPermissionToWriteFlow = checkAccess(Permission.WRITE_FLOW);
   const userHasPermissionToWriteTable = checkAccess(Permission.WRITE_TABLE);
-  const userHasPermissionToWriteFolder = checkAccess(Permission.WRITE_FOLDER);
   const userHasPermissionToWriteAgent = checkAccess(Permission.WRITE_AGENT);
 
   const {
@@ -110,7 +110,6 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
     prevRootPage,
     resetPagination,
     invalidateAll,
-    invalidateRoot,
     invalidateFolder,
   } = useAutomationsData({ filters, pinnedList, sort });
 
@@ -134,7 +133,6 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
 
   const mutations = useAutomationsMutations({
     invalidateAll,
-    invalidateRoot,
     invalidateFolder,
     clearSelection,
     treeItems,
@@ -142,6 +140,18 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
   });
 
   const dialogs = useAutomationsDialogs({ mutations, selectedItems });
+  const {
+    setIsFolderDialogOpen,
+    setImportTargetFolderId,
+    setIsImportFlowDialogOpen,
+    setIsImportTableDialogOpen,
+  } = dialogs;
+  const registerCreateActions = useAutomationsPageCreateActions(
+    (state) => state.register,
+  );
+  const unregisterCreateActions = useAutomationsPageCreateActions(
+    (state) => state.unregister,
+  );
 
   const { data: connections } = appConnectionsQueries.useAppConnections({
     request: { projectId, limit: 10000 },
@@ -317,6 +327,33 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
   const isNoResultsState =
     treeItems.length === 0 && filtersActive && !isLoading && !isErrorState;
 
+  useEffect(() => {
+    if (isEmptyState) {
+      return;
+    }
+    const actions = {
+      createFolder: () => setIsFolderDialogOpen(true),
+      importFlow: () => {
+        setImportTargetFolderId(undefined);
+        setIsImportFlowDialogOpen(true);
+      },
+      importTable: () => {
+        setImportTargetFolderId(undefined);
+        setIsImportTableDialogOpen(true);
+      },
+    };
+    registerCreateActions(actions);
+    return () => unregisterCreateActions(actions);
+  }, [
+    isEmptyState,
+    registerCreateActions,
+    unregisterCreateActions,
+    setIsFolderDialogOpen,
+    setImportTargetFolderId,
+    setIsImportFlowDialogOpen,
+    setIsImportTableDialogOpen,
+  ]);
+
   if (isEmptyState) {
     return (
       <AutomationsEmptyState
@@ -348,28 +385,9 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
         folders={folders}
         connections={connections?.data}
         pieces={pieces}
-        userHasPermissionToWriteFlow={userHasPermissionToWriteFlow}
-        userHasPermissionToWriteTable={userHasPermissionToWriteTable}
-        userHasPermissionToWriteFolder={userHasPermissionToWriteFolder}
-        userHasPermissionToWriteAgent={userHasPermissionToWriteAgent}
         agentsVisible={agentsVisible}
-        onCreateFlow={() => mutations.createFlow()}
-        onCreateTable={() => mutations.createTable(t('New Table'))}
-        onCreateAgent={() => mutations.createAgent()}
-        onCreateFolder={() => dialogs.setIsFolderDialogOpen(true)}
-        onImportFlow={() => {
-          dialogs.setImportTargetFolderId(undefined);
-          dialogs.setIsImportFlowDialogOpen(true);
-        }}
-        onImportTable={() => {
-          dialogs.setImportTargetFolderId(undefined);
-          dialogs.setIsImportTableDialogOpen(true);
-        }}
         onClearAllFilters={clearAllFilters}
         hasActiveFilters={filtersActive}
-        isCreatingFlow={mutations.isCreateFlowPending}
-        isCreatingTable={mutations.isCreatingTable}
-        isCreatingAgent={mutations.isCreatingAgent}
       />
 
       {isErrorState ? (

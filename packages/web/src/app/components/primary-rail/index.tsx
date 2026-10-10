@@ -1,3 +1,4 @@
+import { Permission } from '@activepieces/core-utils';
 import {
   ApEdition,
   ApFlagId,
@@ -13,11 +14,16 @@ import { t } from 'i18next';
 import {
   Bot,
   ChartLine,
+  Check,
+  ChevronDown,
+  ChevronRight,
   ChevronsUpDown,
+  CircleHelp,
   Compass,
   Lock,
   LogOut,
-  PanelLeftClose,
+  PanelLeft,
+  Plus,
   Search,
   Settings,
   Shield,
@@ -27,16 +33,18 @@ import {
   UserCogIcon,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { ComponentType, useState } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLatest } from 'react-use';
 
+import { Shortcut } from '@/components/custom/shortcut';
+import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
 import { UserAvatar } from '@/components/custom/user-avatar';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -45,10 +53,11 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAgentsNavVisible } from '@/features/agents';
+import { CreateNewMenu } from '@/features/automations/components/create-new-menu';
+import { useAutomationsCreate } from '@/features/automations/hooks/use-automations-create';
 import { SidebarUsageLimits } from '@/features/billing';
 import { chatUtils } from '@/features/chat/lib/chat-utils';
 import {
@@ -60,11 +69,18 @@ import {
 import { templatesTelemetryApi } from '@/features/templates';
 import {
   railIsCollapsed,
+  railPreferences,
+  railShortcut,
+  railSizing,
   useRailCollapsed,
 } from '@/features/workspace/lib/rail-collapsed';
-import { useIsPlatformAdmin } from '@/hooks/authorization-hooks';
+import {
+  useAuthorization,
+  useIsPlatformAdmin,
+} from '@/hooks/authorization-hooks';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
+import { useScrollEdges } from '@/hooks/use-scroll-edges';
 import { userHooks } from '@/hooks/user-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
 import { cn } from '@/lib/utils';
@@ -72,94 +88,141 @@ import { cn } from '@/lib/utils';
 import { AccountSettingsDialog } from '../account-settings';
 import { recordAccess } from '../global-search/access-history';
 import { useGlobalSearch } from '../global-search/global-search-context';
-import { HelpAndFeedback } from '../help-and-feedback';
+import { HelpAndFeedbackItems } from '../help-and-feedback';
 import { mcpHooks } from '../project-settings/mcp-server/utils/mcp-hooks';
 
 export function PrimaryRail() {
   const { embedState } = useEmbedding();
   const { platform } = platformHooks.useCurrentPlatform();
   const { data: currentUser } = userHooks.useCurrentUser();
-  const { preference, setCollapsed, toggle } = useRailCollapsed();
+  const { preference, width, setCollapsed, setWidth, saveWidth } =
+    useRailCollapsed();
   const { pathname } = useLocation();
   const [openedOn, setOpenedOn] = useState<string | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const railRef = useRef<HTMLDivElement>(null);
   const collapsed = railIsCollapsed({ preference, pathname, openedOn });
   const showAgents = useAgentsNavVisible();
   const isRailHidden = embedState.isEmbedded || embedState.hideSideNav;
   const { reachesMcp } = mcpHooks.useMcpReach({ enabled: !isRailHidden });
 
+  const setRailCollapsed = (next: boolean) => {
+    setOpenedOn(pathname);
+    setCollapsed(next);
+  };
+  const toggleRef = useLatest(() => setRailCollapsed(!collapsed));
+
+  useEffect(() => {
+    if (isRailHidden) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const shouldToggle = railShortcut.isToggleShortcut({
+        key: event.key,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        defaultPrevented: event.defaultPrevented,
+        target: event.target instanceof HTMLElement ? event.target : null,
+        dialogOpen: document.querySelector(OPEN_DIALOG_SELECTOR) !== null,
+      });
+      if (shouldToggle) {
+        event.preventDefault();
+        toggleRef.current();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isRailHidden, toggleRef]);
+
   if (isRailHidden) {
     return null;
   }
 
-  const openSidebar = () => {
-    setOpenedOn(pathname);
-    setCollapsed(false);
+  const resizeTo = (pointerX: number) => {
+    const railLeft = railRef.current?.getBoundingClientRect().left ?? 0;
+    const result = railSizing.resolveDrag({ pointerX, railLeft });
+    if (result.width === null) {
+      if (!collapsed) {
+        setRailCollapsed(true);
+      }
+      return;
+    }
+    if (collapsed) {
+      setRailCollapsed(false);
+    }
+    setWidth(result.width);
   };
-  const toggleCollapsed = () => {
-    setOpenedOn(pathname);
-    toggle();
+
+  const finishResize = () => {
+    if (!isResizing) {
+      return;
+    }
+    setIsResizing(false);
+    saveWidth();
   };
+
+  const cursor = railSizing.resizeCursor({ collapsed, width });
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div
-        onClick={collapsed ? openSidebar : undefined}
-        title={collapsed ? t('Open sidebar') : undefined}
-        className={cn(
-          'flex h-svh shrink-0 flex-col overflow-hidden whitespace-nowrap bg-gray-2 py-3 transition-[width] duration-200 motion-reduce:transition-none',
-          collapsed ? 'w-14 cursor-ew-resize items-center' : 'w-62',
-        )}
-      >
-        <RailHeader collapsed={collapsed} onToggle={toggleCollapsed} />
+    <div
+      ref={railRef}
+      data-collapsed={collapsed}
+      className={cn(
+        'relative z-30 flex h-svh shrink-0 transition-[width] duration-200 ease-cubic-out motion-reduce:transition-none',
+        isResizing && 'transition-none',
+      )}
+      style={{ width: collapsed ? railSizing.collapsedWidth : width }}
+    >
+      <div className="flex h-full w-full flex-col overflow-hidden border-r border-gray-6 bg-panel whitespace-nowrap">
+        <RailHeader
+          collapsed={collapsed}
+          onToggle={() => setRailCollapsed(!collapsed)}
+        />
 
-        <div
-          className={cn(
-            'mt-2 flex min-h-0 flex-1 flex-col',
-            collapsed ? 'items-center px-2' : 'px-2',
-          )}
-        >
+        <RailScrollArea collapsed={collapsed}>
           <div
             className={cn(
-              'flex shrink-0 flex-col gap-1',
-              collapsed && 'items-center',
+              'flex shrink-0 flex-col gap-0.5 px-1.5 py-2',
+              collapsed && 'border-b border-gray-6',
             )}
           >
             {platform.plan.chatEnabled && (
-              <RailNavButton
+              <RailNavLink
                 collapsed={collapsed}
                 to="/chat"
-                icon={SquarePen}
+                icon={<SquarePen />}
                 label={t('Chat')}
-                isActive={({ pathname }) => pathname.startsWith('/chat')}
+                active={pathname.startsWith('/chat')}
                 onClick={() =>
                   window.dispatchEvent(new Event(chatUtils.newChatEvent))
                 }
               />
             )}
             {reachesMcp && (
-              <RailNavButton
+              <RailNavLink
                 collapsed={collapsed}
                 to="/mcp-server"
-                icon={Unplug}
+                icon={<Unplug />}
                 label={t('MCP')}
-                isActive={({ pathname }) => pathname.startsWith('/mcp-server')}
+                active={pathname.startsWith('/mcp-server')}
               />
             )}
             {showAgents && (
-              <RailNavButton
+              <RailNavLink
                 collapsed={collapsed}
                 to="/agents"
-                icon={Bot}
+                icon={<Bot />}
                 label={t('Agents')}
-                isActive={({ pathname }) => pathname.startsWith('/agents')}
+                active={pathname.startsWith('/agents')}
               />
             )}
-            <RailNavButton
+            <RailNavLink
               collapsed={collapsed}
               to="/templates"
-              icon={Compass}
+              icon={<Compass />}
               label={t('Explore')}
-              isActive={({ pathname }) => pathname.startsWith('/templates')}
+              active={pathname.startsWith('/templates')}
               onClick={() =>
                 templatesTelemetryApi.sendEvent({
                   eventType: TemplateTelemetryEventType.EXPLORE_VIEW,
@@ -167,26 +230,58 @@ export function PrimaryRail() {
                 })
               }
             />
-            <RailNavButton
+            <RailNavLink
               collapsed={collapsed}
               to="/impact"
-              icon={ChartLine}
+              icon={<ChartLine />}
               label={t('Impact')}
-              isActive={({ pathname }) => pathname.startsWith('/impact')}
+              active={pathname.startsWith('/impact')}
             />
           </div>
           <RailPinnedProjects collapsed={collapsed} />
-        </div>
+        </RailScrollArea>
 
         {!collapsed && (
-          <div className="mx-2 mb-1">
+          <div className="shrink-0 px-1.5 pb-1.5 empty:hidden">
             <SidebarUsageLimits />
           </div>
         )}
-        <RailPlatformAdminButton collapsed={collapsed} />
-        <RailAccountRow collapsed={collapsed} />
+        <RailBottomBlock collapsed={collapsed} />
       </div>
-    </TooltipProvider>
+
+      <div
+        aria-hidden="true"
+        data-resizing={isResizing}
+        className="group/resize absolute inset-y-0 right-0 z-10 w-1 translate-x-1/2 touch-none"
+        style={{ cursor }}
+        onPointerDown={(event) => {
+          if (event.button !== 0) {
+            return;
+          }
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setIsResizing(true);
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+            return;
+          }
+          resizeTo(event.clientX);
+        }}
+        onPointerUp={finishResize}
+        onPointerCancel={finishResize}
+        onLostPointerCapture={finishResize}
+      >
+        <div className="absolute inset-y-0 left-1/2 hidden w-1.5 -translate-x-1/2 bg-gray-7 group-hover/resize:block group-data-[resizing=true]/resize:block" />
+      </div>
+      {isResizing && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-80 select-none"
+          style={{ cursor }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -203,17 +298,46 @@ function RailHeader({
   const { data: edition } = flagsHooks.useFlag<ApEdition>(ApFlagId.EDITION);
   const { platform: currentPlatform } = platformHooks.useCurrentPlatform();
   const showSwitcher = edition === ApEdition.CLOUD && !embedState.isEmbedded;
+  const tooltipSide = collapsed ? 'right' : 'bottom';
+
+  const actions = (
+    <>
+      <RailCreateMenu collapsed={collapsed} />
+      <RailIconButton
+        label={t('Search')}
+        tooltipSide={tooltipSide}
+        shortcut={<Shortcut shortcutKey="k" withCtrl variant="chip" />}
+        onClick={() => setSearchOpen(true)}
+      >
+        <Search />
+      </RailIconButton>
+      <RailIconButton
+        label={collapsed ? t('Open sidebar') : t('Close sidebar')}
+        tooltipSide={tooltipSide}
+        shortcut={<Shortcut shortcutKey={railShortcut.key} variant="chip" />}
+        onClick={onToggle}
+      >
+        <PanelLeft />
+      </RailIconButton>
+    </>
+  );
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center gap-1 px-2">
-        <Tooltip>
+      <div className="flex shrink-0 flex-col items-center gap-1 border-b border-gray-6 px-1.5 py-2">
+        {actions}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-11 shrink-0 items-center gap-1 px-1.5 py-2">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <Tooltip delayDuration={RAIL_TOOLTIP_DELAY}>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-label={t('Open sidebar')}
-              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-gray-4"
+            <Link
+              to="/"
+              className="flex size-5 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus-halo"
             >
               <img
                 src={branding.logos.logoIconUrl}
@@ -221,180 +345,279 @@ function RailHeader({
                 className="size-5 shrink-0"
                 draggable={false}
               />
-            </button>
+            </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">{t('Open sidebar')}</TooltipContent>
+          <TooltipContent side="bottom">{branding.websiteName}</TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSearchOpen(true);
-              }}
-              aria-label={t('Search')}
-              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-gray-11 hover:bg-gray-4 hover:text-gray-12"
-            >
-              <Search className="size-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{t('Search')}</TooltipContent>
-        </Tooltip>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-1 px-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            to="/"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-gray-4"
-          >
-            <img
-              src={branding.logos.logoIconUrl}
-              alt={branding.websiteName}
-              className="size-5 shrink-0"
-              draggable={false}
-            />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">{branding.websiteName}</TooltipContent>
-      </Tooltip>
-
-      {showSwitcher ? (
-        <div className="min-w-0 flex-1">
+        {showSwitcher ? (
           <PlatformSwitcher>
             <button
               type="button"
-              className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-gray-4"
+              className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-sm px-1.5 text-left text-sm font-medium text-gray-12 outline-hidden hover:bg-gray-3 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus-halo data-[state=open]:bg-gray-3"
             >
-              <span className="flex-1 truncate text-sm font-medium">
+              <span className="min-w-0 flex-1 truncate">
                 {currentPlatform?.name ?? t('platform')}
               </span>
-              <ChevronsUpDown className="ml-auto size-3 shrink-0" />
+              <ChevronsUpDown className="size-3 shrink-0 text-gray-10" />
             </button>
           </PlatformSwitcher>
-        </div>
-      ) : (
-        <h1 className="min-w-0 flex-1 truncate text-sm font-medium">
-          {branding.websiteName}
-        </h1>
-      )}
-
-      <div className="flex shrink-0 items-center gap-0.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 shrink-0 rounded-full text-gray-11 hover:bg-gray-4 hover:text-gray-12"
-              onClick={() => setSearchOpen(true)}
-              aria-label={t('Search')}
-            >
-              <Search className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{t('Search')}</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 shrink-0 rounded-full text-gray-11 hover:bg-gray-4 hover:text-gray-12"
-              onClick={onToggle}
-              aria-label={t('Close sidebar')}
-            >
-              <PanelLeftClose className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{t('Close sidebar')}</TooltipContent>
-        </Tooltip>
+        ) : (
+          <TextWithTooltip tooltipMessage={branding.websiteName}>
+            <span className="min-w-0 flex-1 text-sm font-medium text-gray-12">
+              {branding.websiteName}
+            </span>
+          </TextWithTooltip>
+        )}
       </div>
+
+      <div className="flex shrink-0 items-center">{actions}</div>
     </div>
   );
 }
 
-function RailPlatformAdminButton({ collapsed }: { collapsed: boolean }) {
-  const showPlatformAdmin = useIsPlatformAdmin();
-  const { embedState } = useEmbedding();
+function RailIconButton({
+  label,
+  tooltipSide,
+  shortcut,
+  children,
+  ...buttonProps
+}: RailIconButtonProps) {
+  return (
+    <Tooltip delayDuration={RAIL_TOOLTIP_DELAY}>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          className={RAIL_ICON_BUTTON_CLASS}
+          {...buttonProps}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side={tooltipSide}>
+        <span className="flex items-center gap-1.5">
+          {label}
+          {shortcut}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
-  if (embedState.isEmbedded || !showPlatformAdmin) {
+function RailCreateMenu({ collapsed }: { collapsed: boolean }) {
+  const { embedState } = useEmbedding();
+  const { checkAccess } = useAuthorization();
+  const { platform } = platformHooks.useCurrentPlatform();
+  const { data: currentUser } = userHooks.useCurrentUser();
+  const { data: projects } = projectCollectionUtils.useAll();
+  const showAgents = useAgentsNavVisible();
+  const navigate = useNavigate();
+  const creation = useAutomationsCreate();
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+
+  const projectId = authenticationSession.getProjectId();
+  const hasProject = !isNil(projectId) && projectId !== '';
+  const canCreateFlow = hasProject && checkAccess(Permission.WRITE_FLOW);
+  const canCreateTable =
+    hasProject && !embedState.hideTables && checkAccess(Permission.WRITE_TABLE);
+  const canCreateAgent =
+    hasProject && showAgents && checkAccess(Permission.WRITE_AGENT);
+  const canCreateProject =
+    platform.plan.billedTeamProjectsLimit !== 0 &&
+    currentUser?.platformRole === PlatformRole.ADMIN;
+  const hasProjectItems = canCreateFlow || canCreateTable || canCreateAgent;
+
+  if (embedState.isEmbedded || (!hasProjectItems && !canCreateProject)) {
     return null;
   }
 
   return (
-    <div className={cn('flex flex-col px-2 pb-1', collapsed && 'items-center')}>
+    <>
+      <Tooltip delayDuration={RAIL_TOOLTIP_DELAY}>
+        <CreateNewMenu
+          scope="root"
+          align="start"
+          side={collapsed ? 'right' : 'bottom'}
+          contentClassName="w-auto min-w-50"
+          hideItemsWithoutPermission
+          userHasPermissionToWriteFlow={canCreateFlow}
+          userHasPermissionToWriteTable={canCreateTable}
+          userHasPermissionToWriteFolder={false}
+          userHasPermissionToWriteAgent={canCreateAgent}
+          isCreatingFlow={creation.isCreateFlowPending}
+          isCreatingTable={creation.isCreatingTable}
+          isCreatingAgent={creation.isCreatingAgent}
+          onCreateFlow={() => creation.createFlow()}
+          onCreateTable={() => creation.createTable(t('New Table'))}
+          onCreateAgent={
+            canCreateAgent ? () => creation.createAgent() : undefined
+          }
+          footer={
+            canCreateProject && (
+              <>
+                {hasProjectItems && <DropdownMenuSeparator />}
+                <DropdownMenuItem onSelect={() => setProjectDialogOpen(true)}>
+                  <Plus className="size-4" />
+                  {t('New Project')}
+                </DropdownMenuItem>
+              </>
+            )
+          }
+        >
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('Create')}
+              className={RAIL_ICON_BUTTON_CLASS}
+            >
+              <Plus />
+            </Button>
+          </TooltipTrigger>
+        </CreateNewMenu>
+        <TooltipContent side={collapsed ? 'right' : 'bottom'}>
+          {t('Create')}
+        </TooltipContent>
+      </Tooltip>
+      {canCreateProject && (
+        <CreateProjectButton
+          variant="dialog"
+          projects={projects ?? []}
+          open={projectDialogOpen}
+          onOpenChange={setProjectDialogOpen}
+          onCreate={(project) =>
+            navigate(`/projects/${project.id}/automations`)
+          }
+        />
+      )}
+    </>
+  );
+}
+
+function RailScrollArea({
+  collapsed,
+  children,
+}: {
+  collapsed: boolean;
+  children: ReactNode;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { overflowing, atStart } = useScrollEdges({
+    ref: scrollRef,
+    axis: 'y',
+  });
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
       <div
-        className={cn(
-          'mb-1 h-px shrink-0 bg-gray-6',
-          collapsed ? 'w-6' : 'mx-3',
-        )}
-      />
-      <RailNavButton
-        collapsed={collapsed}
-        to="/platform/projects"
-        icon={Shield}
-        label={t('Platform Admin')}
-        isActive={({ pathname }) => pathname.startsWith('/platform')}
-      />
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+      >
+        <div className="flex flex-col">{children}</div>
+      </div>
+      {!collapsed && !atStart && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gray-6"
+        />
+      )}
+      {!collapsed && overflowing && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gray-6"
+        />
+      )}
     </div>
   );
 }
 
-function RailNavButton({
+function RailNavLink({
   collapsed,
   to,
-  icon: Icon,
+  icon,
   label,
-  isActive,
+  active,
   onClick,
 }: {
   collapsed: boolean;
   to: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ReactNode;
   label: string;
-  isActive: (location: { pathname: string; search: string }) => boolean;
+  active: boolean;
   onClick?: () => void;
 }) {
-  const location = useLocation();
-  const active = isActive(location);
-
-  const link = (
-    <Link
-      to={to}
-      aria-label={label}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick?.();
-      }}
-      className={cn(
-        'flex shrink-0 items-center gap-3 rounded-full text-sm text-gray-12 hover:bg-gray-4 hover:text-gray-12',
-        collapsed ? 'size-9 cursor-pointer justify-center' : 'h-10 px-3',
-        active && 'bg-gray-4 font-medium text-gray-12',
-      )}
-    >
-      <Icon
-        className={cn('size-[18px] shrink-0', active && 'text-accent-11')}
-      />
-      {!collapsed && <span className="truncate">{label}</span>}
-    </Link>
-  );
-
-  if (!collapsed) {
-    return link;
-  }
-
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{link}</TooltipTrigger>
+    <RailTooltip collapsed={collapsed} label={label}>
+      <Link
+        to={to}
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        onClick={onClick}
+        className={railItemClassName({ collapsed, active })}
+      >
+        <RailItemContent
+          collapsed={collapsed}
+          icon={icon}
+          label={label}
+          active={active}
+        />
+      </Link>
+    </RailTooltip>
+  );
+}
+
+function RailTooltip({
+  collapsed,
+  label,
+  children,
+}: {
+  collapsed: boolean;
+  label: string;
+  children: React.ReactElement;
+}) {
+  if (!collapsed) {
+    return children;
+  }
+  return (
+    <Tooltip delayDuration={RAIL_TOOLTIP_DELAY}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function RailItemContent({
+  collapsed,
+  icon,
+  label,
+  active,
+  trailing,
+}: {
+  collapsed: boolean;
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+  trailing?: ReactNode;
+}) {
+  return (
+    <>
+      <span
+        className={cn(
+          'relative flex size-6 shrink-0 items-center justify-center text-gray-11 group-hover/rail-item:text-gray-12 group-data-[state=open]/rail-item:text-gray-12 [&>svg]:size-4',
+          active && 'text-gray-12',
+        )}
+      >
+        {icon}
+      </span>
+      {!collapsed && (
+        <TextWithTooltip tooltipMessage={label}>
+          <span className="min-w-0 flex-1 text-left leading-4.5">{label}</span>
+        </TextWithTooltip>
+      )}
+      {!collapsed && trailing}
+    </>
   );
 }
 
@@ -404,16 +627,27 @@ function RailPinnedProjects({ collapsed }: { collapsed: boolean }) {
   const { data: currentUser } = userHooks.useCurrentUser();
   const location = useLocation();
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
   const showCreateProject =
     platform.plan.billedTeamProjectsLimit !== 0 &&
     currentUser?.platformRole === PlatformRole.ADMIN;
   const [sort, setSort] = useState<PinnedSort>(() =>
-    readStoredSort(localStorage.getItem(PINNED_SORT_KEY)),
+    readStoredSort(railPreferences.readPinnedSort()),
   );
+  const [listCollapsed, setListCollapsed] = useState(() =>
+    railPreferences.readProjectsCollapsed(),
+  );
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   const changeSort = (next: PinnedSort) => {
     setSort(next);
-    localStorage.setItem(PINNED_SORT_KEY, next);
+    railPreferences.writePinnedSort(next);
+  };
+
+  const toggleList = () => {
+    const next = !listCollapsed;
+    setListCollapsed(next);
+    railPreferences.writeProjectsCollapsed(next);
   };
 
   if (projects.length === 0) {
@@ -444,55 +678,65 @@ function RailPinnedProjects({ collapsed }: { collapsed: boolean }) {
     navigate(`/projects/${projectId}/automations`);
   };
 
+  const showRows = collapsed || !listCollapsed;
+
   return (
-    <div
-      className={cn(
-        'mt-2 flex min-h-0 flex-1 flex-col',
-        collapsed && 'items-center',
-      )}
-    >
-      <div
-        className={cn(
-          'mb-1 h-px shrink-0 bg-gray-6',
-          collapsed ? 'w-6' : 'mx-3',
-        )}
-      />
+    <div className="flex shrink-0 flex-col">
       {!collapsed && (
-        <div className="flex shrink-0 items-center gap-1 py-0.5 pl-3 pr-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-11">
-            {t('Projects')}
-          </span>
-          <div className="ml-auto flex items-center gap-0.5">
+        <div className="group/projects mx-1.5 mt-1 flex items-center gap-1 rounded-sm hover:bg-gray-3">
+          <button
+            type="button"
+            aria-expanded={!listCollapsed}
+            aria-controls={PROJECT_LIST_ID}
+            onClick={toggleList}
+            className="flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1.5 py-1 text-left text-xs font-medium text-gray-11 outline-hidden group-hover/projects:text-gray-12 focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus"
+          >
+            <span className="truncate">{t('Projects')}</span>
+            <ChevronDown
+              className={cn(
+                'size-3.5 shrink-0 text-gray-10 transition-transform duration-150 ease-standard group-hover/projects:text-gray-12 motion-reduce:transition-none',
+                listCollapsed && '-rotate-90',
+              )}
+            />
+          </button>
+          <div
+            className={cn(
+              'flex shrink-0 items-center gap-0.5 pr-1 opacity-0 group-focus-within/projects:opacity-100 group-hover/projects:opacity-100',
+              sortMenuOpen && 'opacity-100',
+            )}
+          >
             {showCreateProject && (
               <CreateProjectButton
                 variant="icon"
                 projects={projects ?? []}
-                className={RAIL_HEADER_ICON_BUTTON}
+                className={RAIL_SECTION_ACTION_CLASS}
                 onCreate={(project) => {
                   navigate(`/projects/${project.id}/automations`);
                 }}
               />
             )}
-            <PinnedSortMenu sort={sort} onChange={changeSort} />
+            <PinnedSortMenu
+              sort={sort}
+              onChange={changeSort}
+              onOpenChange={setSortMenuOpen}
+            />
           </div>
         </div>
       )}
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto',
-          collapsed && 'items-center',
-        )}
-      >
-        {ordered.map((project) => (
-          <ProjectRow
-            key={project.id}
-            project={project}
-            collapsed={collapsed}
-            active={location.pathname.includes(`/projects/${project.id}`)}
-            onOpen={openProject}
-          />
-        ))}
-      </div>
+      {showRows && (
+        <div id={PROJECT_LIST_ID} className="flex flex-col gap-0.5 px-1.5 py-2">
+          {ordered.map((project) => (
+            <ProjectRow
+              key={project.id}
+              project={project}
+              collapsed={collapsed}
+              animateLayout={!prefersReducedMotion}
+              active={location.pathname.includes(`/projects/${project.id}`)}
+              onOpen={openProject}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -500,15 +744,16 @@ function RailPinnedProjects({ collapsed }: { collapsed: boolean }) {
 function ProjectRow({
   project,
   collapsed,
+  animateLayout,
   active,
   onOpen,
 }: {
   project: ProjectWithLimits;
   collapsed: boolean;
+  animateLayout: boolean;
   active: boolean;
   onOpen: (params: { projectId: string; name: string }) => void;
 }) {
-  const prefersReducedMotion = useReducedMotion();
   const name = getProjectName(project);
   const isTeam = project.type === ProjectType.TEAM;
   const palette =
@@ -516,7 +761,7 @@ function ProjectRow({
 
   const badge = (
     <span
-      className="flex size-[18px] shrink-0 items-center justify-center rounded-[4px] text-[10px] font-bold leading-none"
+      className="flex size-4.5 shrink-0 items-center justify-center rounded-sm text-xss font-semibold leading-none"
       style={
         palette
           ? { backgroundColor: palette.color, color: palette.textColor }
@@ -526,63 +771,52 @@ function ProjectRow({
       {isTeam ? (
         name.charAt(0).toUpperCase()
       ) : (
-        <Lock className="size-3 text-gray-11" />
+        <Lock className="size-3 text-gray-10" />
       )}
     </span>
   );
 
-  const row = (
-    <motion.button
-      layout={!prefersReducedMotion}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen({ projectId: project.id, name });
-      }}
-      aria-label={name}
-      className={cn(
-        'flex shrink-0 items-center gap-3 rounded-full text-sm text-gray-12 hover:bg-gray-4 hover:text-gray-12',
-        collapsed ? 'size-9 cursor-pointer justify-center' : 'h-9 w-full px-3',
-        active && 'bg-gray-4 font-medium text-gray-12',
-      )}
-    >
-      {badge}
-      {!collapsed && (
-        <span className="min-w-0 flex-1 truncate text-left">{name}</span>
-      )}
-    </motion.button>
-  );
-
-  if (!collapsed) {
-    return row;
-  }
-
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{row}</TooltipTrigger>
-      <TooltipContent side="right">{name}</TooltipContent>
-    </Tooltip>
+    <RailTooltip collapsed={collapsed} label={name}>
+      <motion.button
+        layout={animateLayout}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        type="button"
+        onClick={() => onOpen({ projectId: project.id, name })}
+        aria-label={name}
+        aria-current={active ? 'page' : undefined}
+        className={railItemClassName({ collapsed, active })}
+      >
+        <RailItemContent
+          collapsed={collapsed}
+          icon={badge}
+          label={name}
+          active={active}
+        />
+      </motion.button>
+    </RailTooltip>
   );
 }
 
 function PinnedSortMenu({
   sort,
   onChange,
+  onOpenChange,
 }: {
   sort: PinnedSort;
   onChange: (next: PinnedSort) => void;
+  onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         aria-label={t('Sort pinned projects')}
         className={cn(
-          RAIL_HEADER_ICON_BUTTON,
+          RAIL_SECTION_ACTION_CLASS,
           'flex items-center justify-center data-[state=open]:bg-gray-4',
         )}
       >
-        <SlidersHorizontal className="size-3.5" />
+        <SlidersHorizontal />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="right" className="w-48">
         <PinnedMenuOption
@@ -617,8 +851,203 @@ function PinnedMenuOption({
   return (
     <DropdownMenuItem onClick={onClick} className="justify-between">
       {label}
-      {active && <span className="text-accent-11">✓</span>}
+      {active && <Check className="size-4 text-accent-9" />}
     </DropdownMenuItem>
+  );
+}
+
+function RailBottomBlock({ collapsed }: { collapsed: boolean }) {
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const showPlatformAdmin = useIsPlatformAdmin();
+  const { embedState } = useEmbedding();
+  const { pathname } = useLocation();
+
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 flex-col gap-0.5 p-1.5',
+        collapsed && 'border-t border-gray-6',
+      )}
+    >
+      {showPlatformAdmin && !embedState.isEmbedded && (
+        <RailNavLink
+          collapsed={collapsed}
+          to="/platform/projects"
+          icon={<Shield />}
+          label={t('Platform Admin')}
+          active={pathname.startsWith('/platform')}
+        />
+      )}
+      {!embedState.isEmbedded && (
+        <RailPopoverItem
+          collapsed={collapsed}
+          icon={<CircleHelp />}
+          label={t('Help & Feedback')}
+        >
+          <HelpAndFeedbackItems />
+        </RailPopoverItem>
+      )}
+      <RailTooltip collapsed={collapsed} label={t('Settings')}>
+        <button
+          type="button"
+          aria-label={t('Settings')}
+          onClick={() => setAccountSettingsOpen(true)}
+          className={railItemClassName({ collapsed, active: false })}
+        >
+          <RailItemContent
+            collapsed={collapsed}
+            icon={<Settings />}
+            label={t('Settings')}
+            active={false}
+          />
+        </button>
+      </RailTooltip>
+      <RailAccountItem
+        collapsed={collapsed}
+        onOpenAccountSettings={() => setAccountSettingsOpen(true)}
+      />
+      <AccountSettingsDialog
+        open={accountSettingsOpen}
+        onClose={() => setAccountSettingsOpen(false)}
+      />
+    </div>
+  );
+}
+
+function RailPopoverItem({
+  collapsed,
+  icon,
+  label,
+  triggerLabel,
+  children,
+}: {
+  collapsed: boolean;
+  icon: ReactNode;
+  label: string;
+  triggerLabel?: string;
+  children: ReactNode;
+}) {
+  return (
+    <DropdownMenu modal>
+      <RailTooltip collapsed={collapsed} label={triggerLabel ?? label}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={triggerLabel ?? label}
+            className={railItemClassName({ collapsed, active: false })}
+          >
+            <RailItemContent
+              collapsed={collapsed}
+              icon={icon}
+              label={label}
+              active={false}
+              trailing={
+                <ChevronRight className="ml-auto size-4 shrink-0 text-gray-10" />
+              }
+            />
+          </button>
+        </DropdownMenuTrigger>
+      </RailTooltip>
+      <DropdownMenuContent
+        side="right"
+        align="end"
+        sideOffset={RAIL_POPOVER_OFFSET}
+        className="min-w-65"
+      >
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function RailAccountItem({
+  collapsed,
+  onOpenAccountSettings,
+}: {
+  collapsed: boolean;
+  onOpenAccountSettings: () => void;
+}) {
+  const { data: user } = userHooks.useCurrentUser();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  if (!user) {
+    return null;
+  }
+
+  const fullName = user.firstName + ' ' + user.lastName;
+
+  const handleLogout = () => {
+    userHooks.invalidateCurrentUser(queryClient);
+    authenticationSession.logOut();
+    navigate('/sign-in');
+  };
+
+  return (
+    <RailPopoverItem
+      collapsed={collapsed}
+      label={fullName}
+      triggerLabel={t('Account')}
+      icon={
+        <span className="size-5 shrink-0 overflow-hidden rounded-full">
+          <UserAvatar
+            className={cn('size-full object-cover', {
+              'scale-150': isNil(user.imageUrl),
+            })}
+            name={fullName}
+            email={user.email}
+            imageUrl={user.imageUrl}
+            size={20}
+            disableTooltip={true}
+          />
+        </span>
+      }
+    >
+      <DropdownMenuLabel className="p-0 font-normal">
+        <div className="flex items-center gap-2 px-2 py-1.5 text-left">
+          <div className="size-8 shrink-0 overflow-hidden rounded-full">
+            <UserAvatar
+              className="size-full object-cover"
+              name={fullName}
+              email={user.email}
+              imageUrl={user.imageUrl}
+              size={32}
+              disableTooltip={true}
+            />
+          </div>
+          <div className="grid min-w-0 flex-1 text-left">
+            <span className="truncate text-sm font-medium text-gray-12">
+              {fullName}
+            </span>
+            <span className="truncate text-xs text-gray-11">{user.email}</span>
+          </div>
+        </div>
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={onOpenAccountSettings}>
+        <UserCogIcon className="size-4" />
+        {t('Account Settings')}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={handleLogout}>
+        <LogOut className="size-4" />
+        {t('Log out')}
+      </DropdownMenuItem>
+    </RailPopoverItem>
+  );
+}
+
+function railItemClassName({
+  collapsed,
+  active,
+}: {
+  collapsed: boolean;
+  active: boolean;
+}) {
+  return cn(
+    'group/rail-item flex min-h-8 w-full shrink-0 cursor-pointer items-center gap-1 rounded-sm p-1 text-left text-sm font-normal text-gray-12 outline-hidden hover:bg-gray-3 focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus disabled:cursor-not-allowed disabled:text-gray-8 data-[state=open]:bg-gray-3',
+    collapsed && 'justify-center',
+    active && 'bg-gray-3',
   );
 }
 
@@ -668,141 +1097,26 @@ function orderProjects({
   return [...personal.sort(compare), ...others.sort(compare)];
 }
 
-function RailAccountRow({ collapsed }: { collapsed: boolean }) {
-  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
-  const { data: user } = userHooks.useCurrentUser();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
+const RAIL_TOOLTIP_DELAY = 500;
 
-  if (!user) {
-    return null;
-  }
+const RAIL_POPOVER_OFFSET = 19;
 
-  const handleLogout = () => {
-    userHooks.invalidateCurrentUser(queryClient);
-    authenticationSession.logOut();
-    navigate('/sign-in');
-  };
+const OPEN_DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"]';
 
-  return (
-    <div
-      className={cn(
-        'mt-2 flex items-center',
-        collapsed ? 'flex-col-reverse gap-1' : 'justify-between px-2',
-      )}
-    >
-      <DropdownMenu modal>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('Account')}
-                onClick={(e) => e.stopPropagation()}
-                className={cn(
-                  'flex items-center gap-2 rounded-full hover:bg-gray-4',
-                  collapsed
-                    ? 'size-9 cursor-pointer justify-center'
-                    : 'h-10 min-w-0 flex-1 px-2',
-                )}
-              >
-                <div className="size-[22px] shrink-0 overflow-hidden rounded-full">
-                  <UserAvatar
-                    className={cn('size-full object-cover', {
-                      'scale-150': isNil(user.imageUrl),
-                    })}
-                    name={user.firstName + ' ' + user.lastName}
-                    email={user.email}
-                    imageUrl={user.imageUrl}
-                    size={22}
-                    disableTooltip={true}
-                  />
-                </div>
-                {!collapsed && (
-                  <span className="min-w-0 flex-1 truncate text-left text-sm">
-                    {user.firstName + ' ' + user.lastName}
-                  </span>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          {collapsed && (
-            <TooltipContent side="right">{t('Account')}</TooltipContent>
-          )}
-        </Tooltip>
-        <DropdownMenuContent
-          className="w-56 rounded-lg"
-          side="right"
-          align="end"
-          sideOffset={10}
-        >
-          <DropdownMenuLabel className="p-0 font-normal">
-            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-              <div className="size-8 shrink-0 overflow-hidden rounded-full">
-                <UserAvatar
-                  className="size-full object-cover"
-                  name={user.firstName + ' ' + user.lastName}
-                  email={user.email}
-                  imageUrl={user.imageUrl}
-                  size={32}
-                  disableTooltip={true}
-                />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {user.firstName + ' ' + user.lastName}
-                </span>
-                <span className="truncate text-xs">{user.email}</span>
-              </div>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setAccountSettingsOpen(true)}>
-              <UserCogIcon className="w-4 h-4 mr-2" />
-              {t('Account Settings')}
-            </DropdownMenuItem>
-            <HelpAndFeedback />
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            {t('Log out')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+const PROJECT_LIST_ID = 'primary-rail-projects';
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0 cursor-pointer rounded-full text-gray-11 hover:bg-gray-4 hover:text-gray-12"
-            onClick={(e) => {
-              e.stopPropagation();
-              setAccountSettingsOpen(true);
-            }}
-            aria-label={t('Settings')}
-          >
-            <Settings className="size-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">{t('Settings')}</TooltipContent>
-      </Tooltip>
+const RAIL_ICON_BUTTON_CLASS =
+  'text-gray-11 hover:bg-gray-3 hover:text-gray-12 pressed:bg-gray-4 [&_svg]:size-4';
 
-      <AccountSettingsDialog
-        open={accountSettingsOpen}
-        onClose={() => setAccountSettingsOpen(false)}
-      />
-    </div>
-  );
-}
-
-const RAIL_HEADER_ICON_BUTTON =
-  'size-6 rounded-md text-gray-11 hover:bg-gray-4 hover:text-gray-12 [&_svg]:size-3.5!';
-
-const PINNED_SORT_KEY = 'rail-pinned-sort';
+const RAIL_SECTION_ACTION_CLASS =
+  'size-5 rounded-sm text-gray-10 hover:bg-gray-4 hover:text-gray-12 [&_svg]:size-3.5!';
 
 const PINNED_SORTS = ['added', 'recency', 'alphabetical'] as const;
 
 type PinnedSort = (typeof PINNED_SORTS)[number];
+
+type RailIconButtonProps = React.ComponentProps<typeof Button> & {
+  label: string;
+  tooltipSide: 'right' | 'bottom';
+  shortcut?: ReactNode;
+};

@@ -28,15 +28,20 @@ import { useAuthorization } from '@/hooks/authorization-hooks';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
 import { userHooks } from '@/hooks/user-hooks';
+import { cn } from '@/lib/utils';
 
 import { ProjectSettingsDialog } from '../project-settings';
+
+import { ProjectCreateSplitButton } from './project-create-split-button';
 
 export const ProjectDashboardPageHeader = ({
   children,
   description,
+  className,
 }: {
   children?: React.ReactNode;
   description?: React.ReactNode;
+  className?: string;
 }) => {
   const { project } = projectCollectionUtils.useCurrentProject();
   const { platform } = platformHooks.useCurrentPlatform();
@@ -101,18 +106,21 @@ export const ProjectDashboardPageHeader = ({
   };
 
   const titleContent = (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 items-center gap-1">
       <ApProjectDisplay
         title={getProjectName(project)}
+        icon={project.icon}
         maxLengthToNotShowTooltip={30}
-        titleClassName="text-sm font-medium"
+        containerClassName="min-w-0"
+        titleClassName="text-xl font-semibold leading-tight text-gray-12"
+        iconClassName="size-5 shrink-0 text-xs"
         projectType={project.type}
       />
       {project.type === ProjectType.PERSONAL && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Lock className="w-4 h-4" />
+              <Lock className="size-4 shrink-0 text-gray-10" />
             </TooltipTrigger>
             <TooltipContent>
               <p>
@@ -128,11 +136,10 @@ export const ProjectDashboardPageHeader = ({
   );
 
   const rightContent = isProjectPage ? (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {showProjectMembersIcons && (
         <Button
           variant="ghost"
-          className="gap-2"
           aria-label={`View ${activeProjectMembers?.length} team member${
             activeProjectMembers?.length !== 1 ? 's' : ''
           }`}
@@ -141,7 +148,7 @@ export const ProjectDashboardPageHeader = ({
             setSettingsOpen(true);
           }}
         >
-          <UsersRound className="w-4 h-4" />
+          <UsersRound className="size-4" />
           <span className="text-sm font-medium">
             {activeProjectMembers?.length}
           </span>
@@ -152,10 +159,9 @@ export const ProjectDashboardPageHeader = ({
           icon={UserRoundPlusIcon}
           iconSize={16}
           variant="ghost"
-          size="sm"
           onClick={() => setInviteOpen(true)}
         >
-          <span className="text-sm font-medium">{t('Add Members')}</span>
+          {t('Add Members')}
         </AnimatedIconButton>
       )}
       <AnimatedIconButton
@@ -163,12 +169,15 @@ export const ProjectDashboardPageHeader = ({
         iconSize={16}
         variant="ghost"
         size="icon"
-        className="h-8 w-8"
+        aria-label={t('Project settings')}
         onClick={() => {
           setSettingsInitialTab(getFirstAvailableTab());
           setSettingsOpen(true);
         }}
       />
+      <div className="ml-1 flex items-center empty:hidden">
+        <ProjectCreateSplitButton />
+      </div>
     </div>
   ) : (
     children
@@ -180,7 +189,7 @@ export const ProjectDashboardPageHeader = ({
         title={titleContent}
         description={description}
         rightContent={rightContent}
-        className="min-w-full"
+        className={cn('min-w-full', className)}
       />
       <InviteUserDialog open={inviteOpen} setOpen={setInviteOpen} />
       <ProjectSettingsDialog
