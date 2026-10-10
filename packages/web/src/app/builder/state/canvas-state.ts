@@ -15,7 +15,6 @@ export type CanvasState = {
   hideTestWidget: boolean;
   rightSidebar: RightSideBarType;
   selectedStep: string | null;
-  activeDraggingStep: string | null;
   selectedBranchIndex: number | null;
   userManuallySelectedStepDuringRun: boolean;
   setSelectedBranchIndex: (index: number | null) => void;
@@ -28,7 +27,6 @@ export type CanvasState = {
     options?: { fromAutoFocus?: boolean },
   ) => void;
   resumeLiveFollow: () => void;
-  setActiveDraggingStep: (stepName: string | null) => void;
   setReadOnly: (readOnly: boolean) => void;
   selectedNodes: string[];
   setSelectedNodes: (nodes: string[]) => void;
@@ -72,7 +70,6 @@ export const createCanvasState = (
     readonly: initialState.readonly,
     hideTestWidget: initialState.hideTestWidget ?? false,
     selectedStep: initiallySelectedStep,
-    activeDraggingStep: null,
     rightSidebar:
       initiallySelectedStep && !isEmptyTriggerInitiallySelected
         ? RightSideBarType.PIECE_SETTINGS
@@ -84,10 +81,6 @@ export const createCanvasState = (
         selectedBranchIndex: null,
       }),
 
-    setActiveDraggingStep: (stepName: string | null) =>
-      set({
-        activeDraggingStep: stepName,
-      }),
     setSelectedBranchIndex: (branchIndex: number | null) =>
       set({
         selectedBranchIndex: branchIndex,

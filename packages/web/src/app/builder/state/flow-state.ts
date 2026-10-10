@@ -25,6 +25,8 @@ import { PromiseQueue } from '@/lib/promise-queue';
 import { BuilderState } from '../builder-hooks';
 import { flowCanvasUtils } from '../flow-canvas/utils/flow-canvas-utils';
 
+import { STEP_POSITION_FOLLOW_UP_OPERATIONS } from './layout-state';
+
 export type FlowState = {
   flow: PopulatedFlow;
   flowVersion: FlowVersion;
@@ -234,6 +236,10 @@ export const createFlowState = (
             debouncedAddToFlowUpdatesQueue(operation.request.id, updateRequest);
             break;
           }
+          case FlowOperationType.UPDATE_STEP_POSITIONS: {
+            flowUpdatesQueue.add(updateRequest);
+            break;
+          }
           case FlowOperationType.DELETE_ACTION: {
             const inputSampleData = { ...state.inputSampleData };
             const outputSampleData = { ...state.outputSampleData };
@@ -254,6 +260,12 @@ export const createFlowState = (
           default: {
             flowUpdatesQueue.add(updateRequest);
           }
+        }
+        if (STEP_POSITION_FOLLOW_UP_OPERATIONS.includes(operation.type)) {
+          state.queueStepPositionsFollowUp({
+            previousVersion: state.flowVersion,
+            operation,
+          });
         }
 
         return { flowVersion: newFlowVersion };

@@ -14,6 +14,12 @@ import {
   useStoreApi,
   PanOnScrollMode,
   useStore,
+  NodeChange,
+  applyNodeChanges,
+  OnConnectStart,
+  OnConnectEnd,
+  XYPosition,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import React, {
@@ -26,7 +32,7 @@ import React, {
 
 import { cn } from '@/lib/utils';
 
-import { useBuilderStateContext } from '../builder-hooks';
+import { useBuilderStateContext, useBuilderStore } from '../builder-hooks';
 import { useHandleKeyPressOnCanvas } from '../shortcuts';
 import { useCursorPosition } from '../state/cursor-position-context';
 
@@ -36,10 +42,13 @@ import {
   CanvasContextMenu,
   ContextMenuType,
 } from './context-menu/canvas-context-menu';
+import { FlowConnectionLine } from './edges/flow-connection-line';
 import { FlowDragLayer } from './flow-drag-layer';
 import { flowCanvasHooks } from './hooks';
 import { flowCanvasConsts } from './utils/consts';
 import { flowCanvasUtils } from './utils/flow-canvas-utils';
+import { stepPositionUtils } from './utils/step-position-utils';
+import { ApNode, ApNodeType } from './utils/types';
 import { CanvasTestBar } from './widgets';
 import { Minimap, useMinimapVisibility } from './widgets/minimap';
 import { useShowChevronNextToSelection } from './widgets/selection-chevron-button';
@@ -54,6 +63,12 @@ export const FlowCanvas = React.memo(() => {
     rightSidebar,
     notes,
     readonly,
+    startStepDrag,
+    setDropTargetId,
+    commitStepDrag,
+    endStepDrag,
+    setPendingStepPosition,
+    setOpenedPieceSelectorStepNameOrAddButtonId,
   ] = useBuilderStateContext((state) => {
     return [
       state.flowVersion,
@@ -64,14 +79,22 @@ export const FlowCanvas = React.memo(() => {
       state.rightSidebar,
       state.flowVersion.notes,
       state.readonly,
+      state.startStepDrag,
+      state.setDropTargetId,
+      state.commitStepDrag,
+      state.endStepDrag,
+      state.setPendingStepPosition,
+      state.setOpenedPieceSelectorStepNameOrAddButtonId,
     ];
   });
+  const builderStore = useBuilderStore();
   const containerRef = useRef<HTMLDivElement>(null);
   useShowChevronNextToSelection();
   flowCanvasHooks.useFocusOnStep();
   useHandleKeyPressOnCanvas();
   flowCanvasHooks.useResizeCanvas(containerRef);
   const reactFlowStore = useStoreApi();
+  const { screenToFlowPosition } = useReactFlow();
   const minimap = useMinimapVisibility();
   const fitToView = useFitToView();
   const isCanvasMeasured = useStore(
@@ -101,13 +124,168 @@ export const FlowCanvas = React.memo(() => {
     },
     [setSelectedNodes, selectedStep],
   );
-  const graphKey = createGraphKey(flowVersion, notes, selectedStep ?? '');
+  const graphKey = createGraphKey({
+    flowVersion,
+    notes,
+    selectedStep: selectedStep ?? '',
+    readonly,
+  });
   const graph = useMemo(() => {
     return flowCanvasUtils.createFlowGraph({
       version: flowVersion,
       notes,
+      readonly,
     });
   }, [graphKey]);
+  const stepIds = useMemo(
+    () =>
+      new Set(
+        graph.nodes
+          .filter((node) => node.type === ApNodeType.STEP)
+          .map((node) => node.id),
+      ),
+    [graph],
+  );
+  const [localNodes, setLocalNodes] = useState<LocalNodes>({
+    key: graphKey,
+    nodes: graph.nodes,
+  });
+  if (localNodes.key !== graphKey) {
+    setLocalNodes({
+      key: graphKey,
+      nodes: carryNodeState({ previous: localNodes.nodes, next: graph.nodes }),
+    });
+  }
+  const onNodesChange = useCallback(
+    (changes: NodeChange<ApNode>[]) => {
+      const allowedChanges = changes.filter(
+        (change) => change.type !== 'position' || stepIds.has(change.id),
+      );
+      if (allowedChanges.length === 0) {
+        return;
+      }
+      setLocalNodes((current) => ({
+        key: current.key,
+        nodes: applyNodeChanges(allowedChanges, current.nodes),
+      }));
+    },
+    [stepIds],
+  );
+  const onNodeDragStart = useCallback(
+    (_event: React.MouseEvent, node: ApNode, draggedNodes: ApNode[]) => {
+      if (
+        readonly ||
+        draggedNodes.length !== 1 ||
+        node.type !== ApNodeType.STEP ||
+        flowStructureUtil.isTrigger(node.data.step.type)
+      ) {
+        return;
+      }
+      startStepDrag({
+        stepName: node.id,
+        targets: stepPositionUtils.getDropTargets({
+          graph,
+          trigger: flowVersion.trigger,
+          draggedStepName: node.id,
+        }),
+      });
+    },
+    [readonly, graph, flowVersion.trigger, startStepDrag],
+  );
+  const onNodeDrag = useCallback(
+    (event: React.MouseEvent) => {
+      const { stepDrag } = builderStore.getState();
+      if (!stepDrag?.active) {
+        return;
+      }
+      setDropTargetId(
+        findArmedDropTarget({
+          pointer: { x: event.clientX, y: event.clientY },
+          targetIds: stepDrag.targets.map((target) => target.id),
+          zoom: reactFlowStore.getState().transform[2],
+        }),
+      );
+    },
+    [builderStore, reactFlowStore, setDropTargetId],
+  );
+  const commitDraggedNodes = useCallback(
+    (draggedNodes: ApNode[]) => {
+      const { stepDrag, dropTargetId } = builderStore.getState();
+      const draggedSteps = draggedNodes.filter((node) => stepIds.has(node.id));
+      const dropTarget =
+        draggedSteps.length === 1 && stepDrag?.active
+          ? stepDrag.targets.find((target) => target.id === dropTargetId)
+              ?.location ?? null
+          : null;
+      endStepDrag();
+      if (draggedSteps.length === 0) {
+        return;
+      }
+      commitStepDrag({
+        positions: Object.fromEntries(
+          draggedSteps.map((node) => [node.id, node.position]),
+        ),
+        dropTarget,
+      });
+    },
+    [builderStore, stepIds, commitStepDrag, endStepDrag],
+  );
+  const connectionStartRef = useRef<XYPosition | null>(null);
+  const onConnectStart: OnConnectStart = useCallback((event) => {
+    connectionStartRef.current = getClientPoint(event);
+  }, []);
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event, connectionState) => {
+      const start = connectionStartRef.current;
+      connectionStartRef.current = null;
+      const end = getClientPoint(event);
+      const fromNodeId = connectionState.fromNode?.id;
+      const fromHandleId = connectionState.fromHandle?.id;
+      if (
+        readonly ||
+        isNil(start) ||
+        isNil(end) ||
+        isNil(fromNodeId) ||
+        isNil(fromHandleId) ||
+        Math.hypot(end.x - start.x, end.y - start.y) <=
+          CONNECTION_CLICK_DISTANCE ||
+        !isEmptyCanvasPoint(end)
+      ) {
+        return;
+      }
+      const stepNode = graph.nodes.find(
+        (node) => node.type === ApNodeType.STEP && node.id === fromNodeId,
+      );
+      const output =
+        stepNode?.type === ApNodeType.STEP
+          ? stepNode.data.outputs.find((output) => output.id === fromHandleId)
+          : undefined;
+      if (isNil(output)) {
+        return;
+      }
+      const selectorId = output.hasStub
+        ? flowCanvasUtils.getOutputStubId({
+            stepName: fromNodeId,
+            outputId: output.id,
+          })
+        : flowCanvasUtils.getOutputEdgeId({
+            nodeId: fromNodeId,
+            outputId: output.id,
+          });
+      setPendingStepPosition({
+        selectorId,
+        position: screenToFlowPosition(end),
+      });
+      setOpenedPieceSelectorStepNameOrAddButtonId(selectorId);
+    },
+    [
+      readonly,
+      graph,
+      screenToFlowPosition,
+      setPendingStepPosition,
+      setOpenedPieceSelectorStepNameOrAddButtonId,
+    ],
+  );
   const [contextMenuType, setContextMenuType] = useState<ContextMenuType>(
     ContextMenuType.CANVAS,
   );
@@ -216,7 +394,26 @@ export const FlowCanvas = React.memo(() => {
               }
             }}
             nodeTypes={flowCanvasConsts.nodeTypes}
-            nodes={graph.nodes}
+            nodes={localNodes.nodes}
+            onNodesChange={onNodesChange}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDrag={onNodeDrag}
+            onNodeDragStop={(_event, _node, draggedNodes) =>
+              commitDraggedNodes(draggedNodes)
+            }
+            onSelectionDragStop={(_event, draggedNodes) =>
+              commitDraggedNodes(draggedNodes)
+            }
+            snapToGrid={true}
+            snapGrid={SNAP_GRID}
+            nodeDragThreshold={NODE_DRAG_THRESHOLD}
+            nodeClickDistance={NODE_CLICK_DISTANCE}
+            elevateNodesOnSelect={false}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+            connectOnClick={false}
+            isValidConnection={rejectConnection}
+            connectionLineComponent={FlowConnectionLine}
             edgeTypes={flowCanvasConsts.edgeTypes}
             edges={graph.edges}
             draggable={false}
@@ -232,7 +429,7 @@ export const FlowCanvas = React.memo(() => {
             panOnScroll={true}
             panOnScrollMode={PanOnScrollMode.Free}
             fitView={false}
-            nodesConnectable={false}
+            nodesConnectable={!readonly}
             elementsSelectable={true}
             nodesDraggable={false}
             nodesFocusable={false}
@@ -259,8 +456,90 @@ export const FlowCanvas = React.memo(() => {
 });
 
 FlowCanvas.displayName = 'FlowCanvas';
+
+function carryNodeState({
+  previous,
+  next,
+}: {
+  previous: ApNode[];
+  next: ApNode[];
+}): ApNode[] {
+  const previousById = new Map(previous.map((node) => [node.id, node]));
+  return next.map((node) => {
+    const prior = previousById.get(node.id);
+    if (isNil(prior) || prior.type !== node.type) {
+      return node;
+    }
+    return { ...node, selected: prior.selected, measured: prior.measured };
+  });
+}
+
+function findArmedDropTarget({
+  pointer,
+  targetIds,
+  zoom,
+}: {
+  pointer: XYPosition;
+  targetIds: string[];
+  zoom: number;
+}): string | null {
+  const candidates = targetIds
+    .map((id) => {
+      const element = document.querySelector(
+        `[data-drop-target="${CSS.escape(id)}"]`,
+      );
+      if (isNil(element)) {
+        return null;
+      }
+      const rect = element.getBoundingClientRect();
+      const distance =
+        Math.hypot(
+          rect.left + rect.width / 2 - pointer.x,
+          rect.top + rect.height / 2 - pointer.y,
+        ) / zoom;
+      return { id, distance };
+    })
+    .filter(
+      (candidate): candidate is { id: string; distance: number } =>
+        !isNil(candidate) && candidate.distance <= DROP_TARGET_RADIUS,
+    )
+    .sort((a, b) => a.distance - b.distance);
+  return candidates[0]?.id ?? null;
+}
+
+function getClientPoint(event: MouseEvent | TouchEvent): XYPosition | null {
+  if ('clientX' in event) {
+    return { x: event.clientX, y: event.clientY };
+  }
+  const touch = event.changedTouches[0] ?? event.touches[0];
+  return isNil(touch) ? null : { x: touch.clientX, y: touch.clientY };
+}
+
+function isEmptyCanvasPoint(point: XYPosition): boolean {
+  const element = document
+    .elementsFromPoint(point.x, point.y)
+    .find((candidate) => isNil(candidate.closest(CONNECTION_LINE_SELECTOR)));
+  return (
+    !isNil(element) &&
+    (element.classList.contains(REACT_FLOW_PANE_CLASS_NAME) ||
+      !isNil(element.closest(EDGES_SELECTOR)))
+  );
+}
+
+function rejectConnection(): boolean {
+  return false;
+}
+
 const MIDDLE_MOUSE_BUTTON = [1];
 const PAN_ACTIVATION_KEYS = ['Space', 'Control', 'Meta'];
+const SNAP_GRID: [number, number] = [16, 16];
+const NODE_DRAG_THRESHOLD = 4;
+const NODE_CLICK_DISTANCE = 4;
+const CONNECTION_CLICK_DISTANCE = 4;
+const DROP_TARGET_RADIUS = 32;
+const REACT_FLOW_PANE_CLASS_NAME = 'react-flow__pane';
+const CONNECTION_LINE_SELECTOR = '.react-flow__connectionline';
+const EDGES_SELECTOR = '.react-flow__edges';
 const getChildrenKey = (step: Step) => {
   switch (step.type) {
     case FlowActionType.LOOP_ON_ITEMS:
@@ -296,11 +575,17 @@ const getChildrenKey = (step: Step) => {
     }
   }
 };
-const createGraphKey = (
-  flowVersion: FlowVersion,
-  notes: Note[],
-  selectedStep: string,
-) => {
+const createGraphKey = ({
+  flowVersion,
+  notes,
+  selectedStep,
+  readonly,
+}: {
+  flowVersion: FlowVersion;
+  notes: Note[];
+  selectedStep: string;
+  readonly: boolean;
+}) => {
   const flowGraphKey = flowStructureUtil
     .getAllSteps(flowVersion.trigger)
     .reduce((acc, step) => {
@@ -323,5 +608,10 @@ const createGraphKey = (
   const stepPositionsKey = Object.entries(flowVersion.stepPositions ?? {})
     .map(([stepName, position]) => `${stepName}:${position.x},${position.y}`)
     .join('|');
-  return `${flowVersion.id}-${flowGraphKey}-${notesGraphKey}-${stepPositionsKey}-${selectedStep}`;
+  return `${flowVersion.id}-${flowGraphKey}-${notesGraphKey}-${stepPositionsKey}-${selectedStep}-${readonly}`;
+};
+
+type LocalNodes = {
+  key: string;
+  nodes: ApNode[];
 };

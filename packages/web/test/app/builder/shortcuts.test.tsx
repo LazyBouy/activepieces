@@ -335,6 +335,40 @@ describe('canvas keyboard map', () => {
     });
   });
 
+  it('arranges the steps with Shift+Alt+T on the physical T key', async () => {
+    const { store } = await setup();
+    const tidyUp = vi.fn();
+    await act(async () => {
+      store.setState({ tidyUp });
+    });
+    dispatchKeyFrom(document.body, {
+      key: '†',
+      code: 'KeyT',
+      shiftKey: true,
+      altKey: true,
+    });
+    expect(tidyUp).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not arrange the steps on a read-only canvas or without Alt', async () => {
+    const { store } = await setup({ readonly: true });
+    const tidyUp = vi.fn();
+    await act(async () => {
+      store.setState({ tidyUp });
+    });
+    dispatchKeyFrom(document.body, {
+      key: 'T',
+      code: 'KeyT',
+      shiftKey: true,
+      altKey: true,
+    });
+    await act(async () => {
+      store.setState({ readonly: false });
+    });
+    dispatchKeyFrom(document.body, { key: 'T', code: 'KeyT', shiftKey: true });
+    expect(tidyUp).not.toHaveBeenCalled();
+  });
+
   it('keeps editing keys off on a read-only canvas but still zooms', async () => {
     const { store, applyOperation } = await setup({ readonly: true });
     dispatchKeyFrom(document.body, { key: 'S', shiftKey: true });

@@ -18,6 +18,10 @@ import { canvasRunUtils } from '../utils/canvas-run-utils';
 import { flowCanvasConsts } from '../utils/consts';
 import { edgePathUtils } from '../utils/edge-path-utils';
 import { flowCanvasUtils } from '../utils/flow-canvas-utils';
+import {
+  DropTargetState,
+  stepPositionUtils,
+} from '../utils/step-position-utils';
 import { ApFlowEdge } from '../utils/types';
 
 const ApFlowCanvasEdge = React.memo(
@@ -41,6 +45,8 @@ const ApFlowCanvasEdge = React.memo(
       isSuccessful,
       showsSampleData,
       count,
+      dropTargetState,
+      isStepDragging,
     ] = useBuilderStateContext((state) => {
       const runContext = { run: state.run, loopsIndexes: state.loopsIndexes };
       return [
@@ -57,11 +63,17 @@ const ApFlowCanvasEdge = React.memo(
             run: state.run,
           }),
         getItemCount({ data, ...runContext }),
+        stepPositionUtils.getDropTargetState({
+          stepDrag: state.stepDrag,
+          dropTargetId: state.dropTargetId,
+          id,
+        }),
+        state.stepDrag?.active === true,
       ];
     });
     const hover = useDelayedHover(flowCanvasConsts.EDGE_TOOLBAR_HIDE_DELAY);
     const isToolbarVisible =
-      !readonly && (hover.isHovered || isPieceSelectorOpen);
+      !readonly && !isStepDragging && (hover.isHovered || isPieceSelectorOpen);
     const tone: EdgeTone = showsSampleData
       ? 'pinned'
       : isSuccessful
@@ -125,6 +137,14 @@ const ApFlowCanvasEdge = React.memo(
           onPointerLeave={hover.leave}
         />
         <EdgeLabelRenderer>
+          {dropTargetState !== 'none' && (
+            <EdgeDropIndicator
+              id={id}
+              x={geometry.labelX}
+              y={geometry.labelY}
+              state={dropTargetState}
+            />
+          )}
           {isToolbarVisible && (
             <EdgeToolbar
               id={id}
@@ -135,7 +155,7 @@ const ApFlowCanvasEdge = React.memo(
               onPointerLeave={hover.leave}
             />
           )}
-          {!isToolbarVisible && !isNil(count) && (
+          {!isToolbarVisible && dropTargetState === 'none' && !isNil(count) && (
             <ItemCountLabel
               count={count}
               x={geometry.labelX}
@@ -196,6 +216,44 @@ const EdgeToolbar = ({
         </PieceSelector>
         <TooltipContent side="top">{t('Add step')}</TooltipContent>
       </Tooltip>
+    </div>
+  );
+};
+
+const EdgeDropIndicator = ({
+  id,
+  x,
+  y,
+  state,
+}: {
+  id: string;
+  x: number;
+  y: number;
+  state: DropTargetState;
+}) => {
+  const isArmed = state === 'armed';
+  return (
+    <div
+      data-edge-drop-indicator={id}
+      style={{
+        transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
+        zIndex: LABEL_Z_INDEX,
+      }}
+      className={cn(
+        'pointer-events-none absolute top-0 left-0 transition-opacity duration-100 ease-standard motion-safe:animate-swap-in',
+        { 'opacity-60': state === 'idle', 'opacity-0': state === 'fading' },
+      )}
+    >
+      <span
+        data-drop-target={id}
+        data-drop-target-armed={isArmed || undefined}
+        className={cn(
+          'flex size-7 items-center justify-center rounded-sm bg-canvas-plus text-canvas-plus-glyph transition-colors',
+          { 'bg-accent-3 text-accent-9 ring-2 ring-accent-9': isArmed },
+        )}
+      >
+        <Plus className="size-3.5" />
+      </span>
     </div>
   );
 };

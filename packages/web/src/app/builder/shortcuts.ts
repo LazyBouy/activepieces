@@ -29,7 +29,7 @@ export const useHandleKeyPressOnCanvas = () => {
     applyOperation,
     readonly,
     setDraggedNote,
-    setDraggedStep,
+    tidyUp,
   ] = useBuilderStateContext((state) => [
     state.selectedNodes,
     state.flowVersion,
@@ -38,7 +38,7 @@ export const useHandleKeyPressOnCanvas = () => {
     state.applyOperation,
     state.readonly,
     state.setDraggedNote,
-    state.setActiveDraggingStep,
+    state.tidyUp,
   ]);
   const { zoomIn, zoomOut, zoomTo } = useReactFlow();
   const fitToView = useFitToView();
@@ -118,7 +118,6 @@ export const useHandleKeyPressOnCanvas = () => {
         },
         ExitDrag: () => {
           setDraggedNote(null, null);
-          setDraggedStep(null);
         },
         Paste: () => {
           if (
@@ -177,6 +176,13 @@ export const useHandleKeyPressOnCanvas = () => {
             NoteDragOverlayMode.CREATE,
           );
         },
+        TidyUp: () => {
+          if (readonly) {
+            return;
+          }
+          e.preventDefault();
+          tidyUp();
+        },
       };
       handlers[match.action]();
     },
@@ -188,7 +194,7 @@ export const useHandleKeyPressOnCanvas = () => {
       exitStepSettings,
       readonly,
       setDraggedNote,
-      setDraggedStep,
+      tidyUp,
       fitToView,
       zoomIn,
       zoomOut,
@@ -262,6 +268,7 @@ const CANVAS_SHORTCUT_ACTIONS: CanvasShortcutAction[] = [
   'ZoomIn',
   'ZoomOut',
   'AddNote',
+  'TidyUp',
 ];
 
 export const CanvasShortcuts: CanvasShortcutsProps = {
@@ -310,6 +317,13 @@ export const CanvasShortcuts: CanvasShortcutsProps = {
     withShift: true,
     requiresCanvasFocus: true,
   },
+  TidyUp: {
+    shortcutKey: 't',
+    shortcutCode: 'KeyT',
+    withShift: true,
+    withAlt: true,
+    requiresCanvasFocus: true,
+  },
 };
 
 export const CanvasShortcutAliases: Partial<
@@ -323,13 +337,7 @@ export const CanvasShortcutAliases: Partial<
   ZoomIn: [{ shortcutKey: '=', requiresCanvasFocus: true }],
 };
 
-export const TIDY_UP_SHORTCUT: CanvasShortcutProps = {
-  shortcutKey: 't',
-  shortcutCode: 'KeyT',
-  withShift: true,
-  withAlt: true,
-  requiresCanvasFocus: true,
-};
+export const TIDY_UP_SHORTCUT: CanvasShortcutProps = CanvasShortcuts.TidyUp;
 
 export const canvasShortcutUtils = {
   matchesShortcut,

@@ -12,7 +12,10 @@ import { useFitToView } from './use-fit-to-view';
 const CanvasControls = () => {
   const { zoomIn, zoomOut } = useReactFlow();
   const fitToView = useFitToView();
-  const readonly = useBuilderStateContext((state) => state.readonly);
+  const [readonly, tidyUp] = useBuilderStateContext((state) => [
+    state.readonly,
+    state.tidyUp,
+  ]);
 
   return (
     <div
@@ -43,7 +46,7 @@ const CanvasControls = () => {
           tooltip={t('Arrange steps')}
           icon={WandSparkles}
           shortcut={TIDY_UP_SHORTCUT}
-          disabled={true}
+          onClick={tidyUp}
         />
       )}
     </div>

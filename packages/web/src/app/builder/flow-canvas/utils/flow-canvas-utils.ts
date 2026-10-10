@@ -37,9 +37,11 @@ import {
 function createFlowGraph({
   version,
   notes,
+  readonly,
 }: {
   version: FlowVersion;
   notes: Note[];
+  readonly: boolean;
 }): ApGraph {
   const { trigger } = version;
   const layout = flowLayoutUtil.resolveStepPositions({
@@ -50,7 +52,7 @@ function createFlowGraph({
   const stubs = getVisibleStubs({ trigger });
   const steps = flowLayoutUtil.getVisibleSteps({ trigger });
   const stepNodes = steps.map((step) =>
-    createStepNode({ step, layout, edges, stubs }),
+    createStepNode({ step, layout, edges, stubs, readonly }),
   );
   const joinNodes = steps
     .filter((step) => flowLayoutUtil.hasJoin(step))
@@ -66,11 +68,13 @@ function createStepNode({
   layout,
   edges,
   stubs,
+  readonly,
 }: {
   step: Step;
   layout: ReturnType<typeof flowLayoutUtil.resolveStepPositions>;
   edges: ApFlowEdge[];
   stubs: StepCanvasStubs;
+  readonly: boolean;
 }): ApStepNode {
   const outputs = flowLayoutUtil.getStepOutputs(step);
   const height = flowLayoutUtil.getNodeHeight({ outputCount: outputs.length });
@@ -97,7 +101,7 @@ function createStepNode({
       hasIncomingEdge: edges.some((edge) => edge.target === step.name),
     },
     selectable: !isTrigger,
-    draggable: false,
+    draggable: !readonly,
     zIndex: STEP_Z_INDEX,
     style: INTERACTIVE_NODE_STYLE,
   };
@@ -378,7 +382,7 @@ function createEdge({
 }): ApFlowEdge {
   const targetIsJoin = target.endsWith(JOIN_ID_SUFFIX);
   return {
-    id: `${source.nodeId}-${source.handleId}-edge`,
+    id: getOutputEdgeId({ nodeId: source.nodeId, outputId: source.handleId }),
     source: source.nodeId,
     sourceHandle: source.handleId,
     target,
@@ -449,11 +453,36 @@ function getJoinNodeId(stepName: string): string {
   return `${stepName}${JOIN_ID_SUFFIX}`;
 }
 
+function getOutputEdgeId({
+  nodeId,
+  outputId,
+}: {
+  nodeId: string;
+  outputId: string;
+}): string {
+  return `${nodeId}-${outputId}-edge`;
+}
+
+function getOutputStubId({
+  stepName,
+  outputId,
+}: {
+  stepName: string;
+  outputId: string;
+}): string {
+  return `${stepName}-${outputId}`;
+}
+
+function getJoinStubId(stepName: string): string {
+  return `${getJoinNodeId(stepName)}-${JOIN_SOURCE_ID}`;
+}
+
 function buildNotesGraph(notes: Note[]): ApNoteNode[] {
   return notes.map((note) => ({
     id: note.id,
     type: ApNodeType.NOTE,
-    draggable: true,
+    draggable: false,
+    className: NOTE_NODE_CLASS_NAME,
     position: note.position,
     zIndex: NOTE_Z_INDEX,
     data: {
@@ -584,6 +613,7 @@ const JOIN_ID_SUFFIX = '-join';
 const NOTE_Z_INDEX = 0;
 const EDGE_Z_INDEX = 40;
 const STEP_Z_INDEX = 50;
+const NOTE_NODE_CLASS_NAME = 'nopan';
 const INTERACTIVE_NODE_STYLE: React.CSSProperties = { pointerEvents: 'all' };
 
 export const flowCanvasUtils = {
@@ -596,6 +626,9 @@ export const flowCanvasUtils = {
   determineInitiallySelectedStep,
   doesSelectionRectangleExist,
   getJoinNodeId,
+  getOutputEdgeId,
+  getOutputStubId,
+  getJoinStubId,
   INPUT_HANDLE_ID,
   JOIN_TARGET_ID,
   JOIN_SOURCE_ID,

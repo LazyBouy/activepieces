@@ -35,6 +35,10 @@ export const createPieceSelectorState = (
           rightSidebar: isReplacingEmptyTrigger
             ? RightSideBarType.NONE
             : state.rightSidebar,
+          pendingStepPosition:
+            state.pendingStepPosition?.selectorId === stepNameOrAddButtonId
+              ? state.pendingStepPosition
+              : null,
         };
       });
     },

@@ -42,7 +42,8 @@ export type CanvasShortcutAction =
   | 'ResetZoom'
   | 'ZoomIn'
   | 'ZoomOut'
-  | 'AddNote';
+  | 'AddNote'
+  | 'TidyUp';
 
 export type CanvasShortcutProps = ShortcutProps & {
   shortcutCode?: string;

@@ -49,7 +49,16 @@ export type ApStepOutput = {
   hasStub: boolean;
 };
 
-export type ApStepNode = {
+export type ApNodeRuntimeState = {
+  selected?: boolean;
+  dragging?: boolean;
+  measured?: {
+    width?: number;
+    height?: number;
+  };
+};
+
+export type ApStepNode = ApNodeRuntimeState & {
   id: string;
   type: ApNodeType.STEP;
   position: {
@@ -69,7 +78,7 @@ export type ApStepNode = {
   style?: React.CSSProperties;
 };
 
-export type ApJoinNode = {
+export type ApJoinNode = ApNodeRuntimeState & {
   id: string;
   type: ApNodeType.JOIN;
   position: {
@@ -86,7 +95,7 @@ export type ApJoinNode = {
   style?: React.CSSProperties;
 };
 
-export type ApNoteNode = {
+export type ApNoteNode = ApNodeRuntimeState & {
   id: string;
   type: ApNodeType.NOTE;
   position: {
@@ -95,6 +104,7 @@ export type ApNoteNode = {
   };
   data: Pick<Note, 'content' | 'ownerId' | 'color' | 'size'>;
   draggable?: boolean;
+  className?: string;
   zIndex?: number;
 };
 
@@ -121,4 +131,9 @@ export type ApEdge = ApFlowEdge;
 export type ApGraph = {
   nodes: ApNode[];
   edges: ApEdge[];
+};
+
+export type ApDropTarget = {
+  id: string;
+  location: ApButtonData;
 };

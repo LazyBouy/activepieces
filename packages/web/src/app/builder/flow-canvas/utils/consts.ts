@@ -8,12 +8,9 @@ import { ApStepCanvasNode } from '../nodes/step-node';
 import { flowCanvasUtils } from './flow-canvas-utils';
 import { ApEdgeType, ApNodeType } from './types';
 
-const STEP_DRAG_OVERLAY_WIDTH = 75;
-const STEP_DRAG_OVERLAY_HEIGHT = 75;
 const NOTE_MIN_WIDTH = 150;
 const NOTE_MIN_HEIGHT = 80;
 const NOTE_MAX_SIZE = 600;
-const DRAGGED_STEP_TAG = 'dragged-step';
 const DRAGGED_NOTE_TAG = 'dragged-note';
 
 export const flowCanvasConsts = {
@@ -34,10 +31,7 @@ export const flowCanvasConsts = {
     [ApNodeType.JOIN]: ApJoinCanvasNode,
     [ApNodeType.NOTE]: ApNoteCanvasNode,
   },
-  DRAGGED_STEP_TAG,
   DRAGGED_NOTE_TAG,
-  STEP_DRAG_OVERLAY_WIDTH,
-  STEP_DRAG_OVERLAY_HEIGHT,
   NOTE_CREATION_OVERLAY_WIDTH: flowCanvasUtils.NOTE_DEFAULT_SIZE.width,
   NOTE_CREATION_OVERLAY_HEIGHT: flowCanvasUtils.NOTE_DEFAULT_SIZE.height,
   NOTE_MIN_WIDTH,

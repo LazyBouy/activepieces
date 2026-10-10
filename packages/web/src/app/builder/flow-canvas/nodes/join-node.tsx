@@ -18,7 +18,7 @@ import { ApJoinNode } from '../utils/types';
 import { OutputStub } from './step-node/output-stub';
 
 const ApJoinCanvasNode = React.memo(
-  ({ id, data }: NodeProps & Omit<ApJoinNode, 'position'>) => {
+  ({ data }: NodeProps & Omit<ApJoinNode, 'position'>) => {
     const hasRunThrough = useBuilderStateContext(
       (state) =>
         !!canvasRunUtils.getStepOutput({
@@ -69,7 +69,8 @@ const ApJoinCanvasNode = React.memo(
         />
         {data.stub && (
           <OutputStub
-            id={`${id}-out`}
+            id={flowCanvasUtils.getJoinStubId(data.stepName)}
+            source={null}
             insertLocation={data.stub}
             top={flowCanvasConsts.JOIN_SIZE / 2}
             left={flowCanvasConsts.JOIN_SIZE}

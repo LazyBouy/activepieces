@@ -42,15 +42,21 @@ import { StepNodeToolbar } from './step-node-toolbar';
 import { TriggerWidget } from './trigger-widget';
 
 const ApStepCanvasNode = React.memo(
-  ({ data }: NodeProps & Omit<ApStepNode, 'position'>) => {
+  ({ data, dragging }: NodeProps & Omit<ApStepNode, 'position'>) => {
     if (data.step.type === FlowTriggerType.EMPTY) {
       return <EmptyTriggerNode data={data} />;
     }
-    return <StepBoxNode data={data} />;
+    return <StepBoxNode data={data} isDragging={dragging} />;
   },
 );
 
-const StepBoxNode = ({ data }: { data: ApStepNode['data'] }) => {
+const StepBoxNode = ({
+  data,
+  isDragging,
+}: {
+  data: ApStepNode['data'];
+  isDragging: boolean;
+}) => {
   const stepName = data.step.name;
   const boxRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -97,6 +103,7 @@ const StepBoxNode = ({ data }: { data: ApStepNode['data'] }) => {
     !data.outputs[0].hasStub;
   const showToolbar =
     !readonly &&
+    !isDragging &&
     (isHovered || hasVisibleFocus || (isContextMenuOpen && isSelected));
 
   return (
@@ -139,6 +146,7 @@ const StepBoxNode = ({ data }: { data: ApStepNode['data'] }) => {
           {
             'rounded-l-[36px]': isTrigger,
             'ring-6 ring-canvas-selection-halo': isSelected,
+            'cursor-grabbing': isDragging,
           },
         )}
       >
@@ -189,7 +197,7 @@ const StepBoxNode = ({ data }: { data: ApStepNode['data'] }) => {
           id={output.id}
           position={Position.Right}
           isConnectable={false}
-          isConnectableStart={false}
+          isConnectableStart={!readonly}
           isConnectableEnd={false}
           style={{ top: output.offset }}
           className={cn(HANDLE_CLASS_NAME, {
@@ -224,7 +232,11 @@ const StepBoxNode = ({ data }: { data: ApStepNode['data'] }) => {
           return (
             <OutputStub
               key={output.id}
-              id={`${stepName}-${output.id}`}
+              id={flowCanvasUtils.getOutputStubId({
+                stepName,
+                outputId: output.id,
+              })}
+              source={{ nodeId: stepName, handleId: output.id }}
               insertLocation={output.insertLocation}
               top={output.offset}
               left={

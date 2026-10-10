@@ -805,6 +805,10 @@
   [data-slot='drawer-overlay'][data-vaul-overlay][data-state] {
     animation: none !important;
   }
+
+  .canvas-connection-line {
+    animation-duration: 1ms !important;
+  }
 }
 
 /*
@@ -1521,6 +1525,23 @@
 
 .canvas-running-ring-slow {
   animation-duration: 4.5s;
+}
+
+@keyframes canvas-connection-line-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.canvas-connection-line {
+  animation: canvas-connection-line-in 300ms ease 300ms both;
+}
+
+.react-flow__connectionline {
+  pointer-events: none;
 }
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

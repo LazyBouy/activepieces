@@ -63,23 +63,39 @@ describe('flowCanvasUtils.createFlowGraph node types', () => {
     );
   });
 
-  it('keeps steps non-draggable, the trigger unselectable and notes on the dnd-kit path', () => {
+  it('makes steps draggable, the trigger unselectable and keeps notes on the dnd-kit path', () => {
     const graph = createGraph({
       trigger: emptyTrigger(code({ name: 'step_1' })),
       notes: [note()],
     });
 
-    expect(stepNode(graph, 'trigger').draggable).toBe(false);
+    expect(stepNode(graph, 'trigger').draggable).toBe(true);
     expect(stepNode(graph, 'trigger').selectable).toBe(false);
-    expect(stepNode(graph, 'step_1').draggable).toBe(false);
+    expect(stepNode(graph, 'step_1').draggable).toBe(true);
     expect(stepNode(graph, 'step_1').selectable).toBe(true);
     const noteNode = graph.nodes.find((node) => node.type === ApNodeType.NOTE);
     expect(noteNode).toMatchObject({
       id: 'note-1',
-      draggable: true,
+      draggable: false,
+      className: 'nopan',
       position: { x: 10, y: 20 },
       zIndex: 0,
     });
+  });
+
+  it('keeps every node non-draggable on a read-only canvas', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        router({
+          name: 'step_1',
+          branches: [{ name: 'Branch 1', head: code({ name: 'step_2' }) }],
+        }),
+      ),
+      notes: [note()],
+      readonly: true,
+    });
+
+    expect(graph.nodes.every((node) => node.draggable === false)).toBe(true);
   });
 });
 
@@ -562,14 +578,17 @@ function createGraph({
   trigger,
   notes = [],
   stepPositions = {},
+  readonly = false,
 }: {
   trigger: FlowTrigger;
   notes?: FlowVersion['notes'];
   stepPositions?: StepPositions;
+  readonly?: boolean;
 }): ApGraph {
   return flowCanvasUtils.createFlowGraph({
     version: createFlowVersion({ trigger, stepPositions }),
     notes,
+    readonly,
   });
 }
 
