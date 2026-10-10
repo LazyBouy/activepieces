@@ -61,7 +61,7 @@ export default function SettingsHealthPage({
   };
 
   return (
-    <div className="flex flex-col w-full max-w-[40rem] mx-auto gap-4 px-4">
+    <div className="flex flex-col w-full max-w-[40rem] mx-auto gap-4">
       <DashboardPageHeader
         title={t('Health')}
         description={t('Check the status of your platform and its components')}

@@ -4,7 +4,7 @@ import { PieceIcon } from './piece-icon';
 
 type PieceIconWithPieceNameProps = {
   pieceName: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'row' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   border?: boolean;
   showTooltip?: boolean;
 };

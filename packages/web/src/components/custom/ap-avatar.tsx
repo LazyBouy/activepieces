@@ -17,6 +17,7 @@ interface ApAvatarProps {
   includeAvatar?: boolean;
   includeName?: boolean;
   hideHover?: boolean;
+  appearance?: 'default' | 'pill';
 }
 
 export const ApAvatar = ({
@@ -25,16 +26,25 @@ export const ApAvatar = ({
   includeName = false,
   size = 'medium',
   hideHover = false,
+  appearance = 'default',
 }: ApAvatarProps) => {
-  const avatarSize = getAvatarSize(size);
+  const isPill = appearance === 'pill';
+  const avatarSize = isPill ? 16 : getAvatarSize(size);
 
   const { data: user } = userHooks.useUserById(id);
   if (!user || isNil(id)) {
-    return <span className="text-gray-11">—</span>;
+    return isPill ? null : <span className="text-gray-11">—</span>;
   }
 
   const content = (
-    <div className="flex items-center gap-2">
+    <div
+      className={cn(
+        'flex items-center',
+        isPill
+          ? 'h-6 min-w-0 gap-1.5 rounded-full border border-gray-6 bg-panel pr-2 pl-1'
+          : 'gap-2',
+      )}
+    >
       {includeAvatar && (
         <div className="shrink-0">
           <UserAvatar
@@ -49,7 +59,8 @@ export const ApAvatar = ({
       {includeName && (
         <span
           className={cn('text-xs truncate', {
-            'text-xss opacity-75': size === 'xsmall',
+            'text-xss opacity-75': size === 'xsmall' && !isPill,
+            'max-w-40 font-medium text-gray-11': isPill,
           })}
         >
           {`${user.firstName} ${user.lastName}`.trim()}
@@ -65,7 +76,9 @@ export const ApAvatar = ({
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
-        <div className="cursor-pointer">{content}</div>
+        <div className={cn('cursor-pointer', isPill && 'min-w-0')}>
+          {content}
+        </div>
       </HoverCardTrigger>
       <HoverCardContent
         className="w-80 rounded-md border bg-panel p-4 shadow-md"

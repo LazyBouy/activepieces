@@ -8,6 +8,17 @@
     --rdg-cell-frozen-box-shadow: none !important;
 }
 
+.rdg.rdg-light,
+.rdg.rdg-dark {
+    --rdg-color: var(--gray-12);
+    --rdg-border-color: var(--gray-6);
+    --rdg-summary-border-color: var(--gray-6);
+    --rdg-background-color: var(--panel);
+    --rdg-header-background-color: var(--gray-3);
+    --rdg-row-hover-background-color: var(--gray-1);
+    --rdg-font-size: 14px;
+}
+
 .rdg-cell {
     padding-inline: 0px !important;
     border-top-width: 0px;
@@ -25,7 +36,7 @@
 }
 
 .rdg-cell[role="columnheader"] {
-    border-top-width: 1px;
+    border-top-width: 0px;
 }
 
 .rdg-bottom-summary-row .rdg-cell {

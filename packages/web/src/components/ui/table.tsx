@@ -75,7 +75,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-9 px-2 text-left align-middle text-xs font-semibold text-gray-12/87 first:pl-4 last:pr-4 [&:has([role=checkbox])]:pl-4 [&:has([role=checkbox])]:pr-2 [&_svg:not([class*='size-'])]:size-3.5 [&_svg:not([class*='text-'])]:text-gray-11",
+        "h-9 px-2 text-left align-middle text-xs font-semibold text-gray-12/87 first:pl-4 last:pr-4 [&:has([role=checkbox])]:pl-4 [&:has([role=checkbox])]:pr-2 [&_svg:not([class*='size-'])]:size-3.5 [&_svg:not([class*='text-'])]:text-gray-10",
         className,
       )}
       {...props}

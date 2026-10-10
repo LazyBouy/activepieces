@@ -184,11 +184,12 @@ const ProjectReleasesPage = () => {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
+                  variant="outline"
                   className="w-full"
                   disabled={!doesUserHavePermissionToWriteRelease}
                 >
                   {t('Create Release')}
-                  <ChevronDown className="h-3 w-4 ml-2" />
+                  <ChevronDown className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>

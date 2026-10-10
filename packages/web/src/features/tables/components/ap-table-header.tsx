@@ -279,7 +279,7 @@ export function ApTableHeader({
       <PageHeader
         title={titleContent}
         rightContent={rightContent}
-        className="min-h-0 items-center gap-1 justify-between px-4 py-3 md:min-h-0 md:py-3"
+        className="min-h-0 min-w-0 shrink items-center gap-1 justify-between px-5 py-3 md:min-h-0 md:py-3"
       />
       <div className="flex items-center gap-2">
         <Button

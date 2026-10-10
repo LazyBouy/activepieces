@@ -68,7 +68,7 @@ function SettingsHubContent() {
   return (
     <div className="flex h-[calc(100dvh-2rem)] max-h-[45rem]">
       <DialogTitle className="sr-only">{t('Settings')}</DialogTitle>
-      <aside className="flex w-[200px] shrink-0 flex-col border-r bg-gray-3/30">
+      <aside className="flex w-[200px] shrink-0 flex-col border-r border-gray-6">
         <div className="p-3">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-11" />
@@ -113,11 +113,11 @@ function SettingsHubContent() {
             )}
           </div>
         </div>
-        <nav className="px-2 pb-3 pt-3">
-          <div className="px-2 pb-1 text-[11px] font-medium text-gray-11">
+        <nav className="px-1.5 pb-3 pt-3">
+          <div className="px-1.5 pb-1 text-xs font-medium text-gray-10">
             {t('Settings')}
           </div>
-          <div className="space-y-0.5">
+          <div className="flex flex-col gap-0.5">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -125,15 +125,16 @@ function SettingsHubContent() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTabId(tab.id)}
+                  aria-current={activeTabId === tab.id ? 'page' : undefined}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                    activeTabId === tab.id
-                      ? 'bg-gray-3 font-medium text-gray-12'
-                      : 'text-gray-11 hover:bg-gray-3/60',
+                    'flex min-h-8 w-full items-center gap-1 rounded-sm p-1 text-left text-sm text-gray-12 outline-hidden hover:bg-gray-3 focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus',
+                    activeTabId === tab.id && 'bg-gray-3',
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {t(tab.label)}
+                  <span className="flex size-6 shrink-0 items-center justify-center text-gray-11">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="truncate">{t(tab.label)}</span>
                 </button>
               );
             })}

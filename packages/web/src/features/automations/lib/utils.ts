@@ -345,6 +345,53 @@ export function hasNonFolderFilters(filters: AutomationsFilters): boolean {
   );
 }
 
+export function countActiveFilters(
+  filters: Omit<AutomationsFilters, 'searchTerm'>,
+): number {
+  return [
+    filters.typeFilter,
+    filters.statusFilter,
+    filters.connectionFilter,
+    filters.ownerFilter,
+    filters.folderFilter,
+  ].filter((values) => values.length > 0).length;
+}
+
+export function countActiveCriteria(filters: AutomationsFilters): number {
+  return (
+    countActiveFilters(filters) + (filters.searchTerm.trim().length > 0 ? 1 : 0)
+  );
+}
+
+export function parseAutomationsSort(value: string | null): AutomationsSort {
+  switch (value) {
+    case 'name-asc':
+    case 'name-desc':
+      return value;
+    default:
+      return 'default';
+  }
+}
+
+export function summarizeSelection({
+  selectedValues,
+  options,
+}: {
+  selectedValues: string[];
+  options: { value: string; label: string }[];
+}): SelectionSummary {
+  if (selectedValues.length === 0) {
+    return { kind: 'none' };
+  }
+  if (selectedValues.length === 1) {
+    const label =
+      options.find((option) => option.value === selectedValues[0])?.label ??
+      selectedValues[0];
+    return { kind: 'single', label };
+  }
+  return { kind: 'multiple', count: selectedValues.length };
+}
+
 export function toFolderId(folderId: string | undefined): string | null {
   return isNil(folderId) ||
     folderId === '' ||
@@ -431,3 +478,8 @@ function treeItemComparator(
 const NAME_SORT_LOCALE = 'en';
 
 export type TreeRow = { item: TreeItem; children: TreeItem[] };
+
+export type SelectionSummary =
+  | { kind: 'none' }
+  | { kind: 'single'; label: string }
+  | { kind: 'multiple'; count: number };

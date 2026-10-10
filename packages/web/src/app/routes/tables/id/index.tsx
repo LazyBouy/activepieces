@@ -21,7 +21,7 @@ import {
 import { useAuthorization } from '@/hooks/authorization-hooks';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
-import { cn } from '@/lib/utils';
+import { cn, DASHBOARD_PAGE_FULL_WIDTH_CONTAINER_CLASS } from '@/lib/utils';
 
 import './react-data-grid.css';
 
@@ -122,7 +122,7 @@ const ApTableEditorPage = () => {
 
   return (
     <div className="w-full flex flex-col justify-start items-start h-full">
-      <div className="flex items-center justify-between w-full pr-4 border-b">
+      <div className="flex items-center justify-between w-full pr-5 border-b">
         <ApTableHeader
           onBack={handleBack}
           lockedBy={lockedBy}
@@ -130,8 +130,13 @@ const ApTableEditorPage = () => {
         />
       </div>
 
-      <div className="flex w-full flex-col flex-1 min-h-0">
-        <div className="flex-1 flex flex-col min-h-0">
+      <div
+        className={cn(
+          DASHBOARD_PAGE_FULL_WIDTH_CONTAINER_CLASS,
+          'min-h-0 flex-1 pt-3 pb-5',
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-6 bg-panel">
           <div className="flex-1 min-h-0">
             <DataGrid
               ref={gridRef}
@@ -142,12 +147,12 @@ const ApTableEditorPage = () => {
               onSelectedRowsChange={setSelectedRecords}
               onColumnsReorder={handleColumnsReorder}
               className={cn(
-                'scroll-smooth w-full !h-full bg-gray-2 !border-0',
+                'scroll-smooth w-full !h-full bg-panel !border-0',
                 resolvedTheme === 'dark' ? 'rdg-dark' : 'rdg-light',
               )}
               bottomSummaryRows={canEdit ? [{ id: 'new-record' }] : []}
               rowHeight={ROW_HEIGHT_MAP[RowHeight.DEFAULT]}
-              headerRowHeight={ROW_HEIGHT_MAP[RowHeight.DEFAULT]}
+              headerRowHeight={GRID_HEADER_ROW_HEIGHT}
               summaryRowHeight={
                 isAllowedToCreateRecord ? ROW_HEIGHT_MAP[RowHeight.DEFAULT] : 0
               }
@@ -164,5 +169,7 @@ const ApTableEditorPage = () => {
 };
 
 ApTableEditorPage.displayName = 'ApTableEditorPage';
+
+const GRID_HEADER_ROW_HEIGHT = 36;
 
 export { ApTableEditorPage };

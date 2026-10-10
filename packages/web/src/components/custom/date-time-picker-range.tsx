@@ -231,11 +231,9 @@ export function DateTimePickerWithRange({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn(
-              'min-w-[90px] border-dashed justify-start text-left font-normal',
-            )}
+            className="min-w-[90px] justify-start text-left font-medium"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="size-4 shrink-0 text-gray-11" />
             {selectedPreset ? (
               <span>{getPresetLabel(selectedPreset)}</span>
             ) : date?.from ? (

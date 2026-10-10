@@ -21,7 +21,7 @@ function TableRowSkeleton() {
       className="flex h-12 w-full items-center border-b border-gray-6 px-4 last:border-b-0"
       data-testid="header-cell"
     >
-      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full rounded-sm" />
     </div>
   );
 }

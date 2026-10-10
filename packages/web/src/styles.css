@@ -269,6 +269,7 @@
     both;
   --animate-stagger-in: entrance-fade-in 400ms
     cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  --animate-heading-rise: heading-rise 400ms cubic-bezier(0, 0, 0.58, 1) both;
   --animate-blur-reveal-down: blur-reveal-down 350ms
     cubic-bezier(0.32, 0.72, 0, 1);
   --animate-blur-reveal-up: blur-reveal-up 350ms cubic-bezier(0.32, 0.72, 0, 1)
@@ -547,6 +548,19 @@
     }
   }
 
+  @keyframes heading-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+      filter: blur(3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(-12px);
+      filter: blur(0);
+    }
+  }
+
   @keyframes blur-reveal-down {
     from {
       height: 0;
@@ -717,6 +731,7 @@
   [class*='animate-fade-up'],
   [class*='animate-fade-in'],
   [class*='animate-stagger-in'],
+  [class*='animate-heading-rise'],
   [class*='animate-blur-reveal'],
   [class*='animate-accordion'],
   [class*='animate-collapsible'],
@@ -1136,7 +1151,7 @@
     --edge: 0 0 0 1px var(--gray-6);
     --panel-shadow: none;
     --rest: 0 0 0 1px var(--cast-ring), 0 1px 3px -1px var(--cast);
-    --lift: 0 2px 8px 0 oklch(26.6% 0.079 36.26 / 10%);
+    --lift: 0 2px 8px 0 var(--cast);
     --over: var(--float-shadow);
   }
 }
@@ -1370,54 +1385,6 @@
   font-size: 1rem;
 }
 
-/* ── Auth Animation (auth-anim-*) ── */
-
-/* Canvas scaling: wrapper fills parent height, canvas scales to fit */
-.auth-anim-scale-wrapper {
-  height: 100%;
-}
-.auth-anim-canvas {
-  transform: scale(0.71);
-  width: 140.85%; /* 1/0.71 */
-}
-@media (min-width: 640px) {
-  .auth-anim-canvas {
-    transform: scale(0.85);
-    width: 117.65%; /* 1/0.85 */
-  }
-}
-@media (min-width: 768px) {
-  .auth-anim-canvas {
-    transform: scale(1);
-    width: 100%;
-  }
-}
-
-/* Agent element with spring-based staggered transitions */
-.auth-anim-agent {
-  transition:
-    top 800ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    left 800ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    width 700ms cubic-bezier(0.22, 1, 0.36, 1) 80ms,
-    height 700ms cubic-bezier(0.22, 1, 0.36, 1) 80ms;
-  will-change: top, left, width, height;
-}
-
-/* Animated AI gradient border */
-.auth-anim-gradient-border {
-  position: relative;
-  background: linear-gradient(90deg, #8b5cf6, #a855f7, #c084fc, #a855f7, #8b5cf6);
-  background-size: 300% 100%;
-  animation: auth-anim-gradient-flow 4s ease-in-out infinite;
-  transition: transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Enhanced during morphing/movement */
-.auth-anim-gradient-morphing {
-  animation: auth-anim-gradient-flow 2s ease-in-out infinite;
-  transform: scale(1.005);
-}
-
 @keyframes auth-anim-gradient-flow {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -1448,64 +1415,6 @@
   .chat-question-gradient-border::before {
     animation: none;
   }
-}
-
-/* Particle dots with percentage-based animation */
-.auth-anim-particle-dot {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  animation: auth-anim-particle-right 1s linear infinite;
-}
-
-.auth-anim-particle-dot-reverse {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  animation: auth-anim-particle-left 1s linear infinite;
-}
-
-@keyframes auth-anim-particle-right {
-  0% { left: 0%; }
-  100% { left: 100%; }
-}
-
-@keyframes auth-anim-particle-left {
-  0% { left: 100%; }
-  100% { left: 0%; }
-}
-
-/* Vertical particle dots */
-.auth-anim-particle-dot-vertical {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  animation: auth-anim-particle-down 2s linear infinite;
-}
-
-.auth-anim-particle-dot-vertical-reverse {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  animation: auth-anim-particle-up 2s linear infinite;
-}
-
-@keyframes auth-anim-particle-down {
-  0% { top: -5%; opacity: 0; }
-  5% { opacity: 1; }
-  95% { opacity: 1; }
-  100% { top: 105%; opacity: 0; }
-}
-
-@keyframes auth-anim-particle-up {
-  0% { top: 105%; opacity: 0; }
-  5% { opacity: 1; }
-  95% { opacity: 1; }
-  100% { top: -5%; opacity: 0; }
 }
 
 /* ── Password strength bolt glow ── */

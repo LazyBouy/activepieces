@@ -30,9 +30,13 @@ export const McpServerSettings = () => {
     <div className="w-full mt-4">
       {mcpServer && (
         <Tabs defaultValue="connection">
-          <TabsList>
-            <TabsTrigger value="connection">{t('Connection')}</TabsTrigger>
-            <TabsTrigger value="tools">{t('Tools')}</TabsTrigger>
+          <TabsList variant="outline">
+            <TabsTrigger variant="outline" value="connection">
+              {t('Connection')}
+            </TabsTrigger>
+            <TabsTrigger variant="outline" value="tools">
+              {t('Tools')}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="connection" className="mt-4 pb-6" tabIndex={-1}>

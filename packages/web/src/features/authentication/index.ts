@@ -1,6 +1,10 @@
 export { managedAuthApi } from './api/managed-auth-api';
 export { authMutations } from './hooks/auth-hooks';
 export { AuthLanding } from './components/auth-landing/auth-landing';
+export {
+  AuthCard,
+  AuthPageShell,
+} from './components/auth-landing/auth-page-shell';
 export { ChangePasswordForm } from './components/change-password';
 export { CheckEmailNote } from './components/check-email-note';
 export {

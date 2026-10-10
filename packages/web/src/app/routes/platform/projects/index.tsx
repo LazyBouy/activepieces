@@ -289,12 +289,11 @@ export default function ProjectsPage() {
                 {selectedRows.length > 0 && (
                   <Button
                     variant="ghost"
-                    size="sm"
                     className="text-danger-11 hover:text-danger-11"
                     disabled={!canDeleteAny}
                     {...adminControl(AdminControl.PROJECTS_DELETE_OPEN)}
                   >
-                    <Trash className="mr-1 w-4" />
+                    <Trash className="size-4" />
                     {`${t('Delete')} (${selectedRows.length})`}
                   </Button>
                 )}
@@ -341,7 +340,9 @@ export default function ProjectsPage() {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className="size-8 p-0"
+                size="icon-sm"
+                className="text-gray-11"
+                aria-label={t('Edit project')}
                 {...adminControl(AdminControl.PROJECTS_EDIT_OPEN)}
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -366,7 +367,7 @@ export default function ProjectsPage() {
         title={t('Projects')}
         description={t('Manage your automation projects')}
       />
-      <div className="px-6 pt-4">
+      <div className="pb-3">
         <Item variant="outline">
           <ItemMedia variant="icon">
             <UserCircle />

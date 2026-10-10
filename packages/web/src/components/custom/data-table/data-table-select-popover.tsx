@@ -1,8 +1,7 @@
+import { t } from 'i18next';
 import { CheckIcon, ListFilterIcon } from 'lucide-react';
 
 import { LogoPlate } from '@/components/custom/logo-plate';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -18,8 +17,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+
+import { DataTableFilterTrigger } from './data-table-filter-trigger';
 
 type DataTableSelectPopoverProps = {
   title?: string;
@@ -43,43 +43,11 @@ const DataTableSelectPopover = ({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="border-dashed">
-          <ListFilterIcon className="mr-2 size-4" />
-          {title}
-          {selectedValues?.size > 0 && (
-            <>
-              <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge
-                variant="accent"
-                className="rounded-sm px-1 font-normal lg:hidden"
-              >
-                {selectedValues.size}
-              </Badge>
-              <div className="hidden space-x-1 lg:flex">
-                {selectedValues.size > 2 ? (
-                  <Badge
-                    variant="accent"
-                    className="rounded-sm px-1 font-normal"
-                  >
-                    {selectedValues.size} selected
-                  </Badge>
-                ) : (
-                  options
-                    .filter((option) => selectedValues.has(option.value))
-                    .map((option) => (
-                      <Badge
-                        variant="accent"
-                        key={option.value}
-                        className="rounded-sm px-1 font-normal"
-                      >
-                        {option.label}
-                      </Badge>
-                    ))
-                )}
-              </div>
-            </>
-          )}
-        </Button>
+        <DataTableFilterTrigger
+          icon={ListFilterIcon}
+          label={title}
+          value={selectedSummary({ selectedValues, options })}
+        />
       </PopoverTrigger>
       <PopoverContent
         className="min-w-[200px] max-w-[250px] break-all p-0"
@@ -88,7 +56,7 @@ const DataTableSelectPopover = ({
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>{t('No results found')}</CommandEmpty>
 
             <CommandGroup>
               <ScrollArea viewPortClassName="max-h-[200px]">
@@ -109,13 +77,13 @@ const DataTableSelectPopover = ({
                     >
                       <div
                         className={cn(
-                          'mr-2 flex h-4 w-4 items-center justify-center rounded border border-gray-12',
+                          'mr-2 flex size-4 shrink-0 items-center justify-center rounded-sm border',
                           isSelected
-                            ? 'bg-gray-12 text-gray-1'
-                            : 'opacity-50 [&_svg]:invisible',
+                            ? 'border-accent-9 bg-accent-9 text-on-accent'
+                            : 'border-gray-6 bg-panel [&_svg]:invisible',
                         )}
                       >
-                        <CheckIcon className={cn('h-4 w-4')} />
+                        <CheckIcon className="size-3" />
                       </div>
                       {typeof option.icon === 'string' ? (
                         <LogoPlate
@@ -151,7 +119,7 @@ const DataTableSelectPopover = ({
                     onSelect={() => handleFilterChange([])}
                     className="justify-center text-center"
                   >
-                    Clear filters
+                    {t('Clear filters')}
                   </CommandItem>
                 </CommandGroup>
               </>
@@ -162,5 +130,22 @@ const DataTableSelectPopover = ({
     </Popover>
   );
 };
+
+function selectedSummary({
+  selectedValues,
+  options,
+}: {
+  selectedValues: Set<string>;
+  options: DataTableSelectPopoverProps['options'];
+}): string | undefined {
+  if (selectedValues.size === 0) {
+    return undefined;
+  }
+  if (selectedValues.size === 1) {
+    const [only] = selectedValues;
+    return options.find((option) => option.value === only)?.label ?? only;
+  }
+  return t('{count} selected', { count: selectedValues.size });
+}
 
 export { DataTableSelectPopover };

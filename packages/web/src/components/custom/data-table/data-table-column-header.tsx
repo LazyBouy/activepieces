@@ -42,13 +42,13 @@ export function DataTableColumnHeader<TData, TValue>({
           }
         }}
         className={cn(
-          'h-auto p-0 text-xs font-semibold text-gray-12/87 hover:bg-transparent hover:text-gray-12/87 pressed:bg-transparent',
+          'h-auto p-0 text-xs font-semibold text-gray-12/87 hover:bg-transparent hover:text-gray-12 pressed:bg-transparent',
           className,
         )}
       >
-        {Icon && <Icon className="size-3.5 shrink-0 text-gray-11" />}
+        {Icon && <Icon className="size-3.5 shrink-0 text-gray-10" />}
         {title}
-        <SortIcon className="size-3.5 text-gray-11" />
+        <SortIcon className="size-3.5 text-gray-10" />
       </Button>
     );
   }
@@ -60,7 +60,7 @@ export function DataTableColumnHeader<TData, TValue>({
         className,
       )}
     >
-      {Icon && <Icon className="size-3.5 shrink-0 text-gray-11" />}
+      {Icon && <Icon className="size-3.5 shrink-0 text-gray-10" />}
       <div className="text-xs font-semibold text-gray-12/87">{title}</div>
     </div>
   );

@@ -67,7 +67,7 @@ const EditDestination = ({ destinationId }: { destinationId: string }) => {
   switch (opened.status) {
     case 'loading':
       return (
-        <div className="w-full mx-auto py-6 px-6">
+        <div className="w-full mx-auto py-6">
           <SkeletonList numberOfItems={4} className="w-full h-[72px]" />
         </div>
       );

@@ -309,7 +309,7 @@ const GlobalConnectionsTable = () => {
         <AnimatedIconButton
           icon={PlusIcon}
           iconSize={16}
-          size="sm"
+          variant="outline"
           {...adminControl(AdminControl.CONNECTIONS_CONNECTION_OPEN)}
         >
           {t('New Connection')}

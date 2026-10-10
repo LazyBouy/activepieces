@@ -154,7 +154,7 @@ export function ProjectSettingsDialog({
     const hasUnsavedChanges = activeTab === 'general' && form.formState.isDirty;
     return (
       <div className="flex items-center gap-2">
-        <span className="text-lg font-bold">
+        <span className="text-lg font-medium text-gray-12">
           {tabs.find((tab) => tab.id === activeTab)?.label}
         </span>
         {hasUnsavedChanges && (
@@ -190,10 +190,10 @@ export function ProjectSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl w-full max-h-[95vh] rounded-sm flex flex-col p-0">
+      <DialogContent className="max-w-5xl w-full max-h-[95vh] flex flex-col p-0">
         <div className="flex h-[700px]">
-          <div className="w-[238px]">
-            <nav className="space-y-1 bg-gray-3 rounded-sm rounded-r-none h-full flex flex-col rounded-l-md">
+          <div className="w-[238px] shrink-0 border-r border-gray-6">
+            <nav className="flex h-full flex-col">
               <ApProjectDisplay
                 title={form.watch('projectName') ?? project.displayName}
                 icon={form.watch('icon') ?? project.icon}
@@ -202,21 +202,23 @@ export function ProjectSettingsDialog({
                 maxLengthToNotShowTooltip={18}
                 projectType={project.type}
               />
-              <div className="flex flex-col px-2 gap-1">
+              <div className="flex flex-col gap-0.5 px-1.5">
                 {tabs.map((tab) => (
-                  <div
+                  <button
+                    type="button"
                     key={tab.id}
+                    aria-current={activeTab === tab.id ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-medium transition-all cursor-pointer hover:bg-gray-4',
-                      {
-                        'bg-gray-4': activeTab === tab.id,
-                      },
+                      SETTINGS_NAV_ITEM_CLASS,
+                      activeTab === tab.id && 'bg-gray-3',
                     )}
                     onClick={() => setActiveTab(tab.id)}
                   >
-                    {tab.icon}
-                    {tab.label}
-                  </div>
+                    <span className="flex size-6 shrink-0 items-center justify-center text-gray-11 [&_svg]:size-4">
+                      {tab.icon}
+                    </span>
+                    <span className="truncate">{tab.label}</span>
+                  </button>
                 ))}
               </div>
             </nav>
@@ -246,3 +248,6 @@ export function ProjectSettingsDialog({
     </Dialog>
   );
 }
+
+const SETTINGS_NAV_ITEM_CLASS =
+  'flex min-h-8 w-full items-center gap-1 rounded-sm p-1 text-left text-sm text-gray-12 outline-hidden hover:bg-gray-3 focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus';

@@ -135,9 +135,10 @@ export function TurnstileWidget({
   // sign-in cannot proceed and the person needs to know why.
   return (
     <>
-      <div className={cn(shown && 'pb-7')}>
-        <div ref={container} className="flex justify-center" />
-      </div>
+      <div
+        ref={container}
+        className={cn('flex justify-center', shown && 'mt-4')}
+      />
       {failed && (
         <p className="mt-3 text-center text-xs text-danger-11">
           {t(

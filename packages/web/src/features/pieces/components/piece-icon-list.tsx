@@ -8,6 +8,7 @@ import { cva } from 'class-variance-authority';
 import { t } from 'i18next';
 import { useMemo } from 'react';
 
+import { Badge } from '../../../components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -30,6 +31,7 @@ const extraIconVariants = cva(
         md: 'size-[38px]',
         sm: 'size-[25px]',
         xs: 'size-[25px]',
+        xxs: 'size-4',
       },
     },
   },
@@ -44,7 +46,7 @@ export function PieceIconList({
 }: {
   trigger: FlowTrigger;
   maxNumberOfIconsToShow: number;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+  size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
   className?: string;
   excludeCore?: boolean;
 }) {
@@ -105,9 +107,15 @@ export function PieceIconList({
       {extraPieces > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className={extraIconVariants({ size: size ?? 'xs' })}>
-              +{extraPieces}
-            </div>
+            {size === 'xxs' ? (
+              <Badge variant="tag" size="sm" className="select-none">
+                +{extraPieces}
+              </Badge>
+            ) : (
+              <div className={extraIconVariants({ size: size ?? 'xs' })}>
+                +{extraPieces}
+              </div>
+            )}
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {extraMetadata.length > 1 &&

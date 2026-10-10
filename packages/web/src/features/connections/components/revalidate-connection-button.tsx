@@ -25,7 +25,8 @@ export const RevalidateConnectionButton = ({
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon-sm"
+          className="text-gray-11"
           aria-label={t('Recheck connection')}
           disabled={isPending}
           onClick={() => mutate(connectionId)}

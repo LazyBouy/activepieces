@@ -86,19 +86,15 @@ function triggerFor({ variant, className, crown, locked }: TriggerForParams) {
       );
     case 'full':
       return crown ? (
-        <Button
-          size="sm"
-          className={cn('has-[>svg]:px-2.5', className)}
-          {...control}
-        >
-          {crown}
+        <Button variant="outline" className={className} {...control}>
+          <Crown className="size-4 text-accent-11" />
           {t('New Project')}
         </Button>
       ) : (
         <AnimatedIconButton
           icon={PlusIcon}
           iconSize={16}
-          size="sm"
+          variant="outline"
           className={className}
           {...control}
         >

@@ -37,7 +37,9 @@ export const GAP_SIZE_FOR_STEP_SETTINGS = 'gap-3';
 export const DASHBOARD_CONTENT_PADDING_X =
   'px-[var(--dashboard-gutter-x,1rem)]';
 export const DASHBOARD_PAGE_CONTAINER_CLASS =
-  'mx-auto flex w-full max-w-320 flex-col px-4 md:px-12';
+  'mx-auto flex min-h-full w-full max-w-320 flex-col px-4 md:px-12';
+export const DASHBOARD_PAGE_FULL_WIDTH_CONTAINER_CLASS =
+  'flex min-h-full w-full flex-col px-5';
 export const DASHBOARD_PAGE_CONTAINER_STYLE: DashboardGutterStyle = {
   '--dashboard-gutter-x': '0px',
 };

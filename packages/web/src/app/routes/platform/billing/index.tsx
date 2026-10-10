@@ -43,7 +43,7 @@ export function BillingPlanTab() {
       errorMessage={t('Failed to load billing information')}
     >
       {({ platform, info }) => (
-        <div className="flex w-full flex-col gap-4 p-6">
+        <div className="flex w-full flex-col gap-4 py-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-1">
               <h1 className="text-xl font-medium">

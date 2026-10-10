@@ -6,6 +6,7 @@ import {
   Archive,
   ChevronDown,
   Hourglass,
+  LoaderCircle,
   Workflow,
   Activity,
   Clock,
@@ -238,15 +239,17 @@ export const runsTableColumns = ({
     cell: ({ row }) => {
       const status = row.original.status;
       const { variant, Icon } = flowRunUtils.getStatusIcon(status);
+      const isRunning = status === FlowRunStatus.RUNNING;
       return (
         <div className="text-left">
           <StatusIconWithText
-            icon={Icon}
+            icon={isRunning ? LoaderCircle : Icon}
             text={
               flowRunUtils.getStatusLabelOverride(status) ??
               formatUtils.convertEnumToReadable(status)
             }
-            variant={variant}
+            variant={isRunning ? 'primary' : variant}
+            spin={isRunning}
           />
         </div>
       );
@@ -365,7 +368,7 @@ export const runsTableColumns = ({
             </div>
           );
         }
-        return <div className="text-left">-</div>;
+        return <div className="text-left text-gray-10">-</div>;
       }
       return (
         <div className="text-left">

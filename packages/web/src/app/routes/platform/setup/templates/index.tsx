@@ -204,7 +204,7 @@ const PlatformTemplatesPage = () => {
           {...adminControl(AdminControl.TEMPLATES_NEW_OPEN)}
           icon={PlusIcon}
           iconSize={16}
-          size="sm"
+          variant="outline"
         >
           {t('New Template')}
         </AnimatedIconButton>

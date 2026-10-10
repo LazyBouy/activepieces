@@ -29,10 +29,10 @@ function HorizontalSeparatorWithText({
   children,
 }: HorizontalSeparatorWithTextProps) {
   return (
-    <div className={cn('flex w-full flex-row items-center', className)}>
-      <div className="w-1/2 border" />
-      <span className="mx-2 text-sm">{children}</span>
-      <div className="w-1/2 border" />
+    <div className={cn('flex w-full flex-row items-center text-sm', className)}>
+      <div className="h-px flex-1 bg-gray-6" />
+      <span className="mx-2 shrink-0">{children}</span>
+      <div className="h-px flex-1 bg-gray-6" />
     </div>
   );
 }

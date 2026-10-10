@@ -148,8 +148,7 @@ export default function UsersPage() {
           toolbarButtons={[
             <Button
               key="invite"
-              className="gap-2"
-              size="sm"
+              variant="outline"
               {...adminControl(AdminControl.USERS_INVITE_OPEN)}
               onClick={() => {
                 if (ensureSeatsAvailable(1)) {
@@ -158,11 +157,11 @@ export default function UsersPage() {
               }}
             >
               {isOutOfSeats ? (
-                <Crown className="size-4 shrink-0 text-on-accent/90" />
+                <Crown className="size-4 shrink-0 text-accent-11" />
               ) : (
-                <UserRoundPlusIcon size={16} />
+                <UserRoundPlusIcon className="size-4" />
               )}
-              <span className="text-sm font-medium">{t('Invite')}</span>
+              {t('Invite')}
             </Button>,
           ]}
           actions={[

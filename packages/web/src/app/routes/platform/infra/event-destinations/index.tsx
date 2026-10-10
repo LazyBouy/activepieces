@@ -202,7 +202,7 @@ const EventDestinationsPage = () => {
           <Link to={`${EVENT_STREAMING_PATH}/new`}>{t('New Destination')}</Link>
         </AnimatedIconButton>
       </DashboardPageHeader>
-      <div className="flex w-full flex-col px-4 pb-6">
+      <div className="flex w-full flex-col pb-6">
         <DataTable
           bordered={true}
           columns={columns}

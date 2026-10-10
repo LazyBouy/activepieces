@@ -70,11 +70,9 @@ export function AccountSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full max-h-[90vh] pb-4 flex flex-col px-5">
+      <DialogContent size="xl" className="max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-semibold">
-            {t('Account Settings')}
-          </DialogTitle>
+          <DialogTitle>{t('Account Settings')}</DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="flex-1" viewPortClassName="px-1">

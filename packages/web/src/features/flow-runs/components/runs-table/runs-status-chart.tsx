@@ -2,6 +2,7 @@ import { t } from 'i18next';
 import { CircleHelp } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
+import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
@@ -34,6 +35,7 @@ function MiniDonut({
   let accumulated = 0;
   return (
     <svg
+      className="size-5"
       width={DONUT_SIZE}
       height={DONUT_SIZE}
       viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
@@ -100,10 +102,10 @@ function RunsStatusChart() {
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-2 px-3 py-1.5 border border-dashed rounded-md hover:bg-gray-4 transition-colors text-sm text-gray-11">
+        <Button variant="outline" className="gap-2">
           <MiniDonut categories={categories} total={total} />
           {t('Queue Status')}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-4">
         <div className="flex flex-col gap-3">

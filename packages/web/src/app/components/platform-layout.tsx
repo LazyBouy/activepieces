@@ -6,6 +6,10 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar-shadcn';
 import { ManagePlanDialog } from '@/features/billing';
 import { useIsPlatformAdmin } from '@/hooks/authorization-hooks';
 import { flagsHooks } from '@/hooks/flags-hooks';
+import {
+  DASHBOARD_PAGE_CONTAINER_CLASS,
+  DASHBOARD_PAGE_CONTAINER_STYLE,
+} from '@/lib/utils';
 
 import { AllowOnlyLoggedInUserOnlyGuard } from './allow-logged-in-user-only-guard';
 import { GlobalSearchProvider } from './global-search/global-search-context';
@@ -27,7 +31,12 @@ export function PlatformLayout({ children }: { children: React.ReactNode }) {
                 className="relative flex flex-col h-full overflow-clip bg-gray-1"
               >
                 <div className="flex flex-col flex-1 overflow-auto">
-                  {children}
+                  <div
+                    className={DASHBOARD_PAGE_CONTAINER_CLASS}
+                    style={DASHBOARD_PAGE_CONTAINER_STYLE}
+                  >
+                    {children}
+                  </div>
                 </div>
               </div>
             </SidebarInset>

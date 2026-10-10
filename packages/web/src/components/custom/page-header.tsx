@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
 import { useEmbedding } from '@/components/providers/embed-provider';
-import { cn } from '@/lib/utils';
+import { cn, DASHBOARD_CONTENT_PADDING_X } from '@/lib/utils';
 
 export const PageHeader = ({
   title,
@@ -21,7 +21,8 @@ export const PageHeader = ({
     <div
       data-slot="page-header"
       className={cn(
-        'sticky top-0 z-30 flex min-h-20 w-full shrink-0 items-start justify-between gap-4 bg-gray-1 px-4 pt-4 md:min-h-22 md:pt-6',
+        'sticky top-0 z-30 flex min-h-20 w-full shrink-0 items-start justify-between gap-4 bg-gray-1 pt-4 md:min-h-22 md:pt-6',
+        DASHBOARD_CONTENT_PADDING_X,
         className,
       )}
     >

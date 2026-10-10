@@ -5,47 +5,43 @@ import {
   FolderDto,
 } from '@activepieces/shared';
 import { t } from 'i18next';
-import {
-  Filter,
-  FolderIcon,
-  Link2,
-  Search,
-  ToggleLeft,
-  User,
-  X,
-} from 'lucide-react';
+import { Funnel, Search, X } from 'lucide-react';
+import { useId, useState } from 'react';
 
 import { LogoPlate } from '@/components/custom/logo-plate';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useOwnerOptions } from '@/features/automations/hooks/use-owner-options';
 import { formatUtils } from '@/lib/format-utils';
-import { cn, DASHBOARD_CONTENT_PADDING_X } from '@/lib/utils';
+
+import { AutomationsSort } from '../lib/types';
+import {
+  countActiveCriteria,
+  countActiveFilters,
+  parseAutomationsSort,
+} from '../lib/utils';
 
 import { MultiSelectFilter } from './multi-select-filter';
-
-type AutomationsFiltersProps = {
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
-  typeFilter: string[];
-  onTypeFilterChange: (value: string[]) => void;
-  statusFilter: string[];
-  onStatusFilterChange: (value: string[]) => void;
-  connectionFilter: string[];
-  onConnectionFilterChange: (value: string[]) => void;
-  ownerFilter: string[];
-  onOwnerFilterChange: (value: string[]) => void;
-  folderFilter: string[];
-  onFolderFilterChange: (value: string[]) => void;
-  onFilterChange?: () => void;
-  folders: FolderDto[];
-  connections: AppConnectionWithoutSensitiveData[] | undefined;
-  pieces: PieceMetadataModelSummary[] | undefined;
-  agentsVisible: boolean;
-  onClearAllFilters: () => void;
-  hasActiveFilters: boolean;
-};
 
 export const AutomationsFilters = ({
   searchTerm,
@@ -66,10 +62,16 @@ export const AutomationsFilters = ({
   pieces,
   agentsVisible,
   onClearAllFilters,
-  hasActiveFilters,
+  sort,
+  onSortChange,
+  selectedCount,
+  selectableCount,
+  onToggleAllSelection,
 }: AutomationsFiltersProps) => {
   const { embedState } = useEmbedding();
   const ownerOptions = useOwnerOptions();
+  const selectAllId = useId();
+
   const typeOptions = [
     { value: 'flow', label: t('Flows') },
     ...(embedState.hideTables ? [] : [{ value: 'table', label: t('Tables') }]),
@@ -99,12 +101,107 @@ export const AutomationsFilters = ({
     };
   });
 
+  const sortOptions: { value: AutomationsSort; label: string }[] = [
+    { value: 'default', label: t('Last modified') },
+    { value: 'name-asc', label: t('Sort by name A to Z') },
+    { value: 'name-desc', label: t('Sort by name Z to A') },
+  ];
+
+  const filterCount = countActiveFilters({
+    typeFilter,
+    statusFilter,
+    connectionFilter,
+    ownerFilter,
+    folderFilter,
+  });
+  const criteriaCount = countActiveCriteria({
+    searchTerm,
+    typeFilter,
+    statusFilter,
+    connectionFilter,
+    ownerFilter,
+    folderFilter,
+  });
+
+  const clearAll = () => {
+    onClearAllFilters();
+    onFilterChange?.();
+  };
+
+  const filterFields: FilterField[] = [
+    {
+      key: 'type',
+      label: t('Type'),
+      options: typeOptions,
+      selectedValues: typeFilter,
+      onChange: onTypeFilterChange,
+      searchable: false,
+      show: true,
+    },
+    {
+      key: 'status',
+      label: t('Status'),
+      options: statusOptions,
+      selectedValues: statusFilter,
+      onChange: onStatusFilterChange,
+      searchable: false,
+      show: true,
+    },
+    {
+      key: 'connections',
+      label: t('Connections'),
+      options: connectionOptions,
+      selectedValues: connectionFilter,
+      onChange: onConnectionFilterChange,
+      searchable: true,
+      show: true,
+    },
+    {
+      key: 'owner',
+      label: t('Owner'),
+      options: ownerOptions,
+      selectedValues: ownerFilter,
+      onChange: onOwnerFilterChange,
+      searchable: true,
+      show: !embedState.isEmbedded,
+    },
+    {
+      key: 'folder',
+      label: t('Folder'),
+      options: folderOptions,
+      selectedValues: folderFilter,
+      onChange: onFolderFilterChange,
+      searchable: true,
+      show: folderOptions.length > 0,
+    },
+  ];
+
+  const allSelected = selectableCount > 0 && selectedCount === selectableCount;
+  const someSelected = selectedCount > 0 && !allSelected;
+
   return (
-    <div className={cn('overflow-x-auto mb-4', DASHBOARD_CONTENT_PADDING_X)}>
-      <div className="flex items-center justify-between gap-4 min-w-max">
+    <div className="mb-3 flex flex-col gap-2">
+      <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-11" />
+          <Checkbox
+            id={selectAllId}
+            checked={
+              allSelected ? true : someSelected ? 'indeterminate' : false
+            }
+            disabled={selectableCount === 0}
+            onCheckedChange={onToggleAllSelection}
+          />
+          <Label
+            htmlFor={selectAllId}
+            className="cursor-pointer text-sm font-normal text-gray-11"
+          >
+            {t('Select all')}
+          </Label>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <div className="relative w-60">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-10" />
             <Input
               placeholder={searchPlaceholder({
                 hideTables: embedState.hideTables,
@@ -115,100 +212,137 @@ export const AutomationsFilters = ({
                 onSearchChange(e.target.value);
                 onFilterChange?.();
               }}
-              className="min-w-[300px] max-w-xs pl-8 pr-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="h-8 rounded-sm pl-9 pr-8 text-ellipsis placeholder:text-gray-10 md:text-sm"
             />
             {searchTerm && (
               <button
+                type="button"
+                aria-label={t('Clear search')}
                 onClick={() => {
                   onSearchChange('');
                   onFilterChange?.();
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded-full bg-gray-3 hover:bg-gray-4 text-gray-11 hover:text-gray-12 transition-colors"
+                className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full bg-gray-3 text-gray-11 transition-colors hover:bg-gray-4 hover:text-gray-12"
               >
-                <X className="h-3 w-3" />
+                <X className="size-3" />
               </button>
             )}
           </div>
 
-          <MultiSelectFilter
-            label={t('Type')}
-            icon={<Filter className="h-4 w-4" />}
-            options={typeOptions}
-            selectedValues={typeFilter}
-            onChange={(values) => {
-              onTypeFilterChange(values);
-              onFilterChange?.();
-            }}
+          <Select
+            value={sort}
+            onValueChange={(value) => onSortChange(parseAutomationsSort(value))}
+          >
+            <SelectTrigger size="sm" className="w-49" aria-label={t('Sort')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <AutomationsFilterPopover
+            fields={filterFields.filter((field) => field.show)}
+            filterCount={filterCount}
+            onFilterChange={onFilterChange}
+            onClearAll={clearAll}
           />
-
-          <MultiSelectFilter
-            label={t('Status')}
-            icon={<ToggleLeft className="h-4 w-4" />}
-            options={statusOptions}
-            selectedValues={statusFilter}
-            onChange={(values) => {
-              onStatusFilterChange(values);
-              onFilterChange?.();
-            }}
-          />
-
-          <MultiSelectFilter
-            label={t('Connections')}
-            icon={<Link2 className="h-4 w-4" />}
-            options={connectionOptions}
-            selectedValues={connectionFilter}
-            onChange={(values) => {
-              onConnectionFilterChange(values);
-              onFilterChange?.();
-            }}
-            searchable
-          />
-
-          {!embedState.isEmbedded && (
-            <MultiSelectFilter
-              label={t('Owner')}
-              icon={<User className="h-4 w-4" />}
-              options={ownerOptions}
-              selectedValues={ownerFilter}
-              onChange={(values) => {
-                onOwnerFilterChange(values);
-                onFilterChange?.();
-              }}
-              searchable
-            />
-          )}
-
-          {folderOptions.length > 0 && (
-            <MultiSelectFilter
-              label={t('Folder')}
-              icon={<FolderIcon className="h-4 w-4" />}
-              options={folderOptions}
-              selectedValues={folderFilter}
-              onChange={(values) => {
-                onFolderFilterChange(values);
-                onFilterChange?.();
-              }}
-              searchable
-            />
-          )}
-
-          {hasActiveFilters && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-9 text-sm gap-1 text-gray-11 hover:text-gray-12"
-              onClick={() => {
-                onClearAllFilters();
-                onFilterChange?.();
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-              {t('Clear all')}
-            </Button>
-          )}
         </div>
       </div>
+
+      {criteriaCount > 0 && (
+        <div className="flex h-5 items-center justify-end gap-2 text-xs text-gray-10">
+          <span>{t('filtersActiveCount', { count: criteriaCount })}</span>
+          <span aria-hidden>·</span>
+          <button
+            type="button"
+            onClick={clearAll}
+            className="font-medium text-accent-9 hover:underline"
+          >
+            {t('Clear all')}
+          </button>
+        </div>
+      )}
     </div>
+  );
+};
+
+export const AutomationsFilterPopover = ({
+  fields,
+  filterCount,
+  onFilterChange,
+  onClearAll,
+}: AutomationsFilterPopoverProps) => {
+  const [open, setOpen] = useState(false);
+  const idPrefix = useId();
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={t('Filters')}
+              className="relative"
+            >
+              <Funnel className="size-4" />
+              {filterCount > 0 && (
+                <span
+                  data-slot="filter-count"
+                  className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-9 px-1 text-xss font-semibold leading-none text-on-accent"
+                >
+                  {filterCount}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{t('Filters')}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-80 p-3">
+        <div className="flex flex-col gap-3">
+          {fields.map((field) => {
+            const fieldId = `${idPrefix}-${field.key}`;
+            return (
+              <div key={field.key} className="flex flex-col gap-1">
+                <Label
+                  htmlFor={fieldId}
+                  className="text-xs font-medium text-gray-11"
+                >
+                  {field.label}
+                </Label>
+                <MultiSelectFilter
+                  id={fieldId}
+                  variant="field"
+                  label={field.label}
+                  icon={null}
+                  options={field.options}
+                  selectedValues={field.selectedValues}
+                  searchable={field.searchable}
+                  onChange={(values) => {
+                    field.onChange(values);
+                    onFilterChange?.();
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        {filterCount > 0 && (
+          <div className="mt-3 flex justify-end">
+            <Button variant="link" className="h-auto" onClick={onClearAll}>
+              {t('Clear all')}
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -226,3 +360,46 @@ function searchPlaceholder({
     ? t('Search flows, tables and agents...')
     : t('Search flows and tables...');
 }
+
+type FilterField = {
+  key: string;
+  label: string;
+  options: { value: string; label: string; icon?: React.ReactNode }[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+  searchable: boolean;
+  show: boolean;
+};
+
+type AutomationsFilterPopoverProps = {
+  fields: FilterField[];
+  filterCount: number;
+  onFilterChange?: () => void;
+  onClearAll: () => void;
+};
+
+type AutomationsFiltersProps = {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  typeFilter: string[];
+  onTypeFilterChange: (value: string[]) => void;
+  statusFilter: string[];
+  onStatusFilterChange: (value: string[]) => void;
+  connectionFilter: string[];
+  onConnectionFilterChange: (value: string[]) => void;
+  ownerFilter: string[];
+  onOwnerFilterChange: (value: string[]) => void;
+  folderFilter: string[];
+  onFolderFilterChange: (value: string[]) => void;
+  onFilterChange?: () => void;
+  folders: FolderDto[];
+  connections: AppConnectionWithoutSensitiveData[] | undefined;
+  pieces: PieceMetadataModelSummary[] | undefined;
+  agentsVisible: boolean;
+  onClearAllFilters: () => void;
+  sort: AutomationsSort;
+  onSortChange: (sort: AutomationsSort) => void;
+  selectedCount: number;
+  selectableCount: number;
+  onToggleAllSelection: () => void;
+};

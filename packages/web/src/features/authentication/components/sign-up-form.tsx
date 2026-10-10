@@ -229,8 +229,8 @@ const SignUpForm = ({
   ) : (
     <>
       <Form {...form}>
-        <form className="flex flex-col space-y-4">
-          <div className={'flex flex-row gap-2'}>
+        <form className="flex flex-col gap-4">
+          <div className="flex flex-row gap-2">
             <FormField
               control={form.control}
               name="firstName"
@@ -238,7 +238,7 @@ const SignUpForm = ({
                 required: t('First name is required'),
               }}
               render={({ field }) => (
-                <FormItem className="w-full">
+                <FormItem className="flex w-full min-w-0 flex-col gap-1">
                   <Label htmlFor="firstName">{t('First Name')}</Label>
                   <Input
                     {...field}
@@ -246,7 +246,6 @@ const SignUpForm = ({
                     id="firstName"
                     type="text"
                     placeholder={'John'}
-                    className="rounded-sm"
                     data-testid="sign-up-first-name"
                   />
                   <FormMessage />
@@ -260,7 +259,7 @@ const SignUpForm = ({
                 required: t('Last name is required'),
               }}
               render={({ field }) => (
-                <FormItem className="w-full">
+                <FormItem className="flex w-full min-w-0 flex-col gap-1">
                   <Label htmlFor="lastName">{t('Last Name')}</Label>
                   <Input
                     {...field}
@@ -268,7 +267,6 @@ const SignUpForm = ({
                     id="lastName"
                     type="text"
                     placeholder={'Doe'}
-                    className="rounded-sm"
                     data-testid="sign-up-last-name"
                   />
                   <FormMessage />
@@ -285,7 +283,7 @@ const SignUpForm = ({
                 formatUtils.emailRegex.test(email) || t('Email is invalid'),
             }}
             render={({ field }) => (
-              <FormItem className="grid space-y-1">
+              <FormItem className="flex flex-col gap-1">
                 <Label htmlFor="email">{t('Email')}</Label>
                 <Input
                   {...field}
@@ -293,7 +291,6 @@ const SignUpForm = ({
                   id="email"
                   type="email"
                   placeholder={'email@example.com'}
-                  className="rounded-sm"
                   data-testid="sign-up-email"
                 />
                 <FormMessage />
@@ -308,7 +305,7 @@ const SignUpForm = ({
               validate: passwordValidation,
             }}
             render={({ field }) => (
-              <FormItem className="grid space-y-1">
+              <FormItem className="flex flex-col gap-1">
                 <Label htmlFor="password">{t('Password')}</Label>
                 <Popover open={isPasswordFocused}>
                   <PopoverAnchor asChild>
@@ -319,7 +316,7 @@ const SignUpForm = ({
                         id="password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder={'********'}
-                        className="rounded-sm pr-16"
+                        className="pr-16"
                         data-testid="sign-up-password"
                         onFocus={() => setIsPasswordFocused(true)}
                         onBlur={() => setIsPasswordFocused(false)}
@@ -329,10 +326,10 @@ const SignUpForm = ({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
+                          size="icon-sm"
                           tabIndex={-1}
                           onClick={() => setShowPassword((v) => !v)}
-                          className="h-7 w-7 p-0 text-gray-11 hover:text-gray-12"
+                          className="text-gray-11 hover:text-gray-12"
                         >
                           {showPassword ? (
                             <EyeOff className="w-4 h-4" />
@@ -402,6 +399,8 @@ const SignUpForm = ({
             resetSignal={captchaReset}
           />
           <Button
+            size="lg"
+            className="mx-auto mt-4 min-w-24"
             loading={isPending}
             disabled={captchaRequired && isNil(captchaToken)}
             onClick={(e) => form.handleSubmit(onSubmit)(e)}

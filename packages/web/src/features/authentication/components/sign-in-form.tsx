@@ -155,12 +155,12 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
   return (
     <>
       <Form {...form}>
-        <form className="grid space-y-4">
+        <form className="flex flex-col gap-4">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem className="grid space-y-2">
+              <FormItem className="flex flex-col gap-1">
                 <Label htmlFor="email">{t('Email')}</Label>
                 <Input
                   {...field}
@@ -168,7 +168,6 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
                   id="email"
                   type="text"
                   placeholder={'email@example.com'}
-                  className="rounded-sm"
                   tabIndex={1}
                   data-testid="sign-in-email"
                   onChange={(e) => {
@@ -184,7 +183,7 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem className="grid space-y-2">
+              <FormItem className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">{t('Password')}</Label>
                   {edition !== ApEdition.COMMUNITY &&
@@ -194,14 +193,14 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
                       <button
                         type="button"
                         onClick={onForgotPassword}
-                        className="text-gray-11 text-xs hover:text-accent-11 transition-all duration-200"
+                        className={FORGOT_PASSWORD_LINK_CLASS}
                       >
                         {t('Forgot your password?')}
                       </button>
                     ) : (
                       <Link
                         to="/forget-password"
-                        className="text-gray-11 text-xs hover:text-accent-11 transition-all duration-200"
+                        className={FORGOT_PASSWORD_LINK_CLASS}
                       >
                         {t('Forgot your password?')}
                       </Link>
@@ -214,17 +213,17 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder={'********'}
-                    className="rounded-sm pr-10"
+                    className="pr-10"
                     tabIndex={2}
                     data-testid="sign-in-password"
                   />
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
+                    size="icon-sm"
                     tabIndex={-1}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-gray-11 hover:text-gray-12"
+                    className="absolute top-1/2 right-1 -translate-y-1/2 text-gray-11 hover:text-gray-12"
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -244,6 +243,8 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
             </FormMessage>
           )}
           <Button
+            size="lg"
+            className="mx-auto mt-4 min-w-24"
             loading={isPending}
             onClick={(e) => form.handleSubmit(onSubmit)(e)}
             tabIndex={3}
@@ -269,6 +270,9 @@ const SignInForm = ({ onForgotPassword }: SignInFormProps) => {
 SignInForm.displayName = 'SignIn';
 
 export { SignInForm };
+
+const FORGOT_PASSWORD_LINK_CLASS =
+  'text-xs font-medium text-accent-9 transition-colors hover:text-accent-10 hover:underline';
 
 type SignInFormProps = {
   onForgotPassword?: () => void;

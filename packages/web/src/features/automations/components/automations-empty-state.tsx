@@ -51,17 +51,12 @@ const ActionRow = ({
   hasPermission = true,
 }: ActionRowProps) => {
   const content = (
-    <button
+    <ActionRowButton
+      icon={icon}
+      label={label}
       onClick={onClick}
       disabled={disabled || !hasPermission}
-      className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-gray-3/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-t first:border-t-0"
-    >
-      <div className="flex items-center gap-3">
-        <span className="text-gray-11">{icon}</span>
-        <span className="text-sm font-medium">{label}</span>
-      </div>
-      <ChevronRight className="h-4 w-4 text-gray-11" />
-    </button>
+    />
   );
 
   if (!hasPermission) {
@@ -75,38 +70,65 @@ const ActionRow = ({
   return content;
 };
 
+const ActionRowButton = ({
+  icon,
+  label,
+  onClick,
+  disabled,
+  ref,
+  ...props
+}: React.ComponentProps<'button'> & {
+  icon: React.ReactNode;
+  label: string;
+}) => {
+  return (
+    <button
+      type="button"
+      ref={ref}
+      onClick={onClick}
+      disabled={disabled}
+      className="flex h-9 w-full items-center gap-2 border-t border-gray-6 px-4 text-left transition-colors hover:bg-gray-3 focus-visible:bg-gray-3 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+      {...props}
+    >
+      <span className="flex shrink-0 text-gray-11 [&_svg]:size-4">{icon}</span>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-12">
+        {label}
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-gray-10" />
+    </button>
+  );
+};
+
 type GetStartedCardProps = {
   icon: React.ReactNode;
-  iconBgClass: string;
   title: string;
   description: string;
+  index: number;
   children: React.ReactNode;
 };
 
 const GetStartedCard = ({
   icon,
-  iconBgClass,
   title,
   description,
+  index,
   children,
 }: GetStartedCardProps) => {
   return (
-    <Card className="flex-1 overflow-hidden">
-      <CardContent className="p-0">
-        <div className="flex items-center gap-3 px-4 py-4">
-          <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBgClass}`}
-          >
-            {icon}
-          </div>
-          <div>
-            <h3 className="font-semibold text-base">{title}</h3>
-            <p className="text-sm text-gray-11">{description}</p>
-          </div>
-        </div>
-        <div className="flex flex-col">{children}</div>
-      </CardContent>
-    </Card>
+    <div
+      data-slot="get-started-card"
+      className="group/start flex w-60 flex-col overflow-hidden rounded-lg border border-gray-6 bg-panel motion-safe:animate-stagger-in motion-safe:transition-[translate,box-shadow] motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_8px_25px_0_var(--cast)]"
+      style={{ animationDelay: `${160 + index * 80}ms` }}
+    >
+      <div className="flex flex-col items-center p-4 pb-3 text-center">
+        <span className="flex text-gray-10 transition-colors duration-300 group-hover/start:text-accent-9 [&_svg]:size-12 [&_svg]:stroke-[1.5]">
+          {icon}
+        </span>
+        <h3 className="mt-3 text-sm font-medium text-gray-12">{title}</h3>
+        <p className="mt-1 text-xs text-gray-10">{description}</p>
+      </div>
+      <div className="flex flex-col">{children}</div>
+    </div>
   );
 };
 
@@ -259,22 +281,22 @@ export const AutomationsEmptyState = ({
   const branding = flagsHooks.useWebsiteBranding();
 
   return (
-    <div className="flex flex-col gap-8 py-8 px-4 max-w-5xl mx-auto">
-      <div>
-        <h2 className="text-sm font-medium text-gray-11 mb-4">
+    <div className="flex flex-1 flex-col items-center justify-center py-12">
+      <div className="flex w-full flex-col items-center">
+        <h2 className="mb-4 text-center text-xl font-semibold text-gray-12 motion-safe:animate-heading-rise">
           {t('Get started with {brandName}', {
             brandName: branding.websiteName ?? platform.name,
           })}
         </h2>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-5 md:gap-6">
           <GetStartedCard
-            icon={<Workflow className="h-5 w-5 text-accent-11" />}
-            iconBgClass="bg-accent-3"
+            index={0}
+            icon={<Workflow />}
             title={t('Build a Flow')}
             description={t('Create automated workflows')}
           >
             <ActionRow
-              icon={<Plus className="h-4 w-4" />}
+              icon={<Plus />}
               label={t('Start from scratch')}
               onClick={() => createFlow()}
               disabled={isCreateFlowPending}
@@ -288,22 +310,15 @@ export const AutomationsEmptyState = ({
                 onRefresh={onRefresh}
                 folderId={UncategorizedFolderId}
               >
-                <button
+                <ActionRowButton
+                  icon={<Upload />}
+                  label={t('Import')}
                   disabled={!userHasPermissionToWriteFlow}
-                  className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-gray-3/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-t"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-11">
-                      <Upload className="h-4 w-4" />
-                    </span>
-                    <span className="text-sm font-medium">{t('Import')}</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-11" />
-                </button>
+                />
               </ImportFlowDialog>
             </PermissionNeededTooltip>
             <ActionRow
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<Sparkles />}
               label={t('Use Templates')}
               onClick={() => {
                 if (embedState.isEmbedded) {
@@ -318,20 +333,20 @@ export const AutomationsEmptyState = ({
 
           {!embedState.hideTables && (
             <GetStartedCard
-              icon={<Table2 className="h-5 w-5 text-accent-11" />}
-              iconBgClass="bg-accent-3"
+              index={1}
+              icon={<Table2 />}
               title={t('Create a Table')}
               description={t('Organize and manage data')}
             >
               <ActionRow
-                icon={<Plus className="h-4 w-4" />}
+                icon={<Plus />}
                 label={t('Start from scratch')}
                 onClick={() => createTable({ name: t('New Table') })}
                 disabled={isCreateTablePending}
                 hasPermission={userHasPermissionToWriteTable}
               />
               <ActionRow
-                icon={<Upload className="h-4 w-4" />}
+                icon={<Upload />}
                 label={t('Import')}
                 onClick={() => setIsImportTableDialogOpen(true)}
                 hasPermission={userHasPermissionToWriteTable}
@@ -341,13 +356,13 @@ export const AutomationsEmptyState = ({
 
           {agentsVisible && (
             <GetStartedCard
-              icon={<Bot className="h-5 w-5 text-accent-11" />}
-              iconBgClass="bg-accent-3"
+              index={embedState.hideTables ? 1 : 2}
+              icon={<Bot />}
               title={t('Build an Agent')}
               description={t('Delegate tasks to AI')}
             >
               <ActionRow
-                icon={<Plus className="h-4 w-4" />}
+                icon={<Plus />}
                 label={t('Start from scratch')}
                 onClick={onCreateAgent}
                 disabled={isCreatingAgent}
@@ -359,21 +374,22 @@ export const AutomationsEmptyState = ({
       </div>
 
       {(hasTemplates || isLoadingTemplates) && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-gray-11 flex items-center gap-2">
+        <div className="mt-12 w-full">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-medium text-gray-11">
               {t('Templates For You')}
-              <Sparkles className="h-4 w-4 text-swatch-6-mark" />
+              <Sparkles className="size-4 text-swatch-6-mark" />
             </h2>
             <button
+              type="button"
               onClick={handleViewAllTemplates}
-              className="text-sm text-gray-11 hover:text-gray-12 flex items-center gap-1 transition-colors"
+              className="flex items-center gap-1 text-sm text-gray-10 transition-colors hover:text-gray-12"
             >
               {t('All templates')}
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="size-4" />
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {isLoadingTemplates ? (
               <>
                 <TemplateCardSkeleton />

@@ -1,7 +1,8 @@
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
+import { CheckIcon } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
+
+import { DataTableFilterTrigger } from './data-table-filter-trigger';
 
 type DataTableCheckboxProps = {
   label: string;
@@ -15,19 +16,24 @@ export function DataTableInputCheckbox({
   handleCheckedChange,
 }: DataTableCheckboxProps) {
   return (
-    <Button
-      type="button"
-      variant="outline"
-      className={cn(
-        'flex items-center space-x-2 border-dashed rounded-md px-3 py-2 h-9',
-        checked && 'bg-gray-3 border-gray-8 text-gray-12',
-      )}
+    <DataTableFilterTrigger
+      role="checkbox"
+      aria-checked={checked}
+      data-active={checked || undefined}
       onClick={() => handleCheckedChange(!checked)}
     >
-      <Checkbox checked={checked} className="pointer-events-none" />
-      <Label className="text-sm font-normal leading-none select-none cursor-pointer">
-        {label}
-      </Label>
-    </Button>
+      <span
+        aria-hidden
+        className={cn(
+          'flex size-4 shrink-0 items-center justify-center rounded-sm border',
+          checked
+            ? 'border-accent-9 bg-accent-9 text-on-accent'
+            : 'border-gray-6 bg-panel',
+        )}
+      >
+        {checked && <CheckIcon className="size-3" />}
+      </span>
+      <span className="select-none">{label}</span>
+    </DataTableFilterTrigger>
   );
 }

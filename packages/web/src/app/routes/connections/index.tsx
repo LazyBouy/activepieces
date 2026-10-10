@@ -41,6 +41,7 @@ import { StatusIconWithText } from '@/components/custom/status-icon-with-text';
 import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
 import { PlusIcon } from '@/components/icons/plus';
 import { ReplaceIcon } from '@/components/icons/replace';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -190,7 +191,7 @@ function AppConnectionsPage() {
                   <PieceIconWithPieceName
                     pieceName={row.original.pieceName}
                     showTooltip={false}
-                    size="sm"
+                    size="row"
                   />
                 </span>
               </CopyTextTooltip>
@@ -207,7 +208,10 @@ function AppConnectionsPage() {
               {isPlatformConnection && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Globe className="w-4 h-4 shrink-0" />
+                    <Badge variant="outline" size="sm" className="shrink-0">
+                      <Globe />
+                      {t('Global')}
+                    </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
@@ -302,7 +306,7 @@ function AppConnectionsPage() {
             ? userPlatformRole === PlatformRole.ADMIN
             : userHasPermissionToWriteAppConnection;
           return (
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center justify-end gap-1">
               {userHasPermissionToRename && (
                 <RevalidateConnectionButton connectionId={row.original.id} />
               )}
@@ -374,11 +378,10 @@ function AppConnectionsPage() {
                 >
                   <Button
                     variant="ghost"
-                    size="sm"
                     className="text-danger-11 hover:text-danger-11"
                     onClick={() => setShowDeleteDialog(true)}
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
+                    <Trash2 className="size-4" />
                     {t('Delete')} ({deletableRows.length})
                   </Button>
                 </ConfirmationDeleteDialog>
@@ -428,7 +431,7 @@ function AppConnectionsPage() {
           <AnimatedIconButton
             icon={PlusIcon}
             iconSize={16}
-            size="sm"
+            variant="outline"
             disabled={!userHasPermissionToWriteAppConnection}
           >
             {t('New Connection')}

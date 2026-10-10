@@ -316,6 +316,7 @@ export function FlowsDetails({
       )}
 
       <DataTable
+        bordered={false}
         columns={columns}
         page={{
           data: filters.filteredData,

@@ -82,7 +82,9 @@ const EditGlobalConnectionDialog: React.FC<EditGlobalConnectionDialogProps> = ({
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon-sm"
+                aria-label={t('Edit')}
+                className="text-gray-11"
                 disabled={!userHasPermissionToEdit}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -91,7 +93,7 @@ const EditGlobalConnectionDialog: React.FC<EditGlobalConnectionDialogProps> = ({
                 }}
                 {...adminControl(AdminControl.CONNECTIONS_CONNECTION_EDIT_OPEN)}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

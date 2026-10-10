@@ -3,6 +3,7 @@ import { AgentToolType } from '@activepieces/shared';
 import { t } from 'i18next';
 import { BookOpen, LucideIcon, Server, Unplug, Workflow } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/tooltip';
 import { PieceIcon } from '@/features/pieces/components/piece-icon';
 import { piecesHooks } from '@/features/pieces/hooks/pieces-hooks';
+import { cn } from '@/lib/utils';
 
 const MAX_VISIBLE = 3;
 
@@ -17,21 +19,29 @@ type AgentToolStackProps = {
   toolCount: number;
   toolPieceNames: string[];
   toolTypes?: AgentToolType[];
+  size?: 'default' | 'compact';
 };
 
 export const AgentToolStack = ({
   toolCount,
   toolPieceNames,
   toolTypes = [],
+  size = 'default',
 }: AgentToolStackProps) => {
+  const compact = size === 'compact';
   const { summaries } = piecesHooks.usePieceSummariesByNames({
     names: unique(toolPieceNames),
   });
 
   if (toolCount === 0) {
     return (
-      <span className="flex items-center gap-1.5 text-[13px] leading-5 text-gray-11">
-        <Unplug size={14} className="text-gray-11" />
+      <span
+        className={cn(
+          'flex items-center gap-1.5 text-gray-11',
+          compact ? 'text-xs' : 'text-[13px] leading-5',
+        )}
+      >
+        <Unplug size={compact ? 12 : 14} className="text-gray-11" />
         {t('No tools')}
       </span>
     );
@@ -46,7 +56,7 @@ export const AgentToolStack = ({
           logoUrl={metadata.logoUrl}
           displayName={metadata.displayName}
           showTooltip={true}
-          size="xs"
+          size={compact ? 'xxs' : 'xs'}
           border={true}
         />
       ),
@@ -62,8 +72,13 @@ export const AgentToolStack = ({
           element: (
             <Tooltip key={type}>
               <TooltipTrigger asChild>
-                <span className="flex size-6.5 items-center justify-center rounded-md border bg-gray-1 text-gray-11">
-                  <Icon size={14} />
+                <span
+                  className={cn(
+                    'flex items-center justify-center border bg-gray-1 text-gray-11',
+                    compact ? 'size-4 rounded-sm' : 'size-6.5 rounded-md',
+                  )}
+                >
+                  <Icon size={compact ? 10 : 14} />
                 </span>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -80,13 +95,23 @@ export const AgentToolStack = ({
     toolCount - visible.reduce((shown, tile) => shown + tile.tools, 0);
 
   return (
-    <div className="flex shrink-0 items-center gap-[5px]">
-      {visible.map((tile) => tile.element)}
-      {remaining > 0 && (
-        <span className="flex size-6.25 items-center justify-center rounded-[7px] bg-gray-3 text-xs leading-none font-semibold text-gray-11">
-          +{remaining}
-        </span>
+    <div
+      className={cn(
+        'flex shrink-0 items-center',
+        compact ? 'gap-1' : 'gap-[5px]',
       )}
+    >
+      {visible.map((tile) => tile.element)}
+      {remaining > 0 &&
+        (compact ? (
+          <Badge variant="tag" size="sm">
+            +{remaining}
+          </Badge>
+        ) : (
+          <span className="flex size-6.25 items-center justify-center rounded-[7px] bg-gray-3 text-xs leading-none font-semibold text-gray-11">
+            +{remaining}
+          </span>
+        ))}
     </div>
   );
 };

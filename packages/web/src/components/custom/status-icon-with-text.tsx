@@ -1,27 +1,41 @@
+import { CircleCheck } from 'lucide-react';
 import React from 'react';
 
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-const variantBadgeMap: Record<
-  StatusVariant,
-  React.ComponentProps<typeof Badge>['variant']
-> = {
-  success: 'success',
-  warning: 'warning',
-  error: 'destructive',
-  primary: 'info',
-  neutral: 'neutral',
-  default: 'accent',
-  secondary: 'secondary',
+const variantIconClassName: Record<StatusVariant, string> = {
+  success: 'fill-success-9 text-success-9 [&>path]:stroke-on-success',
+  warning: 'text-warning-9',
+  error: 'text-danger-9',
+  primary: 'text-accent-9',
+  neutral: 'text-gray-10',
+  default: 'text-gray-10',
+  secondary: 'text-gray-10',
 };
 
 const StatusIconWithText = React.memo(
-  ({ icon: Icon, text, variant = 'default' }: StatusIconWithTextProps) => {
+  ({
+    icon: Icon,
+    text,
+    variant = 'default',
+    spin = false,
+  }: StatusIconWithTextProps) => {
+    const StatusIcon = variant === 'success' ? CircleCheck : Icon;
     return (
-      <Badge variant={variantBadgeMap[variant]}>
-        <Icon className="size-4" />
-        <span>{text}</span>
-      </Badge>
+      <span
+        data-slot="status-icon-with-text"
+        data-variant={variant}
+        className="inline-flex max-w-full min-w-0 items-center gap-2 text-sm text-gray-12"
+      >
+        <StatusIcon
+          className={cn(
+            'size-4 shrink-0',
+            variantIconClassName[variant],
+            spin && 'animate-spin',
+          )}
+        />
+        <span className="truncate">{text}</span>
+      </span>
     );
   },
 );
@@ -42,4 +56,5 @@ interface StatusIconWithTextProps {
   icon: React.ElementType;
   text: string;
   variant?: StatusVariant;
+  spin?: boolean;
 }

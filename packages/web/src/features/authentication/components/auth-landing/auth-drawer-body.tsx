@@ -33,11 +33,10 @@ import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
 import { authenticationApi } from '@/api/authentication-api';
-import { FullLogo } from '@/components/custom/full-logo';
 import { useTelemetry } from '@/components/providers/telemetry-provider';
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Input, inputClass } from '@/components/ui/input';
 import {
   InputOTP,
   InputOTPGroup,
@@ -71,12 +70,8 @@ const CODE_LENGTH = 6;
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
-// Every title in the card shares this: Inter at 400 rather than the Sentient
-// display serif — on a signup card a headline should read as a calm, modern
-// label, not a statement that slows the eye down. 400 is the lightest weight
-// actually loaded; 300 would silently fall back and look identical.
 const AUTH_TITLE_CLASS =
-  'text-center text-[21px] font-normal leading-snug tracking-[-0.02em] text-balance text-gray-12';
+  'text-center text-xl font-normal text-balance text-gray-12';
 
 // Steps cross-fade instead of snapping, and the card animates to the new
 // height, so moving between email → code → password reads as one surface
@@ -127,39 +122,41 @@ export function AuthDrawerBody({ initialMode }: AuthDrawerBodyProps) {
 
   return (
     <AutoHeight>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={samlOpen ? 'saml' : step}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.14, ease: 'easeOut' }}
-        >
-          <AuthStep
-            step={step}
-            setStep={setStep}
-            samlOpen={samlOpen}
-            setSamlOpen={setSamlOpen}
-            mode={mode}
-            setMode={setMode}
-            emailForCode={emailForCode}
-            setEmailForCode={setEmailForCode}
-            checkEmailNote={checkEmailNote}
-            setCheckEmailNote={setCheckEmailNote}
-            invitedEmail={invitedEmail}
-            captchaToken={captchaToken}
-            captchaRequired={captchaRequired}
-            onCaptchaSpent={spendCaptcha}
+      <div className="flex flex-col p-6">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={samlOpen ? 'saml' : step}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+          >
+            <AuthStep
+              step={step}
+              setStep={setStep}
+              samlOpen={samlOpen}
+              setSamlOpen={setSamlOpen}
+              mode={mode}
+              setMode={setMode}
+              emailForCode={emailForCode}
+              setEmailForCode={setEmailForCode}
+              checkEmailNote={checkEmailNote}
+              setCheckEmailNote={setCheckEmailNote}
+              invitedEmail={invitedEmail}
+              captchaToken={captchaToken}
+              captchaRequired={captchaRequired}
+              onCaptchaSpent={spendCaptcha}
+            />
+          </motion.div>
+        </AnimatePresence>
+        {challengeApplies && (
+          <TurnstileWidget
+            onToken={setCaptchaToken}
+            onUnavailable={handleCaptchaUnavailable}
+            resetSignal={captchaReset}
           />
-        </motion.div>
-      </AnimatePresence>
-      {challengeApplies && (
-        <TurnstileWidget
-          onToken={setCaptchaToken}
-          onUnavailable={handleCaptchaUnavailable}
-          resetSignal={captchaReset}
-        />
-      )}
+        )}
+      </div>
     </AutoHeight>
   );
 }
@@ -306,7 +303,7 @@ function AuthStep({
               isSignUp={effectiveMode === 'signup'}
               onSamlClick={() => setSamlOpen(true)}
             />
-            <HorizontalSeparatorWithText className="my-5 text-gray-11">
+            <HorizontalSeparatorWithText className="my-4 text-xs text-gray-10">
               {t('or')}
             </HorizontalSeparatorWithText>
           </>
@@ -377,7 +374,7 @@ function AuthStep({
 
   return (
     <DrawerShell>
-      <h1 className={cn(AUTH_TITLE_CLASS, 'mb-6')}>
+      <h1 className={cn(AUTH_TITLE_CLASS, 'mb-8')}>
         {t('Dream big. Automate the rest.')}
       </h1>
       {/* Google leads: it is one tap against typing an address and waiting for
@@ -390,7 +387,7 @@ function AuthStep({
             onSamlClick={() => setSamlOpen(true)}
             hideSaml
           />
-          <HorizontalSeparatorWithText className="my-4 text-gray-11">
+          <HorizontalSeparatorWithText className="my-4 text-xs text-gray-10">
             {t('or')}
           </HorizontalSeparatorWithText>
         </>
@@ -406,7 +403,7 @@ function AuthStep({
           setStep('code');
         }}
       />
-      <div className="mt-5 flex items-center justify-center gap-2.5 text-xs text-gray-11">
+      <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-10">
         <button
           type="button"
           onClick={() => setStep('password')}
@@ -417,7 +414,7 @@ function AuthStep({
         </button>
         {thirdParty.saml && (
           <>
-            <span aria-hidden className="text-gray-9">
+            <span aria-hidden className="text-gray-8">
               •
             </span>
             <button
@@ -454,14 +451,14 @@ function LegalNote() {
   }
 
   return (
-    <p className="mt-8 border-t pt-5 text-center text-[11px] leading-relaxed text-gray-11">
+    <p className="mt-6 border-t border-gray-6 pt-4 text-center text-xs leading-normal text-gray-10">
       {t('By continuing, you agree to our')}{' '}
       {!isNil(termsUrl) && (
         <a
           href={termsUrl}
           target="_blank"
           rel="noreferrer"
-          className="underline underline-offset-2 transition-colors hover:text-gray-12"
+          className="text-gray-11 underline underline-offset-2 transition-colors hover:text-gray-12"
         >
           {t('Terms of Service')}
         </a>
@@ -472,7 +469,7 @@ function LegalNote() {
           href={privacyUrl}
           target="_blank"
           rel="noreferrer"
-          className="underline underline-offset-2 transition-colors hover:text-gray-12"
+          className="text-gray-11 underline underline-offset-2 transition-colors hover:text-gray-12"
         >
           {t('Privacy Policy')}
         </a>
@@ -486,7 +483,7 @@ function LegalNote() {
 // alert — anything that reads as an error here costs signups.
 function WorkEmailHint() {
   return (
-    <div className="flex items-center gap-2 border-t border-accent-6 px-4 py-2.5 text-xs text-accent-11 animate-in fade-in duration-200">
+    <div className="flex items-center gap-2 border-t border-accent-6 px-3 py-2 text-xs text-accent-11 animate-in fade-in duration-200">
       <Lightbulb className="size-3.5 shrink-0" />
       <p>{t('Use your work email for better personalization.')}</p>
     </div>
@@ -549,46 +546,51 @@ function EmailStep({
 
   return (
     <Form {...form}>
-      <form className="grid space-y-2" onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem className="grid space-y-2">
+            <FormItem className="flex flex-col gap-1">
               {/* One field, one affordance: the submit arrow lives inside the
                   input. When the address is personal the container grows a
                   note beneath the field — the field and the nudge read as one
                   object rather than a warning bolted underneath. */}
               <div
                 className={cn(
-                  'rounded-xl border bg-gray-1 transition-colors duration-200',
+                  inputClass,
+                  AUTH_FIELD_FRAME_CLASS,
                   showWorkEmailHint && 'border-accent-6 bg-accent-2',
                   emailError && 'border-danger-7 bg-danger-2',
                 )}
               >
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-gray-11" />
+                  <Mail className="pointer-events-none absolute left-2.75 top-1/2 size-4 -translate-y-1/2 text-gray-11" />
                   <Input
                     {...field}
                     autoFocus
                     type="text"
                     placeholder={t('name@work.com')}
-                    className="h-12 border-0 bg-transparent dark:bg-transparent pl-11 pr-14 text-[15px] shadow-none focus-visible:ring-0"
+                    className="h-8.5 border-0 bg-transparent dark:bg-transparent pl-8.5 pr-9 shadow-none focus-visible:ring-0"
                     data-testid="auth-email"
                   />
                   <Button
                     type="submit"
+                    size="icon-sm"
                     loading={isPending}
                     disabled={captchaRequired && isNil(captchaToken)}
                     aria-label={t('Continue')}
                     data-testid="auth-continue"
-                    className="absolute right-1.5 top-1/2 size-9 -translate-y-1/2 rounded-md p-0"
+                    className="absolute top-0.75 right-0.75"
                   >
                     {!isPending && <ArrowRight className="size-4" />}
                   </Button>
                 </div>
                 {emailError ? (
-                  <div className="flex items-center gap-2 border-t border-danger-6 px-4 py-2.5 text-xs text-danger-11 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 border-t border-danger-6 px-3 py-2 text-xs text-danger-11 animate-in fade-in duration-200">
                     <CircleAlert className="size-3.5 shrink-0" />
                     <p>{t('That doesn’t look like an email address yet.')}</p>
                   </div>
@@ -645,7 +647,7 @@ function ResetStep() {
       />
       <Form {...form}>
         <form
-          className="grid space-y-3"
+          className="flex flex-col"
           onSubmit={form.handleSubmit((data) =>
             mutate({
               email: data.email.trim().toLowerCase(),
@@ -657,22 +659,27 @@ function ResetStep() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem className="grid space-y-2">
+              <FormItem className="flex flex-col gap-1">
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-gray-11" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-11" />
                   <Input
                     {...field}
                     autoFocus
                     type="text"
                     placeholder={t('name@work.com')}
-                    className="h-12 rounded-lg pl-11 text-[15px]"
+                    className="pl-9"
                   />
                 </div>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" loading={isPending} className="h-11 rounded-lg">
+          <Button
+            type="submit"
+            size="lg"
+            loading={isPending}
+            className={AUTH_SUBMIT_CLASS}
+          >
             {t('Send reset link')}
           </Button>
         </form>
@@ -758,33 +765,34 @@ function NameStep({ onSessionRejected }: NameStepProps) {
 
   return (
     <Form {...form}>
-      <form className="grid space-y-3" onSubmit={form.handleSubmit(onSubmit)}>
+      <form className="flex flex-col" onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
           control={form.control}
           name="fullName"
           render={({ field }) => (
-            <FormItem className="grid space-y-2">
+            <FormItem className="flex flex-col gap-1">
               <div
                 className={cn(
-                  'rounded-xl border bg-gray-1 transition-colors duration-200',
+                  inputClass,
+                  AUTH_FIELD_FRAME_CLASS,
                   form.formState.errors.fullName &&
                     'border-danger-7 bg-danger-2',
                 )}
               >
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-gray-11" />
+                  <User className="pointer-events-none absolute left-2.75 top-1/2 size-4 -translate-y-1/2 text-gray-11" />
                   <Input
                     {...field}
                     autoFocus
                     type="text"
                     autoComplete="name"
                     placeholder={t('Full Name')}
-                    className="h-12 border-0 bg-transparent dark:bg-transparent pl-11 pr-4 text-[15px] shadow-none focus-visible:ring-0"
+                    className="h-8.5 border-0 bg-transparent dark:bg-transparent pl-8.5 pr-3 shadow-none focus-visible:ring-0"
                     data-testid="auth-full-name"
                   />
                 </div>
                 {form.formState.errors.fullName && (
-                  <div className="flex items-center gap-2 border-t border-danger-6 px-4 py-2.5 text-xs text-danger-11 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 border-t border-danger-6 px-3 py-2 text-xs text-danger-11 animate-in fade-in duration-200">
                     <CircleAlert className="size-3.5 shrink-0" />
                     <p>{t('Tell us your name so we know what to call you.')}</p>
                   </div>
@@ -800,8 +808,9 @@ function NameStep({ onSessionRejected }: NameStepProps) {
         )}
         <Button
           type="submit"
+          size="lg"
           loading={isPending}
-          className="h-11 w-full rounded-lg"
+          className={AUTH_SUBMIT_CLASS}
           data-testid="auth-name-continue"
         >
           {t('Continue')}
@@ -914,7 +923,7 @@ function CodeStep({
             (captchaRequired && isNil(captchaToken))
           }
           onClick={() => resend({ email, captchaToken })}
-          className="text-xs text-gray-11 transition-colors hover:text-gray-12 disabled:opacity-50"
+          className="text-xs text-gray-10 transition-colors enabled:hover:text-gray-12 disabled:opacity-50"
         >
           {cooldown > 0
             ? t('Resend code in {seconds}s', { seconds: cooldown })
@@ -926,22 +935,15 @@ function CodeStep({
 }
 
 function DrawerShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex w-full flex-col px-8 pb-7 pt-9">
-      <div className="mb-5 flex justify-center">
-        <FullLogo className="h-7" />
-      </div>
-      {children}
-    </div>
-  );
+  return <div className="flex w-full flex-col">{children}</div>;
 }
 
 function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="mb-6 text-center">
+    <div className="mb-8 text-center">
       <h1 className={AUTH_TITLE_CLASS}>{title}</h1>
       {subtitle && (
-        <p className="mx-auto mt-1.5 max-w-[19rem] text-balance text-sm font-medium text-gray-11">
+        <p className="mx-auto mt-1.5 max-w-[19rem] text-balance text-sm text-gray-11">
           {subtitle}
         </p>
       )}
@@ -954,7 +956,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="mx-auto mb-4 flex items-center gap-1 text-xs text-gray-11 transition-colors hover:text-gray-12"
+      className="mx-auto mb-4 flex items-center gap-1 text-xs text-gray-10 transition-colors hover:text-gray-12"
     >
       <ArrowLeft className="size-3.5" />
       {t('Back')}
@@ -978,7 +980,7 @@ function ModeSwitch({
         type="button"
         onClick={() => onSwitch(mode === 'signup' ? 'signin' : 'signup')}
         data-testid="auth-switch-mode"
-        className="pl-1 font-medium text-gray-12 hover:underline"
+        className="pl-1 font-medium text-accent-9 transition-colors hover:text-accent-10 hover:underline"
       >
         {mode === 'signup' ? t('Sign in') : t('Sign up')}
       </button>
@@ -1052,6 +1054,11 @@ function codeErrorMessage(error: HttpError): string {
 }
 
 const VERIFIED_HOLD_MS = 1100;
+
+const AUTH_FIELD_FRAME_CLASS =
+  'h-auto flex-col px-0 py-0 transition-colors duration-200 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus-halo';
+
+const AUTH_SUBMIT_CLASS = 'mx-auto mt-8 min-w-24';
 
 const PERSONAL_EMAIL_DOMAINS = new Set([
   'gmail.com',

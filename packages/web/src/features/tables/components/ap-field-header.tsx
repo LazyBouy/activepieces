@@ -54,9 +54,9 @@ export function ApFieldHeader({ field }: ApFieldHeaderProps) {
         <div
           onClick={() => hasActions && setIsMenuOpen(true)}
           className={cn(
-            'group relative h-full w-full flex items-center justify-between gap-2 py-2.5 px-3 bg-gray-3/50  font-normal',
-            hasActions && 'hover:bg-gray-3 cursor-pointer',
-            isMenuOpen && 'bg-gray-3',
+            'group relative h-full w-full flex items-center justify-between gap-2 px-3 text-gray-12/87',
+            hasActions && 'hover:bg-gray-4 cursor-pointer',
+            isMenuOpen && 'bg-gray-4',
           )}
         >
           <div className="flex items-center gap-2">
@@ -67,9 +67,9 @@ export function ApFieldHeader({ field }: ApFieldHeaderProps) {
               />
             )}
             {tablesUtils.getColumnIcon(field.type)}
-            <span className="text-sm">{field.name}</span>
+            <span className="text-xs font-semibold">{field.name}</span>
           </div>
-          {hasActions && <ChevronDown className="h-4 w-4" />}
+          {hasActions && <ChevronDown className="size-3.5 text-gray-10" />}
           <DropdownMenuTrigger asChild>
             <span
               className="absolute inset-0 pointer-events-none"

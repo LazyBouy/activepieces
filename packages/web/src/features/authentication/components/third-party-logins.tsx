@@ -42,7 +42,7 @@ function useShowThirdPartyProviders(): boolean {
 }
 
 const ThirdPartyIcon = ({ icon }: { icon: string }) => {
-  return <img src={icon} alt="icon" width={18} height={18} className="mr-2" />;
+  return <img src={icon} alt="" width={18} height={18} className="size-4.5" />;
 };
 
 const ThirdPartyLogin = React.memo(
@@ -102,11 +102,12 @@ const ThirdPartyLogin = React.memo(
     }
 
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {thirdPartyAuthProviders?.google && (
           <Button
             variant="outline"
-            className="h-10 w-full rounded-lg text-sm font-normal"
+            size="lg"
+            className="w-full gap-2"
             onClick={(e) =>
               handleProviderClick(e, ThirdPartyAuthnProviderEnum.GOOGLE)
             }
@@ -118,7 +119,8 @@ const ThirdPartyLogin = React.memo(
         {!hideSaml && isCloud && (
           <Button
             variant="outline"
-            className="h-10 w-full rounded-lg text-sm font-normal"
+            size="lg"
+            className="w-full gap-2"
             onClick={() => {
               capture({
                 name: TelemetryEventName.FEDERATED_LOGIN_STARTED,
@@ -136,7 +138,8 @@ const ThirdPartyLogin = React.memo(
         {!hideSaml && !isCloud && thirdPartyAuthProviders?.saml && (
           <Button
             variant="outline"
-            className="h-10 w-full rounded-lg text-sm font-normal"
+            size="lg"
+            className="w-full gap-2"
             onClick={() => {
               capture({
                 name: TelemetryEventName.FEDERATED_LOGIN_STARTED,

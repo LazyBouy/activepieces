@@ -74,13 +74,12 @@ export const SamlLoginForm = ({
         <FormField
           name="email"
           render={({ field }) => (
-            <FormItem className="flex flex-col gap-1.5">
+            <FormItem className="flex flex-col gap-1">
               <FormLabel>{t('Email')}</FormLabel>
               <Input
                 {...field}
                 type="text"
                 placeholder="jdoe@acme.com"
-                className="rounded-sm"
                 autoFocus
               />
               <FormMessage />
@@ -94,6 +93,8 @@ export const SamlLoginForm = ({
         )}
         <Button
           type="submit"
+          size="lg"
+          className="mx-auto mt-4 min-w-24"
           loading={isPending}
           disabled={!form.formState.isValid}
         >
@@ -101,7 +102,7 @@ export const SamlLoginForm = ({
         </Button>
         {showBackButton && (
           <Button variant="ghost" type="button" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="size-4" />
             {t('Back to sign in')}
           </Button>
         )}

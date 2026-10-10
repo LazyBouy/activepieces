@@ -12,21 +12,11 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { t } from 'i18next';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDeepCompareEffect } from 'react-use';
 
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -42,6 +32,7 @@ import { DataFetchErrorState } from '../data-fetch-error-state';
 import { DataTableBulkActions } from './data-table-bulk-actions';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableFilter, DataTableFilterProps } from './data-table-filter';
+import { DataTablePagination } from './data-table-pagination';
 import { DataTableSkeleton } from './data-table-skeleton';
 import { DataTableToolbar } from './data-table-toolbar';
 
@@ -141,7 +132,7 @@ export function DataTable<
   initialSorting = [],
   clientPagination = false,
   clientFiltering = false,
-  bordered = false,
+  bordered = true,
   getRowClassName,
   isRowSelectionDisabled,
   virtualizeRows = false,
@@ -362,8 +353,8 @@ export function DataTable<
         (customFilters && customFilters.length > 0) ||
         (toolbarButtons && toolbarButtons.length > 0)) && (
         <DataTableToolbar className={bordered ? 'px-0' : undefined}>
-          <div className="w-full flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {filters &&
                 filters.map((filter) => (
                   <DataTableFilter
@@ -405,7 +396,7 @@ export function DataTable<
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 top-9 z-20 h-0.5 overflow-hidden"
           >
-            <div className="h-full w-1/4 animate-indeterminate-progress bg-accent-9" />
+            <div className="h-full w-1/4 animate-indeterminate-progress bg-accent-9 motion-reduce:w-full" />
           </div>
         )}
         <Table
@@ -454,7 +445,12 @@ export function DataTable<
                   colSpan={visibleColumnCount}
                   className="h-auto p-0 first:pl-0 last:pr-0"
                 >
-                  <DataTableSkeleton />
+                  <DataTableSkeleton
+                    skeletonRowCount={Math.min(
+                      table.getState().pagination.pageSize,
+                      MAX_SKELETON_ROWS,
+                    )}
+                  />
                 </TableCell>
               </TableRow>
             ) : rows.length ? (
@@ -650,33 +646,34 @@ export function DataTable<
               )
             ) : isError ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell
-                  colSpan={visibleColumnCount}
-                  className="h-[350px] text-center"
-                >
+                <TableCell colSpan={visibleColumnCount} className="h-auto">
                   <DataFetchErrorState
                     entity={errorStateEntity}
                     onRetry={onRetry}
+                    className="min-h-80"
                   />
                 </TableCell>
               </TableRow>
             ) : (
               <TableRow className="hover:bg-transparent">
-                <TableCell
-                  colSpan={visibleColumnCount}
-                  className="h-[350px] text-center"
-                >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    {emptyStateIcon ? emptyStateIcon : <></>}
-                    <p className="text-xl font-normal text-gray-12">
+                <TableCell colSpan={visibleColumnCount} className="h-auto">
+                  <div className="flex min-h-80 flex-col items-center justify-center px-4 py-10 text-center">
+                    {emptyStateIcon && (
+                      <div className="flex text-gray-10 [&_svg]:size-10 [&_svg]:stroke-[1.5] [&_svg]:text-gray-10">
+                        {emptyStateIcon}
+                      </div>
+                    )}
+                    <p className="mt-2 text-base font-medium text-gray-12">
                       {emptyStateTextTitle}
                     </p>
                     {emptyStateTextDescription && (
-                      <p className="max-w-lg text-sm text-gray-12/87">
+                      <p className="mt-2 max-w-lg text-sm text-gray-11">
                         {emptyStateTextDescription}
                       </p>
                     )}
-                    {emptyStateAction}
+                    {emptyStateAction && (
+                      <div className="mt-5">{emptyStateAction}</div>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -685,71 +682,35 @@ export function DataTable<
         </Table>
       </div>
       {!hidePagination && !virtualizeRows && (
-        <div className="flex items-center justify-end gap-2 px-2 py-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-11">{t('Rows per page')}</span>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value));
-                if (!clientPagination) {
-                  setCurrentCursor(undefined);
-                }
-              }}
-            >
-              <SelectTrigger size="sm" className="w-[70px]">
-                <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
-                />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 30, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1"
-            onClick={() => {
-              if (clientPagination) {
-                table.previousPage();
-              } else {
-                setCurrentCursor(previousPageCursor);
-              }
-            }}
-            disabled={
-              clientPagination
-                ? !table.getCanPreviousPage()
-                : !previousPageCursor
+        <DataTablePagination
+          className="mt-4 mb-6"
+          pageSize={table.getState().pagination.pageSize}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          onPageSizeChange={(size) => {
+            table.setPageSize(size);
+            if (!clientPagination) {
+              setCurrentCursor(undefined);
             }
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {t('Previous')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1"
-            onClick={() => {
-              if (clientPagination) {
-                table.nextPage();
-              } else {
-                setCurrentCursor(nextPageCursor);
-              }
-            }}
-            disabled={
-              clientPagination ? !table.getCanNextPage() : !nextPageCursor
+          }}
+          canPrevious={
+            clientPagination ? table.getCanPreviousPage() : !!previousPageCursor
+          }
+          canNext={clientPagination ? table.getCanNextPage() : !!nextPageCursor}
+          onPrevious={() => {
+            if (clientPagination) {
+              table.previousPage();
+            } else {
+              setCurrentCursor(previousPageCursor);
             }
-          >
-            {t('Next')}
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+          }}
+          onNext={() => {
+            if (clientPagination) {
+              table.nextPage();
+            } else {
+              setCurrentCursor(nextPageCursor);
+            }
+          }}
+        />
       )}
       {bulkActions.length > 0 && (
         <DataTableBulkActions
@@ -761,6 +722,9 @@ export function DataTable<
     </div>
   );
 }
+
+const PAGE_SIZE_OPTIONS = [10, 30, 50];
+const MAX_SKELETON_ROWS = 10;
 
 const STICKY_HEADER_CLASS_NAME =
   'sticky top-0 z-10 border-t-0 bg-gray-3 shadow-[inset_0_1px_0_var(--gray-6),inset_0_-1px_0_var(--gray-6)] [&>tr]:border-b-0';

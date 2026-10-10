@@ -3442,5 +3442,11 @@
   "6 months": "6 months",
   "1 year": "1 year",
   "retentionPeriodDays": "{days, plural, =1 {1 day} other {# days}}",
-  "Audit log retention updated": "Audit log retention updated"
+  "Audit log retention updated": "Audit log retention updated",
+  "Filters": "Filters",
+  "filtersActiveCount": "{count, plural, =1 {1 filter active} other {# filters active}}",
+  "Updated {time}": "Updated {time}",
+  "Created {date}": "Created {date}",
+  "Clear selection": "Clear selection",
+  "Sort": "Sort"
 }

@@ -286,7 +286,6 @@ export const RunsTable = () => {
               <Button
                 disabled={isDisabled}
                 variant="ghost"
-                size="sm"
                 loading={archiveRuns.isPending}
                 onClick={() => {
                   const runIds = selectedRows.map((row) => row.id);
@@ -313,7 +312,7 @@ export const RunsTable = () => {
                   setSelectedRows([]);
                 }}
               >
-                <Archive className="size-4 mr-1" />
+                <Archive className="size-4" />
                 {selectedRows.length > 0
                   ? `${t('Archive')} ${
                       !isDisabled
@@ -354,7 +353,6 @@ export const RunsTable = () => {
                   <Button
                     disabled={isDisabled}
                     variant="ghost"
-                    size="sm"
                     loading={cancelRuns.isPending}
                     onClick={() => {
                       const runIds = selectedRows.map((row) => row.id);
@@ -387,7 +385,7 @@ export const RunsTable = () => {
                       resetSelection();
                     }}
                   >
-                    <X className="h-3 w-4 mr-1" />
+                    <X className="size-4" />
                     {selectedRows.length > 0
                       ? `${t('Cancel')} ${
                           selectedAll
@@ -422,10 +420,9 @@ export const RunsTable = () => {
                     <Button
                       disabled={isDisabled}
                       variant="ghost"
-                      size="sm"
                       loading={retryRuns.isPending}
                     >
-                      <RotateCw className="size-4 mr-1" />
+                      <RotateCw className="size-4" />
                       {selectedRows.length > 0
                         ? `${t('Retry')} ${
                             !isDisabled
@@ -437,7 +434,7 @@ export const RunsTable = () => {
                               : ''
                           }`
                         : t('Retry')}
-                      <ChevronDown className="h-3 w-4 ml-1" />
+                      <ChevronDown className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>

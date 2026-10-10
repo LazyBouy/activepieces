@@ -37,7 +37,6 @@ import { AutomationsSort, TreeItem } from '@/features/automations/lib/types';
 import { ROOT_ITEMS_LIMIT } from '@/features/automations/lib/utils';
 import { appConnectionsQueries } from '@/features/connections';
 import { ImportFlowDialog } from '@/features/flows/components/import-flow-dialog';
-import { projectMembersHooks } from '@/features/members';
 import { piecesHooks } from '@/features/pieces';
 import { projectCollectionUtils, getProjectName } from '@/features/projects';
 import { ImportTableDialog } from '@/features/tables/components/import-table-dialog';
@@ -158,7 +157,6 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
     extraKeys: [projectId],
   });
 
-  const { projectMembers } = projectMembersHooks.useProjectMembers();
   const { pieces } = piecesHooks.usePieces({});
 
   // Bulk actions resolve selected items from the loaded treeItems, so the
@@ -387,7 +385,11 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
         pieces={pieces}
         agentsVisible={agentsVisible}
         onClearAllFilters={clearAllFilters}
-        hasActiveFilters={filtersActive}
+        sort={sort}
+        onSortChange={handleSortChange}
+        selectedCount={selectedItems.size}
+        selectableCount={selectableItems.length}
+        onToggleAllSelection={toggleAllSelection}
       />
 
       {isErrorState ? (
@@ -403,14 +405,10 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
           <AutomationsTable
             items={treeItems}
             isLoading={isLoading}
-            selectedItems={selectedItems}
             expandedFolders={expandedFolders}
-            projectMembers={projectMembers}
             folders={folders}
-            selectableCount={selectableItems.length}
             isPinned={isPinned}
             onTogglePin={togglePin}
-            onToggleAllSelection={toggleAllSelection}
             onToggleItemSelection={toggleItemSelection}
             onRowClick={handleRowClick}
             onRenameItem={dialogs.openRenameDialog}
@@ -431,27 +429,23 @@ const AutomationsPageContent = ({ projectId }: { projectId: string }) => {
             isDuplicating={mutations.isDuplicating}
             onLoadMoreInFolder={loadMoreInFolder}
             isItemSelected={isItemSelected}
-            sort={sort}
-            onSortChange={handleSortChange}
           />
 
-          <div className="flex items-center justify-end gap-4">
-            {isSortTruncated && (
-              <span className="text-xs text-gray-11">
-                {t('Showing the first {count}', {
-                  count: rootFlows.length + rootTables.length,
-                })}
-              </span>
-            )}
-            <AutomationsPagination
-              currentPage={rootPage}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              onPageSizeChange={handlePageSizeChange}
-              onPrevPage={handlePrevPage}
-              onNextPage={handleNextPage}
-            />
-          </div>
+          <AutomationsPagination
+            currentPage={rootPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageSizeChange={handlePageSizeChange}
+            onPrevPage={handlePrevPage}
+            onNextPage={handleNextPage}
+            note={
+              isSortTruncated
+                ? t('Showing the first {count}', {
+                    count: rootFlows.length + rootTables.length,
+                  })
+                : undefined
+            }
+          />
         </>
       )}
 

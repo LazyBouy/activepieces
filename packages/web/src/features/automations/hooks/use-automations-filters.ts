@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { AutomationsFilters, AutomationsSort } from '../lib/types';
-import { hasActiveFilters } from '../lib/utils';
+import { hasActiveFilters, parseAutomationsSort } from '../lib/utils';
 
 const SEARCH_PARAM = 'search';
 const TYPE_PARAM = 'type';
@@ -48,7 +48,7 @@ export function useAutomationsFilters() {
     () => searchParams.getAll(FOLDER_PARAM),
     [folderParamStr],
   );
-  const sort = parseSort(searchParams.get(SORT_PARAM));
+  const sort = parseAutomationsSort(searchParams.get(SORT_PARAM));
 
   const updateParams = useCallback(
     (updates: Record<string, string | string[] | null>) => {
@@ -171,14 +171,4 @@ export function useAutomationsFilters() {
     filtersActive,
     clearAllFilters,
   };
-}
-
-function parseSort(value: string | null): AutomationsSort {
-  switch (value) {
-    case 'name-asc':
-    case 'name-desc':
-      return value;
-    default:
-      return 'default';
-  }
 }

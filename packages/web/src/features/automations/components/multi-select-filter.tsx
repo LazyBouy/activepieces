@@ -1,8 +1,8 @@
 import { t } from 'i18next';
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
+import { DataTableFilterTrigger } from '@/components/custom/data-table/data-table-filter-trigger';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { selectTriggerClassName } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+import { SelectionSummary, summarizeSelection } from '../lib/utils';
 
 type MultiSelectFilterProps = {
   label: string;
@@ -20,6 +24,8 @@ type MultiSelectFilterProps = {
   selectedValues: string[];
   onChange: (values: string[]) => void;
   searchable?: boolean;
+  variant?: 'chip' | 'field';
+  id?: string;
 };
 
 export const MultiSelectFilter = ({
@@ -29,6 +35,8 @@ export const MultiSelectFilter = ({
   selectedValues,
   onChange,
   searchable = false,
+  variant = 'chip',
+  id,
 }: MultiSelectFilterProps) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -41,9 +49,8 @@ export const MultiSelectFilter = ({
     }
   };
 
-  const selectedLabels = selectedValues
-    .map((v) => options.find((o) => o.value === v)?.label)
-    .filter(Boolean);
+  const summary = summarizeSelection({ selectedValues, options });
+  const summaryText = selectionSummaryText(summary);
 
   const filteredOptions =
     searchable && search
@@ -61,71 +68,70 @@ export const MultiSelectFilter = ({
       }}
     >
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-sm gap-2 whitespace-nowrap border-dashed"
-        >
-          {icon}
-          <span>{label}</span>
-          {selectedValues.length > 0 && (
-            <div className="flex items-center gap-1 ml-1">
-              <div className="h-4 w-px bg-gray-6" />
-              {selectedValues.length <= 2 ? (
-                selectedLabels.map((labelText, idx) => (
-                  <Badge
-                    key={selectedValues[idx]}
-                    variant="outline"
-                    className="px-1.5 py-0 text-xs font-normal rounded-sm bg-gray-3 max-w-[15vw] min-w-0"
-                  >
-                    <span className="truncate">{labelText}</span>
-                  </Badge>
-                ))
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="px-1.5 py-0 text-xs font-normal rounded-sm bg-gray-3"
-                >
-                  {selectedValues.length} selected
-                </Badge>
-              )}
-            </div>
-          )}
-        </Button>
+        {variant === 'field' ? (
+          <button
+            id={id}
+            type="button"
+            data-size="sm"
+            data-placeholder={summary.kind === 'none' ? '' : undefined}
+            className={selectTriggerClassName}
+          >
+            <span className="flex min-w-0 items-center gap-2 truncate">
+              {summaryText ?? t('All')}
+            </span>
+            <ChevronDown className="size-4 text-gray-11" />
+          </button>
+        ) : (
+          <DataTableFilterTrigger
+            id={id}
+            leading={icon}
+            label={label}
+            value={summaryText}
+          />
+        )}
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
+      <PopoverContent
+        className={cn(
+          'p-0',
+          variant === 'field'
+            ? 'w-(--radix-popover-trigger-width) min-w-56'
+            : 'w-56',
+        )}
+        align="start"
+      >
         {searchable && (
-          <div className="px-2 pt-2 pb-1 border-b">
+          <div className="border-b px-2 pt-2 pb-1">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-11" />
+              <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-11" />
               <Input
                 placeholder={t('Search...')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 pl-7 text-sm border-none shadow-none focus-visible:ring-0"
+                className="h-8 border-none pl-7 text-sm shadow-none focus-visible:ring-0"
               />
             </div>
           </div>
         )}
         <ScrollArea className="max-h-[300px]">
-          <div className="p-2 space-y-1">
+          <div className="space-y-1 p-1">
             {filteredOptions.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-center text-gray-11">
+              <div className="px-2 py-4 text-center text-sm text-gray-11">
                 {t('No results')}
               </div>
             ) : (
               filteredOptions.map((option) => (
                 <div
                   key={option.value}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-gray-4 cursor-pointer"
+                  className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-4"
                   onClick={() => toggleValue(option.value)}
                 >
                   <Checkbox
                     checked={selectedValues.includes(option.value)}
                     onCheckedChange={() => toggleValue(option.value)}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   {option.icon}
-                  <span className="text-sm flex-1 truncate">
+                  <span className="flex-1 truncate text-sm">
                     {option.label}
                   </span>
                 </div>
@@ -134,10 +140,9 @@ export const MultiSelectFilter = ({
           </div>
         </ScrollArea>
         {selectedValues.length > 0 && (
-          <div className="border-t p-2">
+          <div className="border-t p-1">
             <Button
               variant="ghost"
-              size="sm"
               className="w-full"
               onClick={() => onChange([])}
             >
@@ -149,3 +154,14 @@ export const MultiSelectFilter = ({
     </Popover>
   );
 };
+
+function selectionSummaryText(summary: SelectionSummary): string | undefined {
+  switch (summary.kind) {
+    case 'none':
+      return undefined;
+    case 'single':
+      return summary.label;
+    case 'multiple':
+      return t('{count} selected', { count: summary.count });
+  }
+}

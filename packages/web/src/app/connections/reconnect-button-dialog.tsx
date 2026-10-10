@@ -42,7 +42,10 @@ const ReconnectButtonDialog = ({
             <Button
               onClick={() => setOpen(true)}
               disabled={!hasPermission}
-              variant={'ghost'}
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('Reconnect')}
+              className="text-gray-11"
               {...adminControl(
                 AdminControl.CONNECTIONS_CONNECTION_RECONNECT_OPEN,
               )}

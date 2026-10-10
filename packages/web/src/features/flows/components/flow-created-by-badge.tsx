@@ -2,6 +2,7 @@ import { FlowCreator, FlowCreatorType } from '@activepieces/shared';
 import { t } from 'i18next';
 
 import { McpSvg } from '@/assets/img/custom/mcp';
+import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -25,15 +26,14 @@ export const FlowCreatedByBadge = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          className={cn(
-            'inline-flex h-5 items-center gap-1 rounded-md border border-gray-6 bg-gray-3 px-[5px] text-xs font-bold leading-none text-gray-11',
-            className,
-          )}
+        <Badge
+          variant="outline"
+          size="sm"
+          className={cn('shrink-0', className)}
         >
-          <McpSvg className="h-3 w-3" />
+          <McpSvg className="size-3" />
           {t('AI')}
-        </span>
+        </Badge>
       </TooltipTrigger>
       <TooltipContent side="bottom">{t('Created by AI')}</TooltipContent>
     </Tooltip>

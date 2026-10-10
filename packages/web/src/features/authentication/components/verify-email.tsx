@@ -5,16 +5,16 @@ import { MailCheck, MailX } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
-import { FullLogo } from '@/components/custom/full-logo';
 import { LoadingSpinner } from '@/components/custom/spinner';
 import { useTelemetry } from '@/components/providers/telemetry-provider';
-import { Card } from '@/components/ui/card';
 import { internalErrorToast } from '@/components/ui/sonner';
 import { usePartnerStack } from '@/hooks/use-partner-stack';
 import { api } from '@/lib/api';
 import { pendingRedirect } from '@/lib/navigation-utils';
 
 import { authMutations } from '../hooks/auth-hooks';
+
+import { AuthCard, AuthPageShell } from './auth-landing/auth-page-shell';
 
 const VerifyEmail = () => {
   const [isExpired, setIsExpired] = useState(false);
@@ -61,48 +61,44 @@ const VerifyEmail = () => {
     return <Navigate to="/sign-in" replace />;
   }
   return (
-    <div className="mx-auto h-screen w-screen flex flex-col items-center justify-center gap-2">
-      <FullLogo />
+    <AuthPageShell>
+      <AuthCard>
+        <div className="flex w-full flex-row items-center justify-center gap-4 text-sm text-gray-12">
+          {!isPending && !isExpired && (
+            <>
+              <MailCheck className="size-12 shrink-0 stroke-[1.5] text-gray-10" />
+              <span className="w-fit text-left">
+                {t(
+                  'Email has been verified. You will be redirected to sign in...',
+                )}
+              </span>
+            </>
+          )}
+          {isPending && !isExpired && (
+            <>
+              <LoadingSpinner className="size-6" />
+              <span className="w-fit text-left">{t('Verifying email...')}</span>
+            </>
+          )}
 
-      <Card className="w-md rounded-sm drop-shadow-xl p-4">
-        <div className="gap-2 w-full flex flex-col">
-          <div className="gap-4 w-full flex flex-row items-center justify-center">
-            {!isPending && !isExpired && (
-              <>
-                <MailCheck className="w-16 h-16" />
-                <span className="text-left w-fit">
+          {isExpired && (
+            <>
+              <MailX className="size-12 shrink-0 stroke-[1.5] text-gray-10" />
+              <div className="w-fit text-left">
+                <div>
                   {t(
-                    'Email has been verified. You will be redirected to sign in...',
+                    'invitation has expired, once you sign in again you will be able to resend the verification email.',
                   )}
-                </span>
-              </>
-            )}
-            {isPending && !isExpired && (
-              <>
-                <LoadingSpinner className="size-6" />
-                <span className="text-left w-fit">
-                  {t('Verifying email...')}
-                </span>
-              </>
-            )}
-
-            {isExpired && (
-              <>
-                <MailX className="w-16 h-16" />
-                <div className="text-left w-fit">
-                  <div>
-                    {t(
-                      'invitation has expired, once you sign in again you will be able to resend the verification email.',
-                    )}
-                  </div>
-                  <div>{t('Redirecting to sign in...')}</div>
                 </div>
-              </>
-            )}
-          </div>
+                <div className="text-gray-11">
+                  {t('Redirecting to sign in...')}
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      </Card>
-    </div>
+      </AuthCard>
+    </AuthPageShell>
   );
 };
 VerifyEmail.displayName = 'VerifyEmail';

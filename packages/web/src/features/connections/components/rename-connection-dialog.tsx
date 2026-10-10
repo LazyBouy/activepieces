@@ -71,7 +71,9 @@ const RenameConnectionDialog = forwardRef<
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon-sm"
+                aria-label={t('Edit')}
+                className="text-gray-11"
                 disabled={!userHasPermissionToRename}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -79,7 +81,7 @@ const RenameConnectionDialog = forwardRef<
                   setIsRenameDialogOpen(true);
                 }}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

@@ -260,11 +260,11 @@ function VariablesPage() {
   const toolbarButtons = [
     <PermissionNeededTooltip key="new" hasPermission={canWrite}>
       <Button
+        variant="outline"
         disabled={!canWrite}
-        size="sm"
         onClick={() => setCreateOpen(true)}
       >
-        <PlusIcon size={16} className="mr-1" />
+        <PlusIcon className="size-4" />
         {t('New variable')}
       </Button>
     </PermissionNeededTooltip>,
