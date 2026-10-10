@@ -2,6 +2,14 @@
 @import 'tw-animate-css';
 @import './styles/globals.css';
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *):where(:not([data-theme='dark'] [data-theme='light'], [data-theme='dark'] [data-theme='light'] *)));
+@custom-variant pressed {
+  &:active:not(:disabled),
+  &[aria-haspopup][aria-expanded='true'] {
+    @slot;
+  }
+}
+@custom-variant clickable-hover (&:is(a, button):not(:disabled):hover);
+@custom-variant clickable-active (&:is(a, button):not(:disabled):active);
 
 /* Paths are relative to this file, not /fonts/, so Vite fingerprints them. */
 @font-face {
@@ -194,6 +202,19 @@
 @theme {
   --ease-*: initial;
   --ease-expand-out: cubic-bezier(0.35, 0, 0.25, 1);
+  --ease-cubic-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-cubic-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  --ease-cubic-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --ease-back-out: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-quart-out: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-quint-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-expo-out: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-reveal: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.58, 1);
+
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
 
   --width-4_5: 1.125rem;
 
@@ -224,8 +245,36 @@
   --font-weight-bold: 600;
   --font-weight-extrabold: 600;
 
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-accordion-down: accordion-down 200ms
+    cubic-bezier(0.215, 0.61, 0.355, 1);
+  --animate-accordion-up: accordion-up 200ms cubic-bezier(0.215, 0.61, 0.355, 1);
+  --animate-float-in: float-in 200ms cubic-bezier(0.215, 0.61, 0.355, 1);
+  --animate-overlay-in: overlay-in 200ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --animate-overlay-out: overlay-out 200ms cubic-bezier(0.25, 0.1, 0.25, 1)
+    forwards;
+  --animate-dialog-in: dialog-in 200ms cubic-bezier(0, 0, 0.58, 1);
+  --animate-dialog-out: dialog-out 200ms cubic-bezier(0, 0, 0.58, 1) forwards;
+  --animate-scrollbar-in: overlay-in 340ms cubic-bezier(0, 0, 0.58, 1);
+  --animate-scrollbar-out: overlay-out 120ms cubic-bezier(0, 0, 0.58, 1)
+    forwards;
+  --animate-swap-in: overlay-in 100ms linear;
+  --animate-swap-out: overlay-out 100ms linear forwards;
+  --animate-fade-up: entrance-fade-up 200ms cubic-bezier(0.215, 0.61, 0.355, 1)
+    both;
+  --animate-fade-down-out: exit-fade-down 200ms
+    cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
+  --animate-loader-in: entrance-fade-up 200ms
+    cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  --animate-fade-in: entrance-fade-in 200ms cubic-bezier(0.215, 0.61, 0.355, 1)
+    both;
+  --animate-stagger-in: entrance-fade-in 400ms
+    cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  --animate-blur-reveal-down: blur-reveal-down 350ms
+    cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-blur-reveal-up: blur-reveal-up 350ms cubic-bezier(0.32, 0.72, 0, 1)
+    forwards;
+  --animate-skeleton-sweep: skeleton-sweep 1400ms
+    cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
   --animate-fade: fade 0.2s ease-out;
   --animate-highlight: highlight 1s ease-out;
   --animate-typing: typing 0.7s steps(7) alternate;
@@ -234,9 +283,10 @@
   --animate-indeterminate-progress: indeterminate-progress 1.5s ease-in-out
     infinite;
   --animate-primary-color-pulse: primary-color-pulse 1s ease-in-out infinite;
-  --animate-collapsible-down: collapsible-down 0.2s ease-out;
-  --animate-collapsible-up: collapsible-up 0.2s ease-out
-    alternate;
+  --animate-collapsible-down: collapsible-down 200ms
+    cubic-bezier(0.215, 0.61, 0.355, 1);
+  --animate-collapsible-up: collapsible-up 200ms
+    cubic-bezier(0.215, 0.61, 0.355, 1) alternate;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', Segoe UI Symbol, 'Noto Color Emoji';
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
@@ -438,6 +488,99 @@
       stroke-dashoffset: -20;
     }
   }
+
+  @keyframes float-in {
+    from {
+      opacity: 0;
+      transform: translate(var(--float-from-x, 0px), var(--float-from-y, 0px))
+        scale(0.96);
+    }
+  }
+
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes overlay-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+
+  @keyframes dialog-out {
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+
+  @keyframes entrance-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+      filter: blur(2px);
+    }
+  }
+
+  @keyframes exit-fade-down {
+    to {
+      opacity: 0;
+      transform: translateY(4px);
+      filter: blur(2px);
+    }
+  }
+
+  @keyframes entrance-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+      filter: blur(2px);
+    }
+  }
+
+  @keyframes blur-reveal-down {
+    from {
+      height: 0;
+      opacity: 0;
+      filter: blur(4px);
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+
+  @keyframes blur-reveal-up {
+    from {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+      filter: blur(0);
+    }
+    to {
+      height: 0;
+      opacity: 0;
+      filter: blur(4px);
+    }
+  }
+
+  @keyframes skeleton-sweep {
+    from {
+      background-position: 100% 50%;
+    }
+    to {
+      background-position: 0% 50%;
+    }
+  }
 }
 
 /*
@@ -492,6 +635,97 @@
   }
 }
 
+[data-sonner-toaster] {
+  --offset: 0px;
+}
+
+[data-sonner-toaster] [data-sonner-toast]:not([data-swiping='true']) {
+  transition:
+    transform 300ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    opacity 300ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    height 300ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 200ms;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-x-position='right'][data-mounted='false'] {
+  --y: translateX(100%);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-x-position='left'][data-mounted='false'] {
+  --y: translateX(-100%);
+}
+
+[data-sonner-toaster][data-sonner-toaster]
+  [data-sonner-toast][data-removed='true'][data-swipe-out='false'][data-front] {
+  --y: translateY(calc(var(--lift) * var(--offset)));
+}
+
+@keyframes drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes drawer-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+[data-slot='drawer-content'][data-vaul-drawer][data-state],
+[data-slot='drawer-overlay'][data-vaul-overlay][data-state] {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='bottom'][data-state='open'] {
+  animation-name: slideFromBottom, drawer-fade-in;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='bottom'][data-state='closed'] {
+  animation-name: slideToBottom, drawer-fade-out;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='top'][data-state='open'] {
+  animation-name: slideFromTop, drawer-fade-in;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='top'][data-state='closed'] {
+  animation-name: slideToTop, drawer-fade-out;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='left'][data-state='open'] {
+  animation-name: slideFromLeft, drawer-fade-in;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='left'][data-state='closed'] {
+  animation-name: slideToLeft, drawer-fade-out;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='right'][data-state='open'] {
+  animation-name: slideFromRight, drawer-fade-in;
+}
+[data-slot='drawer-content'][data-vaul-drawer][data-vaul-snap-points='false'][data-vaul-drawer-direction='right'][data-state='closed'] {
+  animation-name: slideToRight, drawer-fade-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 100ms !important;
+  }
+
+  [class*='animate-spin'],
+  [class*='animate-pulse'],
+  [class*='animate-indeterminate-progress'],
+  [class*='animate-skeleton-sweep'],
+  [class*='animate-fade-up'],
+  [class*='animate-fade-in'],
+  [class*='animate-stagger-in'],
+  [class*='animate-blur-reveal'],
+  [class*='animate-accordion'],
+  [class*='animate-collapsible'],
+  [data-slot='drawer-content'][data-vaul-drawer][data-state],
+  [data-slot='drawer-overlay'][data-vaul-overlay][data-state] {
+    animation: none !important;
+  }
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -523,6 +757,28 @@
 
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@utility scrollbar-hover {
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-color: transparent transparent;
+
+    &:hover {
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
   }
 }
 
@@ -890,45 +1146,30 @@
     @apply border-gray-6;
   }
 
-  /*
-   * Global sleek scrollbar — 6px pill thumb, hidden at rest, fades in on hover.
-   * Consistent across all overflow containers. scrollbar-none opts out.
-   */
   *::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
-  *::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  *::-webkit-scrollbar-thumb {
-    background-color: transparent;
-    border-radius: 9999px;
-    transition: background-color 0.2s;
-  }
-
-  *:hover::-webkit-scrollbar-thumb {
-    background-color: var(--gray-6);
-  }
-
-  *::-webkit-scrollbar-thumb:hover {
-    background-color: var(--gray-8);
-  }
-
+  *::-webkit-scrollbar-track,
   *::-webkit-scrollbar-corner {
     background: transparent;
   }
 
-  /* Firefox — thin track, hidden at rest, visible on hover */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 5px;
   }
 
-  *:hover {
-    scrollbar-color: var(--gray-6) transparent;
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
   }
 
   /* Restore scrollbar-none for elements that opt out */
@@ -1011,6 +1252,29 @@
   }
   [data-slot='sheet-content'][data-side='left'][data-state='closed'] {
     --tw-exit-translate-x: -100% !important;
+  }
+
+  [data-side='bottom'] {
+    --float-from-x: 0px;
+    --float-from-y: 2px;
+  }
+  [data-side='top'] {
+    --float-from-x: 0px;
+    --float-from-y: -2px;
+  }
+  [data-side='right'] {
+    --float-from-x: 2px;
+    --float-from-y: 0px;
+  }
+  [data-side='left'] {
+    --float-from-x: -2px;
+    --float-from-y: 0px;
+  }
+  :is([data-side='top'], [data-side='bottom'])[data-align='start'] {
+    --float-from-x: -2px;
+  }
+  :is([data-side='top'], [data-side='bottom'])[data-align='end'] {
+    --float-from-x: 2px;
   }
 }
 

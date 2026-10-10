@@ -38,7 +38,7 @@ function DialogOverlay({
       data-slot="dialog-overlay"
       tabIndex={-1}
       className={cn(
-        'fixed inset-0 z-50 bg-scrim outline-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        'fixed inset-0 z-50 bg-scrim backdrop-blur-sm outline-hidden data-[state=open]:motion-safe:animate-overlay-in data-[state=closed]:motion-safe:animate-overlay-out',
         className,
       )}
       {...props}
@@ -52,6 +52,7 @@ function DialogContent({
   showCloseButton = true,
   showOverlay = true,
   overlayClassName,
+  size = 'md',
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & DialogContentProps) {
   return (
@@ -59,8 +60,10 @@ function DialogContent({
       {showOverlay && <DialogOverlay className={overlayClassName} />}
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-size={size}
         className={cn(
-          'fixed top-[50%] left-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-panel p-5 shadow-lg duration-200 outline-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
+          'fixed top-[50%] left-[50%] z-50 grid w-[calc(100%-1.5rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg bg-panel p-6 shadow-dialog outline-hidden dark:bg-gray-4 data-[state=open]:motion-safe:animate-dialog-in data-[state=closed]:motion-safe:animate-dialog-out',
+          DIALOG_SIZE_CLASSES[size],
           className,
         )}
         {...props}
@@ -69,7 +72,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-gray-1 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-gray-8 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-gray-4 data-[state=open]:text-gray-11 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-4 right-4 flex size-6 items-center justify-center rounded-sm text-gray-11 transition-colors outline-hidden hover:bg-gray-4 hover:text-gray-12 dark:hover:bg-gray-5 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-0 focus-visible:outline-focus-halo disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -84,10 +87,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn(
-        'flex flex-col gap-2 text-center sm:text-left mb-3',
-        className,
-      )}
+      className={cn('flex flex-col gap-2 text-left', className)}
       {...props}
     />
   );
@@ -103,7 +103,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-3',
+        'mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end [[data-slot=dialog-content]>&]:mt-1',
         className,
       )}
       {...props}
@@ -126,7 +126,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        'text-lg leading-none font-semibold tracking-tight',
+        'text-lg leading-snug font-medium tracking-tight text-gray-12',
         className,
       )}
       {...props}
@@ -141,11 +141,19 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn('text-sm text-gray-11', className)}
+      className={cn('text-sm text-gray-12/87', className)}
       {...props}
     />
   );
 }
+
+const DIALOG_SIZE_CLASSES: Record<DialogSize, string> = {
+  sm: 'max-w-90',
+  md: 'max-w-120',
+  lg: 'max-w-141',
+  xl: 'max-w-160',
+  '2xl': 'max-w-195',
+};
 
 export {
   Dialog,
@@ -164,7 +172,10 @@ type DialogContentProps = {
   showCloseButton?: boolean;
   showOverlay?: boolean;
   overlayClassName?: string;
+  size?: DialogSize;
 };
+
+type DialogSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 type DialogFooterProps = {
   showCloseButton?: boolean;

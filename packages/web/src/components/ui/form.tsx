@@ -114,7 +114,7 @@ function FormDescription({ className, ...props }: React.ComponentProps<'p'>) {
     <p
       data-slot="form-description"
       id={formDescriptionId}
-      className={cn('text-sm text-gray-11', className)}
+      className={cn('text-xs text-gray-11', className)}
       {...props}
     />
   );
@@ -131,7 +131,7 @@ function FormError({
       data-slot="form-error"
       id={formMessageId}
       className={cn(
-        'text-sm font-medium text-danger-11 wrap-break-word',
+        'text-xs font-medium text-danger-11 wrap-break-word',
         className,
       )}
       {...props}

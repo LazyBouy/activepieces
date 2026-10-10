@@ -1,4 +1,3 @@
-import { CircleIcon } from 'lucide-react';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import * as React from 'react';
 
@@ -25,16 +24,16 @@ function RadioGroupItem({
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
       className={cn(
-        'aspect-square size-4 shrink-0 rounded-full border border-gray-8 text-accent-11 shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-gray-8 focus-visible:ring-[3px] focus-visible:ring-gray-8/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger-9 aria-invalid:ring-danger-9/20 dark:bg-gray-6/30 dark:aria-invalid:ring-danger-9/40',
+        'aspect-square size-4 shrink-0 rounded-full border border-gray-6 bg-panel transition-colors outline-hidden enabled:hover:data-[state=unchecked]:border-accent-9 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-focus data-[state=checked]:border-accent-10 data-[state=checked]:bg-accent-9 disabled:cursor-not-allowed disabled:data-[state=unchecked]:border-gray-4 disabled:data-[state=checked]:border-gray-5 disabled:data-[state=checked]:bg-gray-5 aria-invalid:border-danger-9',
         className,
       )}
       {...props}
     >
       <RadioGroupPrimitive.Indicator
         data-slot="radio-group-indicator"
-        className="relative flex items-center justify-center"
+        className="flex size-full items-center justify-center"
       >
-        <CircleIcon className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 fill-accent-11" />
+        <span className="size-1.5 rounded-full bg-panel" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   );

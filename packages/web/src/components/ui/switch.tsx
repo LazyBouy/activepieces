@@ -29,12 +29,11 @@ function Switch({
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        'peer inline-flex shrink-0 cursor-pointer items-center border-2 border-transparent transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-gray-8 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-1 disabled:cursor-not-allowed disabled:opacity-50',
+        'group/switch peer inline-flex shrink-0 cursor-pointer items-center p-0.5 transition-[background-color,box-shadow] outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60',
         COLOR_CLASSES[color],
+        indeterminate ? INDETERMINATE_CLASSES : UNCHECKED_CLASSES,
         variant === 'square' ? 'rounded-md' : 'rounded-full',
         SIZE_CLASSES[size],
-        indeterminate &&
-          'justify-center data-[state=unchecked]:border-accent-8 data-[state=unchecked]:bg-accent-5',
         className,
       )}
       onCheckedChange={(checked) =>
@@ -52,9 +51,7 @@ function Switch({
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
         className={cn(
-          'pointer-events-none flex items-center justify-center bg-gray-1 ring-0 transition-transform data-[state=unchecked]:translate-x-0',
-          color === 'default' && 'data-[state=checked]:bg-on-accent',
-          'shadow-[0_1px_2px_rgba(15,23,42,0.18)]',
+          'pointer-events-none flex items-center justify-center bg-panel shadow-[0_1px_2px_0_rgb(0_0_0/0.2)] transition-[translate,width] ease-cubic-out data-[state=unchecked]:translate-x-0 motion-reduce:transition-none dark:bg-gray-12',
           variant === 'square' ? 'rounded-sm' : 'rounded-full',
           THUMB_SIZE_CLASSES[size],
         )}
@@ -71,22 +68,29 @@ function Switch({
 
 const SIZE_CLASSES: Record<NonNullable<SwitchProps['size']>, string> = {
   sm: 'h-4 w-8',
-  default: 'h-[18px] w-8',
-  lg: 'h-7 w-14',
-  xl: 'h-8 w-16',
+  default: 'h-4 w-8',
+  lg: 'h-5 w-10',
+  xl: 'h-6 w-12',
 };
 
 const THUMB_SIZE_CLASSES: Record<NonNullable<SwitchProps['size']>, string> = {
-  sm: 'h-3 w-3 data-[state=checked]:translate-x-4',
-  default: 'h-3.5 w-3.5 data-[state=checked]:translate-x-3.5',
-  lg: 'h-5 w-5 data-[state=checked]:translate-x-6',
-  xl: 'h-6 w-6 data-[state=checked]:translate-x-7',
+  sm: 'h-3 w-3 data-[state=checked]:translate-x-4 group-[:hover:not(:disabled)]/switch:w-3.5 group-[:active:not(:disabled)]/switch:w-3.5 group-[:hover:not(:disabled)]/switch:data-[state=checked]:translate-x-3.5 group-[:active:not(:disabled)]/switch:data-[state=checked]:translate-x-3.5',
+  default:
+    'h-3 w-3 data-[state=checked]:translate-x-4 group-[:hover:not(:disabled)]/switch:w-3.5 group-[:active:not(:disabled)]/switch:w-3.5 group-[:hover:not(:disabled)]/switch:data-[state=checked]:translate-x-3.5 group-[:active:not(:disabled)]/switch:data-[state=checked]:translate-x-3.5',
+  lg: 'h-4 w-4 data-[state=checked]:translate-x-5 group-[:hover:not(:disabled)]/switch:w-4.5 group-[:active:not(:disabled)]/switch:w-4.5 group-[:hover:not(:disabled)]/switch:data-[state=checked]:translate-x-4.5 group-[:active:not(:disabled)]/switch:data-[state=checked]:translate-x-4.5',
+  xl: 'h-5 w-5 data-[state=checked]:translate-x-6 group-[:hover:not(:disabled)]/switch:w-5.5 group-[:active:not(:disabled)]/switch:w-5.5 group-[:hover:not(:disabled)]/switch:data-[state=checked]:translate-x-5.5 group-[:active:not(:disabled)]/switch:data-[state=checked]:translate-x-5.5',
 };
 
 const COLOR_CLASSES: Record<NonNullable<SwitchProps['color']>, string> = {
-  default: 'data-[state=checked]:bg-accent-9 data-[state=unchecked]:bg-gray-8',
-  secondary: 'data-[state=checked]:bg-gray-12 data-[state=unchecked]:bg-gray-8',
+  default: 'data-[state=checked]:bg-success-9',
+  secondary: 'data-[state=checked]:bg-gray-12',
 };
+
+const UNCHECKED_CLASSES =
+  'data-[state=unchecked]:bg-gray-8 dark:data-[state=unchecked]:bg-gray-1 dark:data-[state=unchecked]:inset-ring dark:data-[state=unchecked]:inset-ring-gray-7';
+
+const INDETERMINATE_CLASSES =
+  'justify-center data-[state=unchecked]:bg-accent-5 data-[state=unchecked]:inset-ring-2 data-[state=unchecked]:inset-ring-accent-8';
 
 // Helper functions
 

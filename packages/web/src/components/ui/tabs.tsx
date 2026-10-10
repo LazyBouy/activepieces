@@ -2,6 +2,10 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { Tabs as TabsPrimitive } from 'radix-ui';
 import * as React from 'react';
 
+import {
+  segmentedControlVariants,
+  segmentVariants,
+} from '@/components/ui/segmented-control';
 import { cn } from '@/lib/utils';
 
 function Tabs({
@@ -16,9 +20,8 @@ function Tabs({
 const tabsListVariants = cva('inline-flex', {
   variants: {
     variant: {
-      default:
-        'items-center justify-center h-9 rounded-md bg-gray-3 p-1 text-gray-11',
-      outline: '',
+      default: segmentedControlVariants({ size: 'default' }),
+      outline: 'max-w-full items-end overflow-x-auto scrollbar-none',
     },
   },
   defaultVariants: {
@@ -29,14 +32,25 @@ const tabsListVariants = cva('inline-flex', {
 const tabsTriggerVariants = cva('inline-flex items-center justify-center', {
   variants: {
     variant: {
-      default:
-        'whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium ring-offset-gray-1 transition-all focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-panel data-[state=active]:text-gray-12 data-[state=active]:shadow-xs',
+      default: segmentVariants({ size: 'default' }),
       outline:
-        'px-3 py-1 text-sm font-medium ring-offset-gray-1 transition-all border-b-2 border-transparent data-[state=active]:border-gray-12 data-[state=active]:text-gray-12 text-gray-12',
+        "gap-1 border-b-2 border-transparent px-4 pt-0 pb-2 text-sm font-medium whitespace-nowrap text-gray-12/87 transition-colors outline-hidden hover:not-disabled:text-accent-9 focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus disabled:cursor-not-allowed disabled:text-gray-8 data-[state=active]:border-accent-9 data-[state=active]:text-accent-9 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+    },
+    size: {
+      default: '',
+      compact: '',
     },
   },
+  compoundVariants: [
+    {
+      variant: 'outline',
+      size: 'compact',
+      class: 'pb-3 text-xs font-semibold',
+    },
+  ],
   defaultVariants: {
     variant: 'default',
+    size: 'default',
   },
 });
 
@@ -58,13 +72,14 @@ function TabsList({
 function TabsTrigger({
   className,
   variant,
+  size,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Trigger> &
   VariantProps<typeof tabsTriggerVariants>) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
-      className={cn(tabsTriggerVariants({ variant, className }))}
+      className={cn(tabsTriggerVariants({ variant, size, className }))}
       {...props}
     />
   );
@@ -77,10 +92,7 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn(
-        'mt-5 ring-offset-gray-1 focus-visible:outline-hidden',
-        className,
-      )}
+      className={cn('mt-5 outline-hidden', className)}
       {...props}
     />
   );

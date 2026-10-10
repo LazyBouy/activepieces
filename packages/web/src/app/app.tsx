@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import { MotionConfig } from 'motion/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -29,13 +30,15 @@ export function App() {
                 <EmbeddingAnalyticsLoader />
                 <TelemetryProvider>
                   <TooltipProvider>
-                    <ThemeProvider storageKey="vite-ui-theme">
-                      <React.Fragment key={i18n.language}>
-                        <ApRouter />
-                        <Toaster position="bottom-right" />
-                        <ApErrorDialog />
-                      </React.Fragment>
-                    </ThemeProvider>
+                    <MotionConfig reducedMotion="user">
+                      <ThemeProvider storageKey="vite-ui-theme">
+                        <React.Fragment key={i18n.language}>
+                          <ApRouter />
+                          <Toaster position="bottom-right" />
+                          <ApErrorDialog />
+                        </React.Fragment>
+                      </ThemeProvider>
+                    </MotionConfig>
                   </TooltipProvider>
                 </TelemetryProvider>
               </EmbeddingFontLoader>

@@ -7,11 +7,9 @@ export function DataTableSkeleton({
 }) {
   return (
     <div>
-      <div className="p-2">
-        {Array.from({ length: skeletonRowCount }).map((_, rowIndex) => (
-          <TableRowSkeleton key={rowIndex} />
-        ))}
-      </div>
+      {Array.from({ length: skeletonRowCount }).map((_, rowIndex) => (
+        <TableRowSkeleton key={rowIndex} />
+      ))}
     </div>
   );
 }
@@ -20,10 +18,10 @@ function TableRowSkeleton() {
   return (
     <div
       id="table-loading"
-      className="w-full h-9 mb-3 rounded-sm"
+      className="flex h-12 w-full items-center border-b border-gray-6 px-4 last:border-b-0"
       data-testid="header-cell"
     >
-      <Skeleton className="w-full min-h-9" />
+      <Skeleton className="h-4 w-full" />
     </div>
   );
 }

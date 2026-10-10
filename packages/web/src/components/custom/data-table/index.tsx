@@ -342,11 +342,12 @@ export function DataTable<
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const rows = table.getRowModel().rows;
+  const isRefreshing = isLoading && rows.length > 0;
   const visibleColumnCount = table.getVisibleLeafColumns().length;
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 53,
+    estimateSize: () => 49,
     overscan: 15,
     enabled: virtualizeRows,
   });
@@ -390,21 +391,34 @@ export function DataTable<
       <div
         ref={scrollContainerRef}
         className={cn(
-          'mt-0',
+          'relative mt-0',
           {
             'overflow-hidden': !virtualizeRows,
             'flex-1 min-h-0 overflow-auto': virtualizeRows,
           },
           bordered &&
-            'rounded-lg border [&_thead]:border-t-0 [&_tbody>tr:last-child]:border-b-0',
+            'rounded-lg border bg-panel [&_thead]:border-t-0 [&_tbody>tr:last-child]:border-b-0',
         )}
       >
+        {isRefreshing && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-9 z-20 h-0.5 overflow-hidden"
+          >
+            <div className="h-full w-1/4 animate-indeterminate-progress bg-accent-9" />
+          </div>
+        )}
         <Table
           className="table-fixed"
           containerClassName={cn(virtualizeRows && 'overflow-visible')}
         >
           <TableHeader
-            className={cn(virtualizeRows && STICKY_HEADER_CLASS_NAME)}
+            className={cn(
+              virtualizeRows && STICKY_HEADER_CLASS_NAME,
+              virtualizeRows &&
+                bordered &&
+                'shadow-[inset_0_-1px_0_var(--gray-6)]',
+            )}
           >
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
@@ -431,12 +445,14 @@ export function DataTable<
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow className="hover:bg-gray-1">
+          <TableBody
+            className={cn('transition-opacity', isRefreshing && 'opacity-38')}
+          >
+            {isLoading && !isRefreshing ? (
+              <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={visibleColumnCount}
-                  className="h-24 text-center"
+                  className="h-auto p-0 first:pl-0 last:pr-0"
                 >
                   <DataTableSkeleton />
                 </TableCell>
@@ -464,7 +480,8 @@ export function DataTable<
                         className={cn(
                           'cursor-pointer',
                           {
-                            'hover:bg-gray-1 cursor-default': isNil(onRowClick),
+                            'hover:bg-transparent cursor-default':
+                              isNil(onRowClick),
                           },
                           getRowClassName?.(row.original, rowIndex),
                         )}
@@ -556,7 +573,8 @@ export function DataTable<
                     className={cn(
                       'cursor-pointer',
                       {
-                        'hover:bg-gray-1 cursor-default': isNil(onRowClick),
+                        'hover:bg-transparent cursor-default':
+                          isNil(onRowClick),
                       },
                       getRowClassName?.(row.original, rowIndex),
                     )}
@@ -643,18 +661,18 @@ export function DataTable<
                 </TableCell>
               </TableRow>
             ) : (
-              <TableRow className="hover:bg-gray-1">
+              <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={visibleColumnCount}
                   className="h-[350px] text-center"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     {emptyStateIcon ? emptyStateIcon : <></>}
-                    <p className="text-lg font-semibold">
+                    <p className="text-xl font-normal text-gray-12">
                       {emptyStateTextTitle}
                     </p>
                     {emptyStateTextDescription && (
-                      <p className="text-sm text-gray-11 ">
+                      <p className="max-w-lg text-sm text-gray-12/87">
                         {emptyStateTextDescription}
                       </p>
                     )}
@@ -667,7 +685,7 @@ export function DataTable<
         </Table>
       </div>
       {!hidePagination && !virtualizeRows && (
-        <div className="flex items-center justify-end gap-4 px-2 py-4 text-sm">
+        <div className="flex items-center justify-end gap-2 px-2 py-4 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-gray-11">{t('Rows per page')}</span>
             <Select
@@ -679,7 +697,7 @@ export function DataTable<
                 }
               }}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger size="sm" className="w-[70px]">
                 <SelectValue
                   placeholder={table.getState().pagination.pageSize}
                 />
@@ -745,4 +763,4 @@ export function DataTable<
 }
 
 const STICKY_HEADER_CLASS_NAME =
-  'sticky top-0 z-10 border-t-0 bg-[color-mix(in_srgb,var(--gray-3)_70%,var(--gray-1))] shadow-[inset_0_1px_0_var(--gray-6),inset_0_-1px_0_var(--gray-6)] [&>tr]:border-b-0';
+  'sticky top-0 z-10 border-t-0 bg-gray-3 shadow-[inset_0_1px_0_var(--gray-6),inset_0_-1px_0_var(--gray-6)] [&>tr]:border-b-0';

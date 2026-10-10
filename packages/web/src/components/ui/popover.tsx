@@ -31,7 +31,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          'z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border bg-panel p-4 text-gray-12 shadow-md outline-hidden data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+          'z-70 w-72 origin-(--radix-popover-content-transform-origin) scrollbar-hover rounded-lg bg-panel p-4 text-gray-12 shadow-float outline-hidden data-[state=open]:motion-safe:animate-float-in',
           className,
         )}
         {...props}
@@ -60,7 +60,7 @@ function PopoverTitle({ className, ...props }: React.ComponentProps<'h2'>) {
   return (
     <div
       data-slot="popover-title"
-      className={cn('font-medium', className)}
+      className={cn('text-sm font-medium text-gray-12', className)}
       {...props}
     />
   );

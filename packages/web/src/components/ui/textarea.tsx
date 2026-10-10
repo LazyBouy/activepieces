@@ -11,7 +11,7 @@ function Textarea({ className, ...props }: ResizableTextareaProps) {
       minRows={1}
       maxRows={5}
       className={cn(
-        'flex w-full rounded-md border border-gray-8 bg-gray-1 px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-gray-11 focus-visible:border-gray-8 focus-visible:ring-[3px] focus-visible:ring-gray-8/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger-9 aria-invalid:ring-danger-9/20 dark:aria-invalid:ring-danger-9/40',
+        'flex w-full resize-y rounded-md border border-gray-6 bg-panel p-3 text-sm leading-tight text-gray-12 transition-[color,border-color] ease-cubic-in-out outline-hidden placeholder:text-gray-11 [&:hover:not(:focus-within,:disabled,[aria-invalid=true])]:border-gray-7 focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus-halo disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-1 aria-invalid:border-danger-9 aria-invalid:focus-visible:ring-danger-9/20',
         className,
       )}
       {...props}

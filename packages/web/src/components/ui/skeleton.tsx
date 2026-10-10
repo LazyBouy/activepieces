@@ -4,7 +4,10 @@ function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="skeleton"
-      className={cn('animate-pulse rounded-md bg-gray-3', className)}
+      className={cn(
+        'animate-skeleton-sweep rounded-lg bg-gray-3 bg-linear-to-r from-gray-3 from-25% via-gray-1 via-37% to-gray-3 to-63% bg-size-[400%_100%] motion-reduce:bg-none',
+        className,
+      )}
       {...props}
     />
   );
@@ -19,7 +22,7 @@ function SkeletonList({
 }) {
   const array = Array(numberOfItems).fill(null);
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {array.map((_, index) => (
         <Skeleton
           key={index}

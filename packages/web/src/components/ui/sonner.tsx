@@ -39,34 +39,33 @@ function Toaster({ ...props }: ToasterProps) {
       theme={resolvedTheme}
       className="group"
       expand={true}
+      offset={16}
       toastOptions={{
         classNames: {
-          toast: `
-            data-[type=error]:text-danger-11!
-            data-[type=warning]:text-warning-11!
-            data-[type=success]:text-success-11!
-          `,
-          description: `
-            data-[type=error]:text-danger-11!
-            data-[type=warning]:text-warning-11!
-            data-[type=success]:text-success-11!
-          `,
+          toast:
+            'gap-3.25! pt-3.5! pr-6.5! pb-3.5! pl-3.25! text-gray-12! shadow-toast!',
+          title: 'text-base! font-semibold! text-gray-12!',
+          description: 'text-sm! leading-normal! text-gray-12!',
+          icon: 'm-0! size-6!',
+          closeButton:
+            'top-4.5! right-3.75! left-auto! size-5! transform-none! border-0! bg-transparent! text-gray-11! hover:text-gray-12!',
         },
-        descriptionClassName: 'text-inherit!',
       }}
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+        success: <CircleCheckIcon className="size-6 text-success-9" />,
+        info: <InfoIcon className="size-6 text-gray-11" />,
+        warning: <TriangleAlertIcon className="size-6 text-warning-10" />,
+        error: <OctagonXIcon className="size-6 text-danger-9" />,
+        loading: <Loader2Icon className="size-6 animate-spin text-gray-11" />,
       }}
       style={
         {
           '--normal-text': 'var(--gray-12)',
           '--normal-bg': 'var(--panel)',
-          '--normal-border': 'var(--gray-6)',
+          '--normal-border': 'var(--gray-4)',
           '--border-radius': 'var(--radius)',
+          '--width': '330px',
+          zIndex: 60,
         } as React.CSSProperties
       }
       {...props}

@@ -8,12 +8,12 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 const checkboxVariants = cva(
-  'peer size-4 shrink-0 rounded-[4px] border border-gray-8 shadow-xs transition-shadow outline-none focus-visible:border-gray-8 focus-visible:ring-[3px] focus-visible:ring-gray-8/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger-9 aria-invalid:ring-danger-9/20 dark:bg-gray-6/30 dark:aria-invalid:ring-danger-9/40',
+  'peer size-4 shrink-0 rounded-sm border border-gray-6 bg-panel transition-colors outline-hidden enabled:hover:data-[state=unchecked]:border-accent-9 focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:bg-gray-3 aria-invalid:border-danger-9',
   {
     variants: {
       variant: {
         primary:
-          'data-[state=checked]:bg-accent-9 data-[state=checked]:text-on-accent dark:data-[state=checked]:bg-accent-9 data-[state=checked]:border-accent-9 data-[state=indeterminate]:bg-accent-9 data-[state=indeterminate]:text-on-accent data-[state=indeterminate]:border-accent-9',
+          'data-[state=checked]:border-accent-9 data-[state=checked]:bg-accent-9 data-[state=checked]:text-on-accent data-[state=indeterminate]:border-accent-9 data-[state=indeterminate]:bg-accent-9 data-[state=indeterminate]:text-on-accent disabled:data-[state=checked]:border-gray-5 disabled:data-[state=checked]:bg-gray-5 disabled:data-[state=checked]:text-gray-8 disabled:data-[state=indeterminate]:border-gray-5 disabled:data-[state=indeterminate]:bg-gray-5 disabled:data-[state=indeterminate]:text-gray-8',
         secondary:
           'data-[state=checked]:bg-gray-12 data-[state=checked]:text-gray-1 data-[state=checked]:border-gray-12 data-[state=indeterminate]:bg-gray-12 data-[state=indeterminate]:text-gray-1 data-[state=indeterminate]:border-gray-12',
       },
@@ -37,9 +37,9 @@ function Checkbox({ className, variant, checked, ...props }: CheckboxProps) {
         className="grid place-content-center text-current transition-none"
       >
         {checked === 'indeterminate' ? (
-          <MinusIcon className="size-3.5 text-current" />
+          <MinusIcon className="size-3 text-current" />
         ) : (
-          <CheckIcon className="size-3.5 text-current" />
+          <CheckIcon className="size-3 text-current" />
         )}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
