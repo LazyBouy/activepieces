@@ -18,6 +18,9 @@ import {
   BackgroundVariant,
   getNodesBounds,
   CoordinateExtent,
+  NodeChange,
+  XYPosition,
+  applyNodeChanges,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -34,6 +37,7 @@ import { FlowDragLayer } from './flow-drag-layer';
 import { flowCanvasHooks } from './hooks';
 import { flowCanvasConsts } from './utils/consts';
 import { flowCanvasUtils } from './utils/flow-canvas-utils';
+import { ApNode, ApNodeType } from './utils/types';
 import { AboveFlowWidgets } from './widgets';
 import Minimap from './widgets/minimap';
 import { useShowChevronNextToSelection } from './widgets/selection-chevron-button';
@@ -99,6 +103,57 @@ export const FlowCanvas = React.memo(
     }, [graphKey]);
     const [contextMenuType, setContextMenuType] = useState<ContextMenuType>(
       ContextMenuType.CANVAS,
+    );
+    const [committedPositions, setCommittedPositions] = useState<
+      Record<string, XYPosition>
+    >({});
+    const stepIds = useMemo(
+      () =>
+        new Set(
+          graph.nodes
+            .filter((node) => node.type === ApNodeType.STEP)
+            .map((node) => node.id),
+        ),
+      [graph],
+    );
+    const seedNodes = useMemo(
+      () =>
+        graph.nodes.map((node) => {
+          const position = committedPositions[node.id];
+          return isNil(position) ? node : { ...node, position };
+        }),
+      [graph, committedPositions],
+    );
+    const [localNodes, setLocalNodes] = useState({
+      key: graphKey,
+      nodes: seedNodes,
+    });
+    const nodes = localNodes.key === graphKey ? localNodes.nodes : seedNodes;
+    const onNodesChange = useCallback(
+      (changes: NodeChange<ApNode>[]) => {
+        const allowedChanges = changes.filter(
+          (change) => change.type !== 'position' || stepIds.has(change.id),
+        );
+        setLocalNodes((current) => ({
+          key: graphKey,
+          nodes: applyNodeChanges(
+            allowedChanges,
+            current.key === graphKey ? current.nodes : seedNodes,
+          ),
+        }));
+      },
+      [graphKey, seedNodes, stepIds],
+    );
+    const commitDraggedPositions = useCallback(
+      (draggedNodes: ApNode[]) => {
+        const updates = Object.fromEntries(
+          draggedNodes
+            .filter((node) => stepIds.has(node.id))
+            .map((node) => [node.id, node.position]),
+        );
+        setCommittedPositions((current) => ({ ...current, ...updates }));
+      },
+      [stepIds],
     );
 
     const onContextMenu = useCallback(
@@ -221,7 +276,18 @@ export const FlowCanvas = React.memo(
               }}
               translateExtent={translateExtent}
               nodeTypes={flowCanvasConsts.nodeTypes}
-              nodes={graph.nodes}
+              nodes={nodes}
+              onNodesChange={onNodesChange}
+              onNodeDragStop={(_event, _node, draggedNodes) =>
+                commitDraggedPositions(draggedNodes)
+              }
+              onSelectionDragStop={(_event, draggedNodes) =>
+                commitDraggedPositions(draggedNodes)
+              }
+              snapToGrid={true}
+              snapGrid={[16, 16]}
+              nodeDragThreshold={4}
+              nodeClickDistance={4}
               edgeTypes={flowCanvasConsts.edgeTypes}
               edges={graph.edges}
               draggable={false}

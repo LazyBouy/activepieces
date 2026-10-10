@@ -71,7 +71,7 @@ const ApStepCanvasNode = React.memo(
 
     const { attributes, listeners, setNodeRef } = useDraggable({
       id: step.name,
-      disabled: isTrigger || readonly,
+      disabled: true,
       data: {
         type: flowCanvasConsts.DRAGGED_STEP_TAG,
       },
