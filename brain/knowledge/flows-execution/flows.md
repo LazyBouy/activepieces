@@ -8,12 +8,12 @@ Flows are the core automation primitive: a versioned directed graph of trigger +
 
 ### Entities & services
 - **Flow** — persistent record: status (ENABLED/DISABLED), folderId, publishedVersionId, externalId, operationStatus (NONE/DELETING/ENABLING/DISABLING), ownerId, createdBy (`FlowCreator`: `{type: MCP|AGENT, id}`, null for humans → "AI" badge).
-- **FlowVersion** — immutable-once-LOCKED snapshot of the graph. DRAFT is editable; current schemaVersion is `'27'` (`LATEST_FLOW_SCHEMA_VERSION`). Holds trigger (full graph JSONB), connectionIds, agentIds, notes.
+- **FlowVersion** — immutable-once-LOCKED snapshot of the graph. DRAFT is editable; current schemaVersion is `'28'` (`LATEST_FLOW_SCHEMA_VERSION`). Holds trigger (full graph JSONB), connectionIds, agentIds, notes, stepPositions (canvas position per step name).
 - **Folder** — simple per-project grouping, case-insensitive unique.
 - Core service: `flow.service.ts`; single controller endpoint `POST /v1/flows/:id`.
 
 ### How it works
-- **All 26 modification types** dispatch through one endpoint `POST /v1/flows/:id` with a `FlowOperationRequest` discriminated union (ADD/UPDATE/DELETE/MOVE_ACTION, branch ops, UPDATE_TRIGGER, LOCK_AND_PUBLISH, CHANGE_STATUS, CHANGE_FOLDER, IMPORT_FLOW, SAVE_SAMPLE_DATA, notes, etc.).
+- **All 27 modification types** dispatch through one endpoint `POST /v1/flows/:id` with a `FlowOperationRequest` discriminated union (ADD/UPDATE/DELETE/MOVE_ACTION, branch ops, UPDATE_TRIGGER, LOCK_AND_PUBLISH, CHANGE_STATUS, CHANGE_FOLDER, IMPORT_FLOW, SAVE_SAMPLE_DATA, notes, UPDATE_STEP_POSITIONS, etc.).
 - **Draft vs published**: editing always hits DRAFT. `LOCK_AND_PUBLISH` snapshots to a LOCKED version + sets `publishedVersionId`; `USE_AS_DRAFT` copies it back. Only published flows can be enabled.
 - **Publish/enable side effects**: lock version → register trigger source (webhook/polling/app-event) → invalidate execution cache → emit WebSocket event → fire-and-forget telemetry. Disable unregisters the trigger source.
 - Sample data is captured per step (input+output) as File entities per flow version.
@@ -67,6 +67,12 @@ Flows are the core automation primitive: a versioned directed graph of trigger +
 
 - **An engine API client that throws `EngineGenericError` makes its executor's own `failStep` branch unreachable.** `utils.tryCatchAndThrowOnEngineError` returns USER-level `ExecutionError`s to the caller but **rethrows** ENGINE-level ones, so `const { error } = await tryCatchAndThrowOnEngineError(() => api.call())` followed by `if (error) return failStep(...)` is dead code for an ENGINE error: the run ends as `INTERNAL_ERROR`, which fails the worker job and pages oncall. `packages/server/engine/CLAUDE.md` says to use `EngineGenericError` for "failed API calls to the server", and that is right for the engine's own plumbing (progress, file store) and wrong for anything proxying a third party — OpenRouter returning 500 to the AI router is not our bug, and the docs promise a retryable FAILED step. Classify by whose fault it is, not by which layer threw. The AI router's client now throws a USER-level `AiRouterEvaluationError`. Nothing in lint or tsc catches this; only an executor test that asserts `steps.<name>.status === FAILED` does, which is how it was found.
 
+- **Step positions live in one version-level map, not on the steps, and there is no flow schema bump for them.** `flowVersion.stepPositions` (`Record<stepName, {x, y}>`, the box's top-left, snapped to 16) is its own jsonb column added by a TypeORM migration; `LATEST_FLOW_SCHEMA_VERSION` stays `'28'`. Putting `position` on each step would not survive: `createAction` / `_updateAction` rebuild steps field by field and the zod request schemas strip unknown keys. An empty map means "auto-layout". `UPDATE_STEP_POSITIONS` is routed with the note operations in `flow.service.ts`, so it updates the latest version in place even when it is LOCKED (no draft fork), emits no `FLOW_UPDATED` event and does not bump the flow's `updated`. Loads that cast `JSON.parse` output (git-sync, release snapshots) skip the zod default, so code reads `stepPositions ?? {}`.
+
+- **Every flow operation prunes `stepPositions` keys whose step no longer exists — because step names are reused.** `findUnusedName` hands out the lowest free `step_N`, so a deleted step's stored position would otherwise attach itself to the next new step. The prune runs at the tail of `flowOperations.apply` on the `getAllSteps` list it already builds, which also covers DELETE_BRANCH and a ROUTER turned into a PIECE. `MOVE_ACTION` is a DELETE plus an ADD internally, so `apply` snapshots the moved subtree's positions before and restores them after; `IMPORT_FLOW` replaces the map with the request's `stepPositions ?? {}`.
+
+- **Never send position updates through the keyed `debounce`, and never store a join position.** `debounce` in `core-utils` cancels the pending call whenever the same key repeats, so two quick drags under one key lose the first; position operations go straight onto the updates queue, one per drag-end or tidy-up. Routers and continue-on-failure steps merge implicitly (the engine runs `nextAction` once after the branches), so the canvas draws a computed join dot after the widest branch on the router's centre line; it comes from `flowLayoutUtil.resolveStepPositions`, is never stored and is not draggable.
+
 ### Editions
 CE has full authoring/publishing/folders/forms. EE/Cloud add owner transfer, piece filtering, template sharing, and active-flow quota enforcement on publish/enable.
 
@@ -75,7 +81,7 @@ Entry point: `flowService`, exported from `flows/flow/flow.service.ts` and calle
 
 - `packages/server/api/src/app/flows/` — server module: flow service + REST controller, folders, step-run sample data, human-input form/chat endpoints
 - `packages/server/api/src/app/flows/flow-version/migrations/` — schema migrations, including v21 step-output nesting and the `expression-rewriter`
-- `packages/core/execution/src/lib/flows/` — shared types: Flow, FlowVersion, the FlowOperationRequest union, actions, triggers
+- `packages/core/execution/src/lib/flows/` — shared types: Flow, FlowVersion, the FlowOperationRequest union, actions, triggers; `flowLayoutUtil` (left-to-right auto-layout, stored-position resolution, join dots)
 - `packages/web/src/features/flows/` — client API, hooks, components, export/import utils
 - `packages/web/src/app/builder/` — visual builder: Zustand state slices, step settings, step data panel, test-step, data selector
 - `packages/web/src/app/builder/flow-canvas/` — XYFlow canvas, orientation layout, canvas controls, PNG export

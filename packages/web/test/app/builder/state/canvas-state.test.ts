@@ -74,5 +74,6 @@ function createFlowVersion(): FlowVersion {
     connectionIds: [],
     backupFiles: null,
     notes: [],
+    stepPositions: {},
   };
 }

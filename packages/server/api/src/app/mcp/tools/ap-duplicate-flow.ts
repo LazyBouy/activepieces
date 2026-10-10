@@ -58,6 +58,7 @@ export const apDuplicateFlowTool = ({ mcp, userId }: McpToolContext, log: Fastif
                                 trigger: sourceFlow.version.trigger,
                                 schemaVersion: sourceFlow.version.schemaVersion ?? null,
                                 notes: sourceFlow.version.notes ?? null,
+                                stepPositions: sourceFlow.version.stepPositions ?? null,
                             },
                         },
                     })

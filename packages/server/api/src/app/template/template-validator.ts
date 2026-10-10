@@ -16,6 +16,7 @@ function createMinimalFlowVersion(template: FlowVersionTemplate): FlowVersion {
         connectionIds: [],
         backupFiles: null,
         notes: template.notes ?? [],
+        stepPositions: template.stepPositions ?? {},
     }
 }
 
@@ -42,6 +43,7 @@ export const templateValidator = {
                 displayName: flow.displayName,
                 trigger: flow.trigger,
                 schemaVersion: flow.schemaVersion,
+                stepPositions: flow.stepPositions,
             }
 
             const importOperation: FlowOperationRequest = { 

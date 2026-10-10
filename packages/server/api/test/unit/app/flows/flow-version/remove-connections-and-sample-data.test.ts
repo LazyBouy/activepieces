@@ -63,6 +63,7 @@ function buildChainedFlowVersion(stepCount: number): FlowVersion {
         schemaVersion: '1',
         connectionIds: [],
         agentIds: [],
+        stepPositions: {},
     }
 }
 

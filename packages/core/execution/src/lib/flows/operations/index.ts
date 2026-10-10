@@ -3,7 +3,7 @@ import { Nullable } from '@activepieces/core-utils'
 import { Metadata } from '@activepieces/core-utils'
 import { AiRouterActionSchema, AiRouterActionSettings, BranchCondition, CodeActionSchema, CodeActionSettings, FlowActionType, LoopOnItemsActionSchema, LoopOnItemsActionSettings, PieceActionSchema, PieceActionSettings, RouterActionSchema, RouterActionSettings } from '../actions/action'
 import { FlowStatus } from '../flow'
-import { FlowVersion, FlowVersionState } from '../flow-version'
+import { FlowVersion, FlowVersionState, StepPositions } from '../flow-version'
 import { Note } from '../note'
 import { SampleDataSetting, SaveSampleDataRequest } from '../sample-data'
 import { EmptyTrigger, FlowTrigger, FlowTriggerType, PieceTrigger, PieceTriggerSettings } from '../triggers/trigger'
@@ -21,6 +21,7 @@ import { _moveBranch } from './move-branch'
 import { notesOperations } from './notes-operations'
 import { _getOperationsForPaste } from './paste-operations'
 import { _skipAction } from './skip-action'
+import { stepPositionsOperations } from './step-positions-operations'
 import { _updateAction } from './update-action'
 import { _updateSampleDataInfo } from './update-sample-data-info'
 import { _updateTrigger } from './update-trigger'
@@ -52,6 +53,7 @@ export enum FlowOperationType {
     DELETE_NOTE = 'DELETE_NOTE',
     ADD_NOTE = 'ADD_NOTE',
     UPDATE_SAMPLE_DATA_INFO = 'UPDATE_SAMPLE_DATA_INFO',
+    UPDATE_STEP_POSITIONS = 'UPDATE_STEP_POSITIONS',
 }
 
 export const DeleteBranchRequest = z.object({
@@ -92,6 +94,11 @@ export const UpdateSampleDataInfoRequest = z.object({
 })
 export type UpdateSampleDataInfoRequest = z.infer<typeof UpdateSampleDataInfoRequest>
 
+export const UpdateStepPositionsRequest = z.object({
+    positions: StepPositions,
+})
+export type UpdateStepPositionsRequest = z.infer<typeof UpdateStepPositionsRequest>
+
 
 export const DuplicateBranchRequest = z.object({
     branchIndex: z.number(),
@@ -126,6 +133,7 @@ export const ImportFlowRequest = z.object({
     trigger: FlowTrigger,
     schemaVersion: Nullable(z.string()),
     notes: Nullable(z.array(Note)),
+    stepPositions: Nullable(StepPositions),
 })
 
 export type ImportFlowRequest = z.infer<typeof ImportFlowRequest>
@@ -321,6 +329,10 @@ export const FlowOperationRequest = z.discriminatedUnion('type', [
         type: z.literal(FlowOperationType.UPDATE_SAMPLE_DATA_INFO),
         request: UpdateSampleDataInfoRequest,
     }).describe('Update Sample Data Info'),
+    z.object({
+        type: z.literal(FlowOperationType.UPDATE_STEP_POSITIONS),
+        request: UpdateStepPositionsRequest,
+    }).describe('Update Step Positions'),
 ])
 
 
@@ -334,10 +346,13 @@ export const flowOperations = {
         let clonedVersion: FlowVersion = JSON.parse(JSON.stringify(flowVersion))
         switch (operation.type) {
             case FlowOperationType.MOVE_ACTION: {
+                const movedStepNames = flowStructureUtil.getAllChildSteps(flowStructureUtil.getActionOrThrow(operation.request.name, clonedVersion.trigger)).map((step) => step.name)
+                const movedPositions = stepPositionsOperations.pick({ flowVersion: clonedVersion, stepNames: movedStepNames })
                 const operations: FlowOperationRequest[] = _moveAction(clonedVersion, operation.request)
                 operations.forEach((operation) => {
                     clonedVersion = flowOperations.apply(clonedVersion, operation)
                 })
+                clonedVersion = stepPositionsOperations.update({ flowVersion: clonedVersion, request: { positions: movedPositions } })
                 break
             }
             case FlowOperationType.CHANGE_NAME:
@@ -398,6 +413,7 @@ export const flowOperations = {
                 operations.forEach((operation) => {
                     clonedVersion = flowOperations.apply(clonedVersion, operation)
                 })
+                clonedVersion = stepPositionsOperations.replace({ flowVersion: clonedVersion, stepPositions: operation.request.stepPositions })
                 break
             }
             case FlowOperationType.SET_SKIP_ACTION: {
@@ -424,11 +440,17 @@ export const flowOperations = {
                 clonedVersion = _updateSampleDataInfo(clonedVersion, operation.request)
                 break
             }
+            case FlowOperationType.UPDATE_STEP_POSITIONS: {
+                clonedVersion = stepPositionsOperations.update({ flowVersion: clonedVersion, request: operation.request })
+                break
+            }
             default:
                 break
         }
+        const allSteps = flowStructureUtil.getAllSteps(clonedVersion.trigger)
         const skippedStepNames = flowStructureUtil.getSkippedStepNames({ trigger: clonedVersion.trigger })
-        clonedVersion.valid = flowStructureUtil.getAllSteps(clonedVersion.trigger).every((step) => step.valid || skippedStepNames.has(step.name))
+        clonedVersion.valid = allSteps.every((step) => step.valid || skippedStepNames.has(step.name))
+        clonedVersion = stepPositionsOperations.prune({ flowVersion: clonedVersion, steps: allSteps })
         return clonedVersion
     },
 }

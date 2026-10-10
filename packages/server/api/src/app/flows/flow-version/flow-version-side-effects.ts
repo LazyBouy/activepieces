@@ -22,6 +22,9 @@ export const flowVersionSideEffects = (log: FastifyBaseLogger) => ({
         operation,
         entityManager,
     }: OnApplyOperationParams): Promise<void> {
+        if (operation.type === FlowOperationType.UPDATE_STEP_POSITIONS) {
+            return
+        }
         try {
             await handleSampleDataDeletion(projectId, flowVersion, operation, log)
             await handleUpdateTriggerWebhookSimulation(projectId, flowVersion, operation, log)

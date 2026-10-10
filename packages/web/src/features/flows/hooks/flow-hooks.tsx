@@ -494,6 +494,7 @@ export const flowHooks = {
         trigger: updatedTrigger,
         schemaVersion: templateFlow.schemaVersion,
         notes: templateFlow.notes,
+        stepPositions: templateFlow.stepPositions,
       },
     });
   },
@@ -564,6 +565,7 @@ export const flowHooks = {
             trigger: updatedTrigger,
             schemaVersion: templateFlow.schemaVersion,
             notes: templateFlow.notes,
+            stepPositions: templateFlow.stepPositions,
           },
         });
       },

@@ -28,6 +28,7 @@ function createFlowVersion(): FlowVersion {
         displayName: 'Rename test',
         agentIds: [],
         notes: [],
+        stepPositions: {},
         connectionIds: [],
         valid: true,
         state: FlowVersionState.DRAFT,

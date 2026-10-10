@@ -78,6 +78,7 @@ function buildFlow(): PopulatedFlow {
       connectionIds: [],
       backupFiles: null,
       notes: [],
+      stepPositions: {},
       trigger: {
         name: 'trigger',
         valid: true,

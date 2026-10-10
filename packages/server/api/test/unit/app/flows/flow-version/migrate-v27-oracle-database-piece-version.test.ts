@@ -69,6 +69,7 @@ function makeFlowVersion({ triggerVersion }: { triggerVersion: string }): FlowVe
         connectionIds: [],
         backupFiles: null,
         notes: [],
+        stepPositions: {},
     }
 }
 

@@ -64,6 +64,7 @@ export const handlerFlowBuilder = {
           schemaVersion: SCHEMA_VERSION,
           valid: true,
           notes: [onboardingNote, sampleDataNote],
+          stepPositions: {},
           trigger: {
             name: 'trigger',
             type: FlowTriggerType.PIECE,

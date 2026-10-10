@@ -932,6 +932,191 @@ describe('Flow Operations API', () => {
         })
     })
 
+    describe('POST /v1/flows/:id UPDATE_STEP_POSITIONS', () => {
+        const codeAction = (name: string): Record<string, unknown> => ({
+            type: FlowActionType.CODE,
+            displayName: name,
+            name,
+            settings: {
+                input: {},
+                sourceCode: {
+                    code: 'export const code = async () => { return true; }',
+                    packageJson: '{}',
+                },
+            },
+            valid: true,
+            skip: false,
+        })
+
+        const createFlowWithSteps = async (ctx: Awaited<ReturnType<typeof createTestContext>>, names: string[]): Promise<PopulatedFlow> => {
+            const createResponse = await ctx.post('/v1/flows', {
+                displayName: 'test flow',
+                projectId: ctx.project.id,
+            }, { query: { projectId: ctx.project.id } })
+            const flow: PopulatedFlow = createResponse?.json()
+            for (const [index, name] of names.entries()) {
+                await ctx.post(`/v1/flows/${flow.id}`, {
+                    type: FlowOperationType.ADD_ACTION,
+                    request: {
+                        parentStep: index === 0 ? 'trigger' : names[index - 1],
+                        stepLocationRelativeToParent: StepLocationRelativeToParent.AFTER,
+                        action: codeAction(name),
+                    },
+                })
+            }
+            return flow
+        }
+
+        it('persists the positions and prunes the key of a deleted step', async () => {
+            const ctx = await createTestContext(app!)
+            const flow = await createFlowWithSteps(ctx, ['step_1', 'step_2'])
+            const positions = {
+                trigger: { x: 176, y: 240 },
+                step_1: { x: 400, y: 256 },
+                step_2: { x: 640, y: 240 },
+            }
+
+            const response = await ctx.post(`/v1/flows/${flow.id}`, {
+                type: FlowOperationType.UPDATE_STEP_POSITIONS,
+                request: { positions },
+            })
+            const persisted = await ctx.get(`/v1/flows/${flow.id}`)
+            await ctx.post(`/v1/flows/${flow.id}`, {
+                type: FlowOperationType.DELETE_ACTION,
+                request: { names: ['step_1'] },
+            })
+            const afterDelete = await ctx.get(`/v1/flows/${flow.id}`)
+
+            expect(response?.statusCode).toBe(StatusCodes.OK)
+            expect(response?.json().version.stepPositions).toEqual(positions)
+            expect(persisted?.json().version.stepPositions).toEqual(positions)
+            expect(afterDelete?.json().version.stepPositions).toEqual({
+                trigger: { x: 176, y: 240 },
+                step_2: { x: 640, y: 240 },
+            })
+        })
+
+        it('ignores positions of names that are not steps of the flow', async () => {
+            const ctx = await createTestContext(app!)
+            const flow = await createFlowWithSteps(ctx, ['step_1'])
+
+            const response = await ctx.post(`/v1/flows/${flow.id}`, {
+                type: FlowOperationType.UPDATE_STEP_POSITIONS,
+                request: { positions: { step_1: { x: 400, y: 240 }, step_9: { x: 0, y: 0 } } },
+            })
+
+            expect(response?.statusCode).toBe(StatusCodes.OK)
+            expect(response?.json().version.stepPositions).toEqual({ step_1: { x: 400, y: 240 } })
+        })
+
+        it('updates a locked version in place, and a later edit forks a draft that carries the positions', async () => {
+            const ctx = await createTestContext(app!)
+            const mockFlow = createMockFlow({ projectId: ctx.project.id, status: FlowStatus.DISABLED })
+            await db.save('flow', mockFlow)
+            const lockedVersion = createMockFlowVersion({ flowId: mockFlow.id, state: FlowVersionState.LOCKED, valid: true })
+            await db.save('flow_version', lockedVersion)
+
+            const response = await ctx.post(`/v1/flows/${mockFlow.id}`, {
+                type: FlowOperationType.UPDATE_STEP_POSITIONS,
+                request: { positions: { trigger: { x: 32, y: 48 } } },
+            })
+            const versionsAfterMove = await ctx.get(`/v1/flows/${mockFlow.id}/versions`)
+            const renamed = await ctx.post(`/v1/flows/${mockFlow.id}`, {
+                type: FlowOperationType.CHANGE_NAME,
+                request: { displayName: 'Renamed' },
+            })
+
+            expect(response?.statusCode).toBe(StatusCodes.OK)
+            expect(response?.json().version.id).toBe(lockedVersion.id)
+            expect(response?.json().version.state).toBe(FlowVersionState.LOCKED)
+            expect(response?.json().version.stepPositions).toEqual({ trigger: { x: 32, y: 48 } })
+            expect(versionsAfterMove?.json().data).toHaveLength(1)
+            expect(renamed?.json().version.id).not.toBe(lockedVersion.id)
+            expect(renamed?.json().version.state).toBe(FlowVersionState.DRAFT)
+            expect(renamed?.json().version.stepPositions).toEqual({ trigger: { x: 32, y: 48 } })
+        })
+
+        it('does not bump the flow last-modified time', async () => {
+            const ctx = await createTestContext(app!)
+            const flow = await createFlowWithSteps(ctx, ['step_1'])
+            const before = await ctx.get(`/v1/flows/${flow.id}`)
+
+            await ctx.post(`/v1/flows/${flow.id}`, {
+                type: FlowOperationType.UPDATE_STEP_POSITIONS,
+                request: { positions: { step_1: { x: 416, y: 240 } } },
+            })
+            const after = await ctx.get(`/v1/flows/${flow.id}`)
+
+            expect(after?.json().updated).toBe(before?.json().updated)
+            expect(after?.json().version.stepPositions).toEqual({ step_1: { x: 416, y: 240 } })
+        })
+
+        it('IMPORT_FLOW stores the imported positions', async () => {
+            const ctx = await createTestContext(app!)
+            const flow = await createFlowWithSteps(ctx, [])
+
+            const response = await ctx.post(`/v1/flows/${flow.id}`, {
+                type: FlowOperationType.IMPORT_FLOW,
+                request: {
+                    displayName: 'Imported Flow',
+                    trigger: {
+                        type: FlowTriggerType.EMPTY,
+                        name: 'trigger',
+                        settings: {},
+                        valid: false,
+                        displayName: 'Select Trigger',
+                        nextAction: codeAction('step_1'),
+                    },
+                    schemaVersion: null,
+                    notes: null,
+                    stepPositions: { trigger: { x: 176, y: 240 }, step_1: { x: 432, y: 272 } },
+                },
+            })
+
+            expect(response?.statusCode).toBe(StatusCodes.OK)
+            expect(response?.json().version.stepPositions).toEqual({ trigger: { x: 176, y: 240 }, step_1: { x: 432, y: 272 } })
+        })
+
+        it('USE_AS_DRAFT copies the positions of the chosen version', async () => {
+            const ctx = await createTestContext(app!)
+            const mockFlow = createMockFlow({ projectId: ctx.project.id, status: FlowStatus.DISABLED })
+            await db.save('flow', mockFlow)
+            const lockedVersion = createMockFlowVersion({
+                flowId: mockFlow.id,
+                state: FlowVersionState.LOCKED,
+                created: '2026-01-01T00:00:00.000Z',
+                stepPositions: { trigger: { x: 16, y: 16 } },
+            })
+            const draftVersion = createMockFlowVersion({
+                flowId: mockFlow.id,
+                state: FlowVersionState.DRAFT,
+                created: '2026-01-02T00:00:00.000Z',
+            })
+            await db.save('flow_version', [lockedVersion, draftVersion])
+
+            const response = await ctx.post(`/v1/flows/${mockFlow.id}`, {
+                type: FlowOperationType.USE_AS_DRAFT,
+                request: { versionId: lockedVersion.id },
+            })
+
+            expect(response?.statusCode).toBe(StatusCodes.OK)
+            expect(response?.json().version.id).toBe(draftVersion.id)
+            expect(response?.json().version.stepPositions).toEqual({ trigger: { x: 16, y: 16 } })
+        })
+
+        it('rejects coordinates that are not numbers', async () => {
+            const ctx = await createTestContext(app!)
+            const flow = await createFlowWithSteps(ctx, ['step_1'])
+
+            const response = await ctx.post(`/v1/flows/${flow.id}`, {
+                type: FlowOperationType.UPDATE_STEP_POSITIONS,
+                request: { positions: { step_1: { x: 'left', y: 0 } } },
+            })
+
+            expect(response?.statusCode).toBe(StatusCodes.BAD_REQUEST)
+        })
+    })
+
     describe('GET /v1/flows/:flowId/versions', () => {
         it('should list flow versions', async () => {
             const ctx = await createTestContext(app!)

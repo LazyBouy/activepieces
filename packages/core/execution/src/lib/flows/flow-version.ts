@@ -11,6 +11,17 @@ export enum FlowVersionState {
     DRAFT = 'DRAFT',
 }
 
+export const StepCanvasPosition = z.object({
+    x: z.number(),
+    y: z.number(),
+})
+
+export type StepCanvasPosition = z.infer<typeof StepCanvasPosition>
+
+export const StepPositions = z.record(z.string(), StepCanvasPosition)
+
+export type StepPositions = z.infer<typeof StepPositions>
+
 export const FlowVersion = z.object({
     ...BaseModelSchema,
     flowId: z.string(),
@@ -24,6 +35,7 @@ export const FlowVersion = z.object({
     connectionIds: z.array(z.string()),
     backupFiles: Nullable(z.record(z.string(), z.string())),
     notes: z.array(Note),
+    stepPositions: StepPositions.default({}),
 })
 
 export type FlowVersion = z.infer<typeof FlowVersion>

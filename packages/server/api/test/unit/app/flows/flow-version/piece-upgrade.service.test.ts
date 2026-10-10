@@ -106,6 +106,7 @@ function storedFlowVersion(): FlowVersion {
         connectionIds: [],
         backupFiles: null,
         notes: [],
+        stepPositions: {},
     }
 }
 

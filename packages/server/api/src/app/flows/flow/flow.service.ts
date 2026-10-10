@@ -54,6 +54,7 @@ export const flowService = (log: FastifyBaseLogger) => ({
                 flowId: flow.id,
                 displayName: request.displayName,
                 notes: [],
+                stepPositions: {},
                 schemaVersion: null,
                 entityManager,
             })
@@ -331,7 +332,7 @@ export const flowService = (log: FastifyBaseLogger) => ({
         emitEvents = true,
         skipRequiredActionsCheck = false,
     }: UpdateParams): Promise<PopulatedFlow> {
-        const flowBeforeOperation = emitEvents
+        const flowBeforeOperation = emitEvents && operation.type !== FlowOperationType.UPDATE_STEP_POSITIONS
             ? previousFlow ?? await this.getOnePopulatedOrThrow({ id, projectId })
             : undefined
 
@@ -427,7 +428,8 @@ export const flowService = (log: FastifyBaseLogger) => ({
             }
             case FlowOperationType.ADD_NOTE:
             case FlowOperationType.UPDATE_NOTE:
-            case FlowOperationType.DELETE_NOTE: {
+            case FlowOperationType.DELETE_NOTE:
+            case FlowOperationType.UPDATE_STEP_POSITIONS: {
                 const lastVersion = await flowVersionService(
                     log,
                 ).getFlowVersionOrThrow({
@@ -1060,6 +1062,7 @@ async function createNewDraftIfVersionIsPublished({
                 flowId,
                 displayName: lockedVersion.displayName,
                 notes: lockedVersion.notes,
+                stepPositions: lockedVersion.stepPositions,
                 schemaVersion: lockedVersion.schemaVersion,
                 entityManager,
             })

@@ -37,6 +37,7 @@ function cleanFlowVersion(version: FlowVersion): FlowVersion {
         connectionIds: version.connectionIds,
         backupFiles: version.backupFiles,
         notes: version.notes,
+        stepPositions: version.stepPositions,
     }
 }
 

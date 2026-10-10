@@ -39,7 +39,8 @@ const CreateFlowTemplateSchema = z.object({
   tags: z.array(TemplateTagType).optional(),
   categories: z.array(z.string()).optional(),
 });
-type CreateFlowTemplateSchema = z.infer<typeof CreateFlowTemplateSchema>;
+type CreateFlowTemplateInput = z.input<typeof CreateFlowTemplateSchema>;
+type CreateFlowTemplateValues = z.output<typeof CreateFlowTemplateSchema>;
 
 export const CreateTemplateDialog = ({
   children,
@@ -50,7 +51,11 @@ export const CreateTemplateDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const { data: currentUser } = userHooks.useCurrentUser();
-  const form = useForm<CreateFlowTemplateSchema>({
+  const form = useForm<
+    CreateFlowTemplateInput,
+    unknown,
+    CreateFlowTemplateValues
+  >({
     defaultValues: {
       displayName: '',
       blogUrl: '',
@@ -75,6 +80,7 @@ export const CreateTemplateDialog = ({
         ...formValue.template,
         displayName: formValue.displayName,
         valid: formValue.template.valid ?? true,
+        stepPositions: formValue.template.stepPositions ?? {},
       };
 
       return templatesApi.create({

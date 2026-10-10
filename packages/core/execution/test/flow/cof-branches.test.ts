@@ -96,6 +96,7 @@ function buildFlow(headAction: FlowAction): FlowVersion {
         updatedBy: '',
         agentIds: [],
         notes: [],
+        stepPositions: {},
         valid: true,
         state: FlowVersionState.DRAFT,
         connectionIds: [],

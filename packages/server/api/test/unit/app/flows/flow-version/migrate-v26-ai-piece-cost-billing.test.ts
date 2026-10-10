@@ -23,6 +23,7 @@ const baseVersion = (trigger: FlowVersion['trigger']): FlowVersion => ({
     connectionIds: [],
     agentIds: [],
     notes: [],
+    stepPositions: {},
 })
 
 const trigger = (): FlowVersion['trigger'] => ({

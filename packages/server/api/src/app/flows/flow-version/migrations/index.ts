@@ -1,5 +1,5 @@
 import { ProjectId } from '@activepieces/core-utils'
-import { FlowVersion, FlowVersionState, FlowVersionTemplate } from '@activepieces/shared'
+import { FlowVersion, FlowVersionState, FlowVersionTemplate, StepPositions } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { migrateBranchToRouter } from './migrate-v0-branch-to-router'
 import { migrateConnectionIds } from './migrate-v1-connection-ids'
@@ -83,7 +83,7 @@ export const flowMigrations = {
     },
 }
 
-export const migrateFlowVersionTemplate = async ({ trigger, schemaVersion, notes, valid, displayName }: Pick<FlowVersionTemplate, 'trigger' | 'schemaVersion' | 'notes' | 'valid' | 'displayName'>): Promise<FlowVersionTemplate> => {
+export const migrateFlowVersionTemplate = async ({ trigger, schemaVersion, notes, stepPositions, valid, displayName }: MigrateFlowVersionTemplateParams): Promise<FlowVersionTemplate> => {
     return flowMigrations.apply({
         agentIds: [],
         connectionIds: [],
@@ -98,6 +98,7 @@ export const migrateFlowVersionTemplate = async ({ trigger, schemaVersion, notes
         state: FlowVersionState.DRAFT,
         schemaVersion,
         notes: notes ?? [],
+        stepPositions: stepPositions ?? {},
     })
 }
 
@@ -107,3 +108,6 @@ export const migrateFlowVersionTemplateList = async (flowVersions: FlowVersionTe
     }))
 }
 
+type MigrateFlowVersionTemplateParams = Pick<FlowVersionTemplate, 'trigger' | 'schemaVersion' | 'notes' | 'valid' | 'displayName'> & {
+    stepPositions?: StepPositions | null
+}

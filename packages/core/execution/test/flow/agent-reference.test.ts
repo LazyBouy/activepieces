@@ -12,6 +12,7 @@ function flowVersionWithAgentStep(input: Record<string, unknown>): FlowVersion {
         displayName: 'Sort the inbox',
         agentIds: [],
         notes: [],
+        stepPositions: {},
         valid: true,
         state: FlowVersionState.DRAFT,
         schemaVersion: null,

@@ -67,6 +67,7 @@ function flowWith(head: FlowAction): FlowVersion {
         connectionIds: [],
         backupFiles: null,
         notes: [],
+        stepPositions: {},
         trigger: {
             name: 'trigger',
             type: FlowTriggerType.EMPTY,

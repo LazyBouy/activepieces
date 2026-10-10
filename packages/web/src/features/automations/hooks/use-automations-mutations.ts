@@ -166,6 +166,7 @@ export function useAutomationsMutations(deps: MutationDeps) {
           trigger: version.trigger,
           schemaVersion: version.schemaVersion,
           notes: version.notes,
+          stepPositions: version.stepPositions,
         },
       });
     },

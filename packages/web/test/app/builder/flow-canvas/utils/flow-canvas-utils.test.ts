@@ -100,6 +100,7 @@ const createFlowVersion = (firstAction?: FlowAction): FlowVersion => {
     connectionIds: [],
     backupFiles: null,
     notes: [],
+    stepPositions: {},
   };
 };
 

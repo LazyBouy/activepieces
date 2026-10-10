@@ -128,6 +128,7 @@ function makeFlowVersion(overrides: { id?: string, trigger?: FlowVersion['trigge
         connectionIds: [],
         backupFiles: null,
         notes: [],
+        stepPositions: {},
     }
 }
 

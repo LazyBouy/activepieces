@@ -1,5 +1,5 @@
 import { isNil, Permission } from '@activepieces/core-utils'
-import { BranchCondition, BranchExecutionType, FlowActionType, flowCanvasUtils, flowStructureUtil, FlowTrigger, FlowTriggerType, McpToolDefinition, Note, ProjectScopedMcpServer, StepLocationRelativeToParent } from '@activepieces/shared'
+import { BranchCondition, BranchExecutionType, FlowActionType, flowLayoutUtil, flowStructureUtil, FlowTrigger, FlowTriggerType, McpToolDefinition, Note, ProjectScopedMcpServer, StepLocationRelativeToParent } from '@activepieces/shared'
 import type { Step } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
@@ -330,7 +330,8 @@ export const apFlowStructureTool = (mcp: ProjectScopedMcpServer, log: FastifyBas
                     return { content: [{ type: 'text', text: '❌ Flow not found' }] }
                 }
                 const { structure, stepByName } = buildFlowStructure(flow.version.trigger)
-                const positions = flowCanvasUtils.computeStepPositions(flow.version.trigger)
+                const { steps: resolvedPositions } = flowLayoutUtil.resolveStepPositions({ trigger: flow.version.trigger, stepPositions: flow.version.stepPositions })
+                const positions = new Map(Object.entries(resolvedPositions))
                 const text = formatFlowStructure(flow.version.displayName, flow.id, structure, stepByName, positions, flow.version.notes ?? [])
                 return {
                     content: [{ type: 'text', text }],

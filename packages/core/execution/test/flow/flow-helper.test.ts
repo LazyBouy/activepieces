@@ -32,6 +32,7 @@ const flowVersionWithBranching: FlowVersion = {
     displayName: 'Standup Reminder',
     agentIds: [],
     notes: [],
+    stepPositions: {},
     trigger: {
         name: 'trigger',
         type: FlowTriggerType.PIECE,
@@ -155,6 +156,7 @@ function createCodeAction(name: string): FlowAction {
 }
 const emptyScheduleFlowVersion: FlowVersion = {
     notes: [],
+    stepPositions: {},
     id: 'pj0KQ7Aypoa9OQGHzmKDl',
     created: '2023-05-24T00:16:41.353Z',
     updated: '2023-05-24T00:16:41.353Z',
@@ -208,6 +210,7 @@ describe('Flow Helper', () => {
         const result = flowOperations.apply(flowVersionWithBranching, operation)
         const expectedFlowVersion: FlowVersion = {
             notes: [],
+            stepPositions: {},
             id: 'pj0KQ7Aypoa9OQGHzmKDl',
             updatedBy: '',
             created: '2023-05-24T00:16:41.353Z',
@@ -506,6 +509,7 @@ function buildCofCodeAction({
 test('Duplicate Flow With Loops using Import', () => {
     const flowVersion: FlowVersion = {
         notes: [],
+        stepPositions: {},
         id: '2XuLcKZWSgKkiHh6RqWXg',
         created: '2023-05-23T00:14:47.809Z',
         updated: '2023-05-23T00:14:47.809Z',
@@ -658,6 +662,7 @@ describe('Paste remaps references to copied steps (GIT-1075)', () => {
             displayName: 'GIT-1075',
             agentIds: [],
             notes: [],
+            stepPositions: {},
             valid: true,
             state: FlowVersionState.DRAFT,
             connectionIds: [],

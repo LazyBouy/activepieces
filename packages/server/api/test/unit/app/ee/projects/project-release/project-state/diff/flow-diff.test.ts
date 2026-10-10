@@ -252,4 +252,32 @@ describe('Flow Diff Service', () => {
         expect(diff1.flows).toEqual([])
         expect(diff2.flows).toEqual([])
     })
+
+    it('should not detect flow as changed when only step positions differ', async () => {
+        const flowOne = flowGenerator.simpleActionAndTrigger()
+        flowOne.version.stepPositions = { trigger: { x: 176, y: 240 } }
+        const flowTwo = JSON.parse(JSON.stringify(flowOne))
+        flowTwo.version.stepPositions = { trigger: { x: 512, y: 32 }, [flowOne.version.trigger.nextAction.name]: { x: 736, y: 32 } }
+
+        const diff = await projectDiffService.diff({
+            currentState: {
+                flows: [flowOne],
+            },
+            newState: {
+                flows: [flowTwo],
+            },
+        })
+
+        expect(diff.flows).toEqual([])
+    })
+
+    it('should keep step positions in the cleaned flow state', async () => {
+        const flowOne = flowGenerator.simpleActionAndTrigger()
+        const stepPositions = { trigger: { x: 176, y: 240 }, [flowOne.version.trigger.nextAction.name]: { x: 400, y: 240 } }
+        flowOne.version.stepPositions = stepPositions
+
+        const state = await projectStateService(logger).getFlowState(flowOne)
+
+        expect(state.version.stepPositions).toEqual(stepPositions)
+    })
 })
