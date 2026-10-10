@@ -1,45 +1,42 @@
-import { t } from 'i18next';
+import { isNil } from '@activepieces/core-utils';
 import { useMemo } from 'react';
 
-import { StepStatusIcon, flowRunUtils } from '@/features/flow-runs';
-
 import { useBuilderStateContext } from '../../../builder-hooks';
-import { flowCanvasUtils } from '../../utils/flow-canvas-utils';
+import { StepStatusVisual, canvasRunUtils } from '../../utils/canvas-run-utils';
 
-import { StepNodeBadgeContainer } from './step-node-badge-container';
-
-const ApStepNodeStatusInRun = ({ stepName }: { stepName: string }) => {
-  const [run, loopIndexes] = useBuilderStateContext((state) => [
+export function useStepRunVisual({
+  stepName,
+  isSkipped,
+}: {
+  stepName: string;
+  isSkipped: boolean;
+}): StepStatusVisual | null {
+  const [run, loopsIndexes, trigger] = useBuilderStateContext((state) => [
     state.run,
     state.loopsIndexes,
+    state.flowVersion.trigger,
   ]);
-  const stepStatusInRun = useMemo(() => {
-    return flowCanvasUtils.getStepStatus(stepName, run, loopIndexes);
-  }, [stepName, run, loopIndexes]);
-  if (!stepStatusInRun) {
-    return null;
-  }
-  const { variant, text } = stepStatusInRun
-    ? flowRunUtils.getStatusIconForStep(stepStatusInRun)
-    : ({ variant: 'default', text: t('Testing...') } as const);
-  return (
-    <StepNodeBadgeContainer>
-      <div
-        className={flowRunUtils.getStatusContainerClassName({
-          variant,
-          withPaddingAndAnimation: true,
-        })}
-      >
-        <StepStatusIcon
-          status={stepStatusInRun}
-          size="3"
-          hideTooltip={true}
-        ></StepStatusIcon>
-        <div>{text}</div>
-      </div>
-    </StepNodeBadgeContainer>
-  );
-};
-ApStepNodeStatusInRun.displayName = 'ApStepNodeStatus';
-
-export { ApStepNodeStatusInRun };
+  return useMemo(() => {
+    if (isNil(run)) {
+      return null;
+    }
+    const output = canvasRunUtils.getStepOutput({
+      stepName,
+      run,
+      loopsIndexes,
+    });
+    return canvasRunUtils.resolveRunVisual({
+      output,
+      isSkipped,
+      showsSampleData:
+        stepName === trigger.name &&
+        canvasRunUtils.isTriggerShowingSampleData({ trigger, run }),
+      runCount: canvasRunUtils.getRunCount({
+        stepName,
+        trigger,
+        run,
+        loopsIndexes,
+      }),
+    });
+  }, [run, loopsIndexes, trigger, stepName, isSkipped]);
+}

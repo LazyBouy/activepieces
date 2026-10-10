@@ -9,6 +9,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -61,6 +62,7 @@ const ActionTestRunnerProvider = ({
       testAction(undefined);
     }
   }, [canFireTest, step, testAction]);
+  useRequestedStepTest({ stepName: step.name, canFireTest, fireTest });
 
   return (
     <ActionTestRunnerContext.Provider
@@ -192,6 +194,7 @@ const TriggerTestRunnerProvider = ({
     pollTrigger,
     setChatDrawerOpenSource,
   ]);
+  useRequestedStepTest({ stepName: step.name, canFireTest, fireTest });
 
   return (
     <TriggerTestRunnerContext.Provider
@@ -235,6 +238,38 @@ const TriggerTestRunnerProvider = ({
 const useTriggerTestRunner = () => useContext(TriggerTestRunnerContext);
 
 TriggerTestRunnerProvider.displayName = 'TriggerTestRunnerProvider';
+
+function useRequestedStepTest({
+  stepName,
+  canFireTest,
+  fireTest,
+}: {
+  stepName: string;
+  canFireTest: boolean;
+  fireTest: () => void;
+}) {
+  const [stepTestRequest, clearStepTestRequest, setStepDataPanelOpen] =
+    useBuilderStateContext((state) => [
+      state.stepTestRequest,
+      state.clearStepTestRequest,
+      state.setStepDataPanelOpen,
+    ]);
+  useEffect(() => {
+    if (stepTestRequest !== stepName || !canFireTest) {
+      return;
+    }
+    clearStepTestRequest();
+    setStepDataPanelOpen(true);
+    fireTest();
+  }, [
+    stepTestRequest,
+    stepName,
+    canFireTest,
+    fireTest,
+    clearStepTestRequest,
+    setStepDataPanelOpen,
+  ]);
+}
 
 export {
   ActionTestRunnerProvider,

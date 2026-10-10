@@ -1,53 +1,11 @@
-import { isNil } from '@activepieces/core-utils';
-import {
-  FlowTriggerType,
-  FlowVersionState,
-  flowStructureUtil,
-} from '@activepieces/shared';
-import { t } from 'i18next';
-import { RouteOff } from 'lucide-react';
-
-import { flowRunUtils } from '@/features/flow-runs';
-
-import { useBuilderStateContext } from '../../../builder-hooks';
-
-import { StepNodeBadgeContainer } from './step-node-badge-container';
-
-const ApStepNodeSkippedStatus = ({ stepName }: { stepName: string }) => {
-  const [run, stepType, isInDraft, isSkipped] = useBuilderStateContext(
-    (state) => [
-      state.run,
-      flowStructureUtil.getStep(stepName, state.flowVersion.trigger)?.type,
-      state.flowVersion.state === FlowVersionState.DRAFT,
-      flowStructureUtil.isSkipped({
-        stepName,
-        trigger: state.flowVersion.trigger,
-      }),
-    ],
-  );
-
-  const hasRun = !isNil(run);
-  const shouldShowSkippedStatus =
-    isSkipped && (isInDraft || hasRun) && stepType !== FlowTriggerType.EMPTY;
-
-  if (!shouldShowSkippedStatus) {
-    return null;
-  }
-
+const StepNodeSkippedLine = () => {
   return (
-    <StepNodeBadgeContainer>
-      <div
-        className={flowRunUtils.getStatusContainerClassName({
-          variant: 'default',
-          withPaddingAndAnimation: true,
-        })}
-      >
-        <RouteOff className="size-3" />
-        <div>{t('Skipped')}</div>
-      </div>
-    </StepNodeBadgeContainer>
+    <div
+      data-step-skipped-line
+      className="pointer-events-none absolute top-1/2 -right-2 -left-1 h-0.5 -translate-y-1/2 bg-canvas-skipped-line"
+    />
   );
 };
 
-ApStepNodeSkippedStatus.displayName = 'ApStepNodeSkippedStatus';
-export { ApStepNodeSkippedStatus };
+StepNodeSkippedLine.displayName = 'StepNodeSkippedLine';
+export { StepNodeSkippedLine };

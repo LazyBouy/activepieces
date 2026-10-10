@@ -19,6 +19,7 @@ const logoPlateVariants = cva(
         lg: 'size-10',
         xl: 'size-12',
         xxl: 'size-16',
+        canvas: 'size-14 rounded-lg',
       },
       border: {
         true: 'border border-solid',
@@ -41,6 +42,7 @@ const logoPlatePadding = cva('', {
       lg: 'p-2',
       xl: 'p-3',
       xxl: 'p-4',
+      canvas: 'p-2',
     },
   },
 });

@@ -53,7 +53,6 @@ export const FlowCanvas = React.memo(() => {
     selectStepByName,
     rightSidebar,
     notes,
-    canvasOrientation,
     readonly,
   ] = useBuilderStateContext((state) => {
     return [
@@ -64,7 +63,6 @@ export const FlowCanvas = React.memo(() => {
       state.selectStepByName,
       state.rightSidebar,
       state.flowVersion.notes,
-      state.canvasOrientation,
       state.readonly,
     ];
   });
@@ -108,9 +106,8 @@ export const FlowCanvas = React.memo(() => {
     return flowCanvasUtils.createFlowGraph({
       version: flowVersion,
       notes,
-      orientation: canvasOrientation,
     });
-  }, [graphKey, canvasOrientation]);
+  }, [graphKey]);
   const [contextMenuType, setContextMenuType] = useState<ContextMenuType>(
     ContextMenuType.CANVAS,
   );
@@ -323,5 +320,8 @@ const createGraphKey = (
   const notesGraphKey = notes
     .map((note) => `${note.id}-${note.position.x}-${note.position.y}`)
     .join('-');
-  return `${flowVersion.id}-${flowGraphKey}-${notesGraphKey}-${selectedStep}`;
+  const stepPositionsKey = Object.entries(flowVersion.stepPositions ?? {})
+    .map(([stepName, position]) => `${stepName}:${position.x},${position.y}`)
+    .join('|');
+  return `${flowVersion.id}-${flowGraphKey}-${notesGraphKey}-${stepPositionsKey}-${selectedStep}`;
 };

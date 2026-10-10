@@ -7,15 +7,30 @@ import {
   EmptyTrigger,
   FlowAction,
   FlowActionType,
+  FlowOperationType,
+  FlowTrigger,
   FlowTriggerType,
   FlowVersion,
   FlowVersionState,
+  LoopOnItemsAction,
   NoteColorVariant,
+  RouterAction,
+  RouterExecutionType,
+  StepLocationRelativeToParent,
+  StepPositions,
 } from '@activepieces/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flowCanvasUtils } from '@/app/builder/flow-canvas/utils/flow-canvas-utils';
-import { ApEdgeType, ApNodeType } from '@/app/builder/flow-canvas/utils/types';
+import {
+  ApButtonData,
+  ApEdgeType,
+  ApFlowEdge,
+  ApGraph,
+  ApJoinNode,
+  ApNodeType,
+  ApStepNode,
+} from '@/app/builder/flow-canvas/utils/types';
 
 vi.mock('@/features/flow-runs', () => ({
   flowRunUtils: {
@@ -24,205 +39,491 @@ vi.mock('@/features/flow-runs', () => ({
   },
 }));
 
-const createCodeAction = (
-  name: string,
-  nextAction?: CodeAction,
-): CodeAction => ({
-  name,
-  valid: true,
-  displayName: name,
-  lastUpdatedDate: '2026-01-01T00:00:00.000Z',
-  type: FlowActionType.CODE,
-  settings: {
-    sourceCode: {
-      code: 'export const code = async () => true;',
-      packageJson: '{}',
-    },
-    input: {},
-    errorHandlingOptions: {},
-  },
-  nextAction,
-});
-
-const createAiRouter = (): AiRouterAction => ({
-  name: 'step_1',
-  valid: true,
-  displayName: 'AI Router',
-  lastUpdatedDate: '2026-01-01T00:00:00.000Z',
-  type: FlowActionType.AI_ROUTER,
-  settings: {
-    text: '{{trigger.body.message}}',
-    question: 'Which team?',
-    matchMode: AiRouterMatchMode.BEST_MATCH,
-    branches: [
-      {
-        branchType: BranchExecutionType.CONDITION,
-        branchName: 'Billing',
-        description: 'payments',
-      },
-      {
-        branchType: BranchExecutionType.CONDITION,
-        branchName: 'Technical',
-        description: 'bugs',
-      },
-      {
-        branchType: BranchExecutionType.FALLBACK,
-        branchName: 'Otherwise',
-        description: 'else',
-      },
-    ],
-  },
-  children: [null, null, null],
-});
-
-const createFlowVersion = (firstAction?: FlowAction): FlowVersion => {
-  const trigger: EmptyTrigger = {
-    name: 'trigger',
-    valid: false,
-    displayName: 'Select Trigger',
-    type: FlowTriggerType.EMPTY,
-    settings: {},
-    lastUpdatedDate: '2026-01-01T00:00:00.000Z',
-    nextAction: firstAction,
-  };
-  return {
-    id: 'version-id',
-    created: '2026-01-01T00:00:00.000Z',
-    updated: '2026-01-01T00:00:00.000Z',
-    flowId: 'flow-id',
-    displayName: 'Test flow',
-    trigger,
-    updatedBy: null,
-    valid: false,
-    schemaVersion: null,
-    agentIds: [],
-    state: FlowVersionState.DRAFT,
-    connectionIds: [],
-    backupFiles: null,
-    notes: [],
-    stepPositions: {},
-  };
-};
-
-const getStepNode = (
-  graph: ReturnType<typeof flowCanvasUtils.createFlowGraph>,
-  name: string,
-) => {
-  const node = graph.nodes.find(
-    (n) => n.id === name && n.type === ApNodeType.STEP,
-  );
-  expect(node).toBeDefined();
-  return node!;
-};
-
-describe('flowCanvasUtils.createFlowGraph', () => {
-  it('keeps the existing vertical layout untouched', () => {
-    const graph = flowCanvasUtils.createFlowGraph({
-      version: createFlowVersion(createCodeAction('step_1')),
-      notes: [],
-      orientation: 'vertical',
-    });
-    expect(getStepNode(graph, 'trigger').position).toEqual({ x: 0, y: 0 });
-    expect(getStepNode(graph, 'step_1').position).toEqual({ x: 0, y: 120 });
-  });
-
-  it('lays steps out left to right in horizontal orientation', () => {
-    const graph = flowCanvasUtils.createFlowGraph({
-      version: createFlowVersion(
-        createCodeAction('step_1', createCodeAction('step_2')),
+describe('flowCanvasUtils.createFlowGraph node types', () => {
+  it('only creates step, join and note nodes and one edge type', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        code({
+          name: 'step_1',
+          next: router({
+            name: 'step_2',
+            branches: [{ name: 'Branch 1', head: code({ name: 'step_3' }) }],
+            next: loop({ name: 'step_4', body: code({ name: 'step_5' }) }),
+          }),
+        }),
       ),
-      notes: [],
-      orientation: 'horizontal',
+      notes: [note()],
     });
-    expect(getStepNode(graph, 'trigger').position).toEqual({ x: 0, y: 0 });
-    expect(getStepNode(graph, 'step_1').position).toEqual({ x: 160, y: 0 });
-    expect(getStepNode(graph, 'step_2').position).toEqual({ x: 320, y: 0 });
+
+    expect(new Set(graph.nodes.map((node) => node.type))).toEqual(
+      new Set([ApNodeType.STEP, ApNodeType.JOIN, ApNodeType.NOTE]),
+    );
+    expect(new Set(graph.edges.map((edge) => edge.type))).toEqual(
+      new Set([ApEdgeType.FLOW]),
+    );
   });
 
-  it('connects each step edge to its subgraph end node', () => {
-    const graph = flowCanvasUtils.createFlowGraph({
-      version: createFlowVersion(createCodeAction('step_1')),
-      notes: [],
-      orientation: 'horizontal',
+  it('keeps steps non-draggable, the trigger unselectable and notes on the dnd-kit path', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(code({ name: 'step_1' })),
+      notes: [note()],
     });
-    const triggerEdge = graph.edges.find((edge) => edge.source === 'trigger');
-    expect(triggerEdge?.type).toEqual(ApEdgeType.STRAIGHT_LINE);
-    expect(triggerEdge?.target).toEqual('trigger-subgraph-end');
-    const lastEdge = graph.edges.find((edge) => edge.source === 'step_1');
-    expect(lastEdge?.target).toEqual('step_1-subgraph-end');
+
+    expect(stepNode(graph, 'trigger').draggable).toBe(false);
+    expect(stepNode(graph, 'trigger').selectable).toBe(false);
+    expect(stepNode(graph, 'step_1').draggable).toBe(false);
+    expect(stepNode(graph, 'step_1').selectable).toBe(true);
+    const noteNode = graph.nodes.find((node) => node.type === ApNodeType.NOTE);
+    expect(noteNode).toMatchObject({
+      id: 'note-1',
+      draggable: true,
+      position: { x: 10, y: 20 },
+      zIndex: 0,
+    });
+  });
+});
+
+describe('flowCanvasUtils.createFlowGraph positions', () => {
+  it('lays an unpositioned flow out left to right from the layout origin', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        code({ name: 'step_1', next: code({ name: 'step_2' }) }),
+      ),
+    });
+
+    expect(stepNode(graph, 'trigger').position).toEqual({ x: 176, y: 240 });
+    expect(stepNode(graph, 'step_1').position).toEqual({ x: 400, y: 240 });
+    expect(stepNode(graph, 'step_2').position).toEqual({ x: 624, y: 240 });
+    expect(stepNode(graph, 'step_1').data.height).toBe(96);
+  });
+
+  it('uses stored positions verbatim and places unstored steps after their anchor', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        code({ name: 'step_1', next: code({ name: 'step_2' }) }),
+      ),
+      stepPositions: { step_1: { x: 800, y: 80 } },
+    });
+
+    expect(stepNode(graph, 'trigger').position).toEqual({ x: 176, y: 240 });
+    expect(stepNode(graph, 'step_1').position).toEqual({ x: 800, y: 80 });
+    expect(stepNode(graph, 'step_2').position).toEqual({ x: 1024, y: 80 });
+  });
+
+  it('places the join dot where the layout engine computes it', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        router({
+          name: 'step_1',
+          branches: [
+            { name: 'Branch 1', head: code({ name: 'step_2' }) },
+            { name: 'Otherwise', head: code({ name: 'step_3' }) },
+          ],
+          next: code({ name: 'step_4' }),
+        }),
+      ),
+    });
+
+    expect(joinNode(graph, 'step_1').position).toEqual({ x: 784, y: 280 });
+    expect(joinNode(graph, 'step_1').draggable).toBe(false);
+    expect(joinNode(graph, 'step_1').selectable).toBe(false);
+  });
+});
+
+describe('flowCanvasUtils.createFlowGraph edges and insert locations', () => {
+  it('connects a chain AFTER each source step and puts a stub on the last step', () => {
+    const graph = createGraph({
+      trigger: pieceTrigger(
+        code({ name: 'step_1', next: code({ name: 'step_2' }) }),
+      ),
+    });
+
+    expect(edgeSummaries(graph)).toEqual([
+      {
+        source: 'trigger',
+        sourceHandle: 'out-0',
+        target: 'step_1',
+        targetHandle: 'in',
+        insertLocation: after('trigger'),
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_1',
+        sourceHandle: 'out-0',
+        target: 'step_2',
+        targetHandle: 'in',
+        insertLocation: after('step_1'),
+        targetIsJoin: false,
+      },
+    ]);
+    expect(stubOutputs(graph)).toEqual(['step_2/out-0']);
+    expect(stepNode(graph, 'trigger').data.hasInput).toBe(false);
+    expect(stepNode(graph, 'step_1').data.hasIncomingEdge).toBe(true);
+  });
+
+  it('wires router branches into the join and the join into the next step', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        router({
+          name: 'step_1',
+          branches: [
+            { name: 'Branch 1', head: code({ name: 'step_2' }) },
+            { name: 'Otherwise' },
+          ],
+          next: code({ name: 'step_3' }),
+        }),
+      ),
+    });
+
+    expect(edgeSummaries(graph)).toEqual([
+      {
+        source: 'trigger',
+        sourceHandle: 'out-0',
+        target: 'step_1',
+        targetHandle: 'in',
+        insertLocation: after('trigger'),
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_1',
+        sourceHandle: 'out-0',
+        target: 'step_2',
+        targetHandle: 'in',
+        insertLocation: insideBranch('step_1', 0),
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_2',
+        sourceHandle: 'out-0',
+        target: 'step_1-join',
+        targetHandle: 'in',
+        insertLocation: after('step_2'),
+        targetIsJoin: true,
+      },
+      {
+        source: 'step_1',
+        sourceHandle: 'out-1',
+        target: 'step_1-join',
+        targetHandle: 'in',
+        insertLocation: insideBranch('step_1', 1),
+        targetIsJoin: true,
+      },
+      {
+        source: 'step_1-join',
+        sourceHandle: 'out',
+        target: 'step_3',
+        targetHandle: 'in',
+        insertLocation: after('step_1'),
+        targetIsJoin: false,
+      },
+    ]);
+    expect(stubOutputs(graph)).toEqual(['step_3/out-0']);
+    expect(joinNode(graph, 'step_1').data.stub).toBeNull();
+  });
+
+  it('gives the join a stub AFTER the router when nothing follows it', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        router({
+          name: 'step_1',
+          branches: [
+            { name: 'Branch 1', head: code({ name: 'step_2' }) },
+            { name: 'Otherwise' },
+          ],
+        }),
+      ),
+    });
+
+    expect(joinNode(graph, 'step_1').data.stub).toEqual(after('step_1'));
+    expect(stubOutputs(graph)).toEqual([]);
+    expect(graph.edges.some((edge) => edge.source === 'step_1-join')).toBe(
+      false,
+    );
+  });
+
+  it('closes a loop body with an edge back to the loop and continues done on the main row', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        loop({
+          name: 'step_1',
+          body: code({ name: 'step_2', next: code({ name: 'step_3' }) }),
+          next: code({ name: 'step_4' }),
+        }),
+      ),
+    });
+
+    expect(edgeSummaries(graph)).toEqual([
+      {
+        source: 'trigger',
+        sourceHandle: 'out-0',
+        target: 'step_1',
+        targetHandle: 'in',
+        insertLocation: after('trigger'),
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_1',
+        sourceHandle: 'out-1',
+        target: 'step_2',
+        targetHandle: 'in',
+        insertLocation: {
+          parentStepName: 'step_1',
+          stepLocationRelativeToParent:
+            StepLocationRelativeToParent.INSIDE_LOOP,
+        },
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_2',
+        sourceHandle: 'out-0',
+        target: 'step_3',
+        targetHandle: 'in',
+        insertLocation: after('step_2'),
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_3',
+        sourceHandle: 'out-0',
+        target: 'step_1',
+        targetHandle: 'in',
+        insertLocation: after('step_3'),
+        targetIsJoin: false,
+      },
+      {
+        source: 'step_1',
+        sourceHandle: 'out-0',
+        target: 'step_4',
+        targetHandle: 'in',
+        insertLocation: after('step_1'),
+        targetIsJoin: false,
+      },
+    ]);
+    expect(edgeById(graph, 'step_1-out-1-edge').data.sourceOutput).toEqual({
+      stepName: 'step_1',
+      isLoopOutput: true,
+    });
+    expect(
+      stepNode(graph, 'step_1').data.outputs.map((output) => output.labelKind),
+    ).toEqual(['done', 'loop']);
+  });
+
+  it('puts stubs on an empty loop body and on a loop that ends the flow', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(loop({ name: 'step_1' })),
+    });
+
+    expect(stubOutputs(graph)).toEqual(['step_1/out-0', 'step_1/out-1']);
+    expect(
+      stepNode(graph, 'step_1').data.outputs.map(
+        (output) => output.insertLocation,
+      ),
+    ).toEqual([
+      after('step_1'),
+      {
+        parentStepName: 'step_1',
+        stepLocationRelativeToParent: StepLocationRelativeToParent.INSIDE_LOOP,
+      },
+    ]);
+  });
+
+  it('gives continue-on-failure steps success and failure outputs that join', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        code({
+          name: 'step_1',
+          cof: true,
+          onFailure: code({ name: 'step_2' }),
+          next: code({ name: 'step_3' }),
+        }),
+      ),
+    });
+
+    const outputs = stepNode(graph, 'step_1').data.outputs;
+    expect(outputs.map((output) => output.labelKind)).toEqual([
+      'success',
+      'failure',
+    ]);
+    expect(edgeById(graph, 'step_1-out-0-edge')).toMatchObject({
+      target: 'step_1-join',
+      data: {
+        insertLocation: {
+          parentStepName: 'step_1',
+          stepLocationRelativeToParent:
+            StepLocationRelativeToParent.INSIDE_ON_SUCCESS_BRANCH,
+        },
+        targetRunCheck: {
+          kind: 'cof-branch',
+          stepName: 'step_1',
+          onFailure: false,
+        },
+      },
+    });
+    expect(edgeById(graph, 'step_1-out-1-edge')).toMatchObject({
+      target: 'step_2',
+      data: {
+        insertLocation: {
+          parentStepName: 'step_1',
+          stepLocationRelativeToParent:
+            StepLocationRelativeToParent.INSIDE_ON_FAILURE_BRANCH,
+        },
+      },
+    });
+    expect(edgeById(graph, 'step_1-join-out-edge').target).toBe('step_3');
+  });
+
+  it('treats a step with continue-on-failure off as a plain step', () => {
+    const graph = createGraph({
+      trigger: emptyTrigger(
+        code({
+          name: 'step_1',
+          cof: false,
+          onSuccess: code({ name: 'step_2' }),
+        }),
+      ),
+    });
+
+    expect(stepNode(graph, 'step_1').data.outputs).toHaveLength(1);
+    expect(graph.nodes.some((node) => node.type === ApNodeType.JOIN)).toBe(
+      false,
+    );
+    expect(graph.nodes.some((node) => node.id === 'step_2')).toBe(false);
+    expect(stubOutputs(graph)).toEqual(['step_1/out-0']);
   });
 });
 
 describe('flowCanvasUtils.createFlowGraph with an AI router', () => {
-  it('draws one labelled branch per route', () => {
-    const graph = flowCanvasUtils.createFlowGraph({
-      version: createFlowVersion(createAiRouter()),
-      notes: [],
-      orientation: 'horizontal',
-    });
+  it('draws one labelled output per route with the fallback last', () => {
+    const graph = createGraph({ trigger: emptyTrigger(aiRouter()) });
+    const outputs = stepNode(graph, 'step_1').data.outputs;
 
-    const branchLabels = graph.edges
-      .filter((edge) => edge.type === ApEdgeType.ROUTER_START_EDGE)
-      .map((edge) => edge.data?.label);
-
-    expect(branchLabels).toEqual(['Billing', 'Technical', 'Otherwise']);
+    expect(
+      outputs.map((output) => [output.labelKind, output.branchName]),
+    ).toEqual([
+      ['branch', 'Billing'],
+      ['branch', 'Technical'],
+      ['fallback', 'Otherwise'],
+    ]);
+    expect(outputs.map((output) => output.offset)).toEqual([32, 64, 96]);
+    expect(stepNode(graph, 'step_1').data.height).toBe(128);
   });
 
-  it('gives every empty route its own add button', () => {
-    const graph = flowCanvasUtils.createFlowGraph({
-      version: createFlowVersion(createAiRouter()),
-      notes: [],
-      orientation: 'horizontal',
-    });
+  it('routes every empty route into the join with its branch index', () => {
+    const graph = createGraph({ trigger: emptyTrigger(aiRouter()) });
+    const joinEdges = graph.edges.filter((edge) => edge.data.targetIsJoin);
 
-    const addButtons = graph.nodes.filter(
-      (node) => node.type === ApNodeType.BIG_ADD_BUTTON,
+    expect(joinEdges.map((edge) => edge.data.insertLocation)).toEqual([
+      insideBranch('step_1', 0),
+      insideBranch('step_1', 1),
+      insideBranch('step_1', 2),
+    ]);
+    expect(joinEdges.map((edge) => edge.data.targetRunCheck)).toEqual([
+      { kind: 'branch', stepName: 'step_1', branchIndex: 0 },
+      { kind: 'branch', stepName: 'step_1', branchIndex: 1 },
+      { kind: 'branch', stepName: 'step_1', branchIndex: 2 },
+    ]);
+    expect(joinNode(graph, 'step_1').data.stub).toEqual(after('step_1'));
+  });
+});
+
+describe('flowCanvasUtils.createFlowGraph with an empty trigger', () => {
+  it('shows no stub on a new flow', () => {
+    const graph = createGraph({ trigger: emptyTrigger() });
+
+    expect(graph.nodes.map((node) => node.id)).toEqual(['trigger']);
+    expect(graph.edges).toEqual([]);
+    expect(stubOutputs(graph)).toEqual([]);
+  });
+
+  it('shows the trigger stub once a trigger is chosen', () => {
+    const graph = createGraph({ trigger: pieceTrigger() });
+
+    expect(stubOutputs(graph)).toEqual(['trigger/out-0']);
+    expect(stepNode(graph, 'trigger').data.outputs[0].insertLocation).toEqual(
+      after('trigger'),
     );
+  });
+});
 
-    expect(addButtons).toHaveLength(3);
+describe('flowCanvasUtils.createAddOperationFromAddButtonData', () => {
+  it('adds inside the branch the edge belongs to', () => {
+    expect(
+      flowCanvasUtils.createAddOperationFromAddButtonData(
+        insideBranch('step_1', 2),
+      ),
+    ).toEqual({
+      type: FlowOperationType.ADD_ACTION,
+      actionLocation: {
+        parentStep: 'step_1',
+        stepLocationRelativeToParent:
+          StepLocationRelativeToParent.INSIDE_BRANCH,
+        branchIndex: 2,
+      },
+    });
+  });
+
+  it('adds after, inside a loop or inside a continue-on-failure branch without a branch index', () => {
+    const locations: Exclude<
+      StepLocationRelativeToParent,
+      StepLocationRelativeToParent.INSIDE_BRANCH
+    >[] = [
+      StepLocationRelativeToParent.AFTER,
+      StepLocationRelativeToParent.INSIDE_LOOP,
+      StepLocationRelativeToParent.INSIDE_ON_SUCCESS_BRANCH,
+      StepLocationRelativeToParent.INSIDE_ON_FAILURE_BRANCH,
+    ];
+    for (const location of locations) {
+      expect(
+        flowCanvasUtils.createAddOperationFromAddButtonData({
+          parentStepName: 'step_1',
+          stepLocationRelativeToParent: location,
+        }),
+      ).toEqual({
+        type: FlowOperationType.ADD_ACTION,
+        actionLocation: {
+          parentStep: 'step_1',
+          stepLocationRelativeToParent: location,
+        },
+      });
+    }
   });
 });
 
 describe('flowCanvasUtils.getAddStepParentName', () => {
   it('adds after the selected step', () => {
-    const version = createFlowVersion(
-      createCodeAction('step_1', createCodeAction('step_2')),
+    const trigger = emptyTrigger(
+      code({ name: 'step_1', next: code({ name: 'step_2' }) }),
     );
     expect(
       flowCanvasUtils.getAddStepParentName({
-        trigger: version.trigger,
+        trigger,
         selectedStep: 'step_1',
       }),
     ).toBe('step_1');
   });
 
   it('adds after the last step of the main chain when nothing is selected', () => {
-    const version = createFlowVersion(
-      createCodeAction('step_1', createCodeAction('step_2')),
+    const trigger = emptyTrigger(
+      code({ name: 'step_1', next: code({ name: 'step_2' }) }),
     );
     expect(
-      flowCanvasUtils.getAddStepParentName({
-        trigger: version.trigger,
-        selectedStep: null,
-      }),
+      flowCanvasUtils.getAddStepParentName({ trigger, selectedStep: null }),
     ).toBe('step_2');
   });
 
   it('ignores a selection that is no longer in the flow', () => {
-    const version = createFlowVersion(createCodeAction('step_1'));
+    const trigger = emptyTrigger(code({ name: 'step_1' }));
     expect(
       flowCanvasUtils.getAddStepParentName({
-        trigger: version.trigger,
+        trigger,
         selectedStep: 'deleted_step',
       }),
     ).toBe('step_1');
   });
 
   it('adds after the trigger of an empty flow', () => {
-    const version = createFlowVersion();
     expect(
       flowCanvasUtils.getAddStepParentName({
-        trigger: version.trigger,
+        trigger: emptyTrigger(),
         selectedStep: null,
       }),
     ).toBe('trigger');
@@ -257,6 +558,285 @@ describe('flowCanvasUtils.createFocusStepInGraphParams', () => {
   });
 });
 
+function createGraph({
+  trigger,
+  notes = [],
+  stepPositions = {},
+}: {
+  trigger: FlowTrigger;
+  notes?: FlowVersion['notes'];
+  stepPositions?: StepPositions;
+}): ApGraph {
+  return flowCanvasUtils.createFlowGraph({
+    version: createFlowVersion({ trigger, stepPositions }),
+    notes,
+  });
+}
+
+function stepNode(graph: ApGraph, name: string): ApStepNode {
+  const node = graph.nodes.find(
+    (candidate): candidate is ApStepNode =>
+      candidate.id === name && candidate.type === ApNodeType.STEP,
+  );
+  if (!node) {
+    throw new Error(`missing step node ${name}`);
+  }
+  return node;
+}
+
+function joinNode(graph: ApGraph, stepName: string): ApJoinNode {
+  const node = graph.nodes.find(
+    (candidate): candidate is ApJoinNode =>
+      candidate.type === ApNodeType.JOIN &&
+      candidate.data.stepName === stepName,
+  );
+  if (!node) {
+    throw new Error(`missing join node ${stepName}`);
+  }
+  return node;
+}
+
+function edgeById(graph: ApGraph, id: string): ApFlowEdge {
+  const edge = graph.edges.find((candidate) => candidate.id === id);
+  if (!edge) {
+    throw new Error(`missing edge ${id}`);
+  }
+  return edge;
+}
+
+function edgeSummaries(graph: ApGraph) {
+  return graph.edges.map((edge) => ({
+    source: edge.source,
+    sourceHandle: edge.sourceHandle,
+    target: edge.target,
+    targetHandle: edge.targetHandle,
+    insertLocation: edge.data.insertLocation,
+    targetIsJoin: edge.data.targetIsJoin,
+  }));
+}
+
+function stubOutputs(graph: ApGraph): string[] {
+  return graph.nodes
+    .filter((node): node is ApStepNode => node.type === ApNodeType.STEP)
+    .flatMap((node) =>
+      node.data.outputs
+        .filter((output) => output.hasStub)
+        .map((output) => `${node.id}/${output.id}`),
+    );
+}
+
+function after(parentStepName: string): ApButtonData {
+  return {
+    parentStepName,
+    stepLocationRelativeToParent: StepLocationRelativeToParent.AFTER,
+  };
+}
+
+function insideBranch(
+  parentStepName: string,
+  branchIndex: number,
+): ApButtonData {
+  return {
+    parentStepName,
+    stepLocationRelativeToParent: StepLocationRelativeToParent.INSIDE_BRANCH,
+    branchIndex,
+  };
+}
+
+function note(): FlowVersion['notes'][number] {
+  return {
+    id: 'note-1',
+    content: 'hello',
+    ownerId: null,
+    color: NoteColorVariant.YELLOW,
+    position: { x: 10, y: 20 },
+    size: { width: 240, height: 160 },
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+}
+
+function code({
+  name,
+  next,
+  cof,
+  onSuccess,
+  onFailure,
+}: {
+  name: string;
+  next?: FlowAction;
+  cof?: boolean;
+  onSuccess?: FlowAction;
+  onFailure?: FlowAction;
+}): CodeAction {
+  return {
+    name,
+    valid: true,
+    displayName: name,
+    lastUpdatedDate: NOW,
+    type: FlowActionType.CODE,
+    settings: {
+      sourceCode: {
+        code: 'export const code = async () => true;',
+        packageJson: '{}',
+      },
+      input: {},
+      errorHandlingOptions: {
+        continueOnFailure: { value: cof ?? false },
+        retryOnFailure: { value: false },
+      },
+    },
+    nextAction: next,
+    continueOnFailureBranches:
+      onSuccess || onFailure ? { onSuccess, onFailure } : undefined,
+  };
+}
+
+function loop({
+  name,
+  body,
+  next,
+}: {
+  name: string;
+  body?: FlowAction;
+  next?: FlowAction;
+}): LoopOnItemsAction {
+  return {
+    name,
+    valid: true,
+    displayName: name,
+    lastUpdatedDate: NOW,
+    type: FlowActionType.LOOP_ON_ITEMS,
+    settings: { items: '{{trigger}}' },
+    firstLoopAction: body,
+    nextAction: next,
+  };
+}
+
+function router({
+  name,
+  branches,
+  next,
+}: {
+  name: string;
+  branches: { name: string; head?: FlowAction }[];
+  next?: FlowAction;
+}): RouterAction {
+  return {
+    name,
+    valid: true,
+    displayName: name,
+    lastUpdatedDate: NOW,
+    type: FlowActionType.ROUTER,
+    settings: {
+      executionType: RouterExecutionType.EXECUTE_FIRST_MATCH,
+      branches: branches.map((branch, index) =>
+        index === branches.length - 1 && branch.name === 'Otherwise'
+          ? {
+              branchType: BranchExecutionType.FALLBACK,
+              branchName: branch.name,
+            }
+          : {
+              branchType: BranchExecutionType.CONDITION,
+              branchName: branch.name,
+              conditions: [[]],
+            },
+      ),
+    },
+    children: branches.map((branch) => branch.head ?? null),
+    nextAction: next,
+  };
+}
+
+function aiRouter(): AiRouterAction {
+  return {
+    name: 'step_1',
+    valid: true,
+    displayName: 'AI Router',
+    lastUpdatedDate: NOW,
+    type: FlowActionType.AI_ROUTER,
+    settings: {
+      text: '{{trigger.body.message}}',
+      question: 'Which team?',
+      matchMode: AiRouterMatchMode.BEST_MATCH,
+      branches: [
+        {
+          branchType: BranchExecutionType.CONDITION,
+          branchName: 'Billing',
+          description: 'payments',
+        },
+        {
+          branchType: BranchExecutionType.CONDITION,
+          branchName: 'Technical',
+          description: 'bugs',
+        },
+        {
+          branchType: BranchExecutionType.FALLBACK,
+          branchName: 'Otherwise',
+          description: 'else',
+        },
+      ],
+    },
+    children: [null, null, null],
+  };
+}
+
+function emptyTrigger(nextAction?: FlowAction): EmptyTrigger {
+  return {
+    name: 'trigger',
+    valid: false,
+    displayName: 'Select Trigger',
+    type: FlowTriggerType.EMPTY,
+    settings: {},
+    lastUpdatedDate: NOW,
+    nextAction,
+  };
+}
+
+function pieceTrigger(nextAction?: FlowAction): FlowTrigger {
+  return {
+    name: 'trigger',
+    valid: true,
+    displayName: 'Catch Webhook',
+    type: FlowTriggerType.PIECE,
+    settings: {
+      pieceName: '@activepieces/piece-webhook',
+      pieceVersion: '0.1.42',
+      triggerName: 'catch_webhook',
+      input: {},
+      propertySettings: {},
+    },
+    lastUpdatedDate: NOW,
+    nextAction,
+  };
+}
+
+function createFlowVersion({
+  trigger,
+  stepPositions,
+}: {
+  trigger: FlowTrigger;
+  stepPositions: StepPositions;
+}): FlowVersion {
+  return {
+    id: 'version-id',
+    created: NOW,
+    updated: NOW,
+    flowId: 'flow-id',
+    displayName: 'Test flow',
+    trigger,
+    updatedBy: null,
+    valid: false,
+    schemaVersion: null,
+    agentIds: [],
+    state: FlowVersionState.DRAFT,
+    connectionIds: [],
+    backupFiles: null,
+    notes: [],
+    stepPositions,
+  };
+}
+
 function createMediaQueryList(matches: boolean): MediaQueryList {
   return {
     matches,
@@ -269,3 +849,5 @@ function createMediaQueryList(matches: boolean): MediaQueryList {
     dispatchEvent: () => false,
   };
 }
+
+const NOW = '2026-01-01T00:00:00.000Z';

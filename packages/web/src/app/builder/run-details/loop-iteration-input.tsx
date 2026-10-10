@@ -77,7 +77,7 @@ const LoopIterationInput = ({ stepName }: { stepName: string }) => {
   }
 
   return (
-    <div className="absolute -top-4 -left-[45px]">
+    <div className="absolute top-1/2 right-full mt-3 mr-2.5">
       <div className="flex items-center justify-center flex-col gap-0.5">
         <LoopIterationInputButton
           onChange={onChange}

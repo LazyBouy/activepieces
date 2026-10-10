@@ -8,54 +8,15 @@ import { Edge } from '@xyflow/react';
 
 export enum ApNodeType {
   STEP = 'STEP',
-  ADD_BUTTON = 'ADD_BUTTON',
-  BIG_ADD_BUTTON = 'BIG_ADD_BUTTON',
-  GRAPH_END_WIDGET = 'GRAPH_END_WIDGET',
-  GRAPH_START_WIDGET = 'GRAPH_START_WIDGET',
-  /**Used for calculating the loop graph width */
-  LOOP_RETURN_NODE = 'LOOP_RETURN_NODE',
+  JOIN = 'JOIN',
   NOTE = 'NOTE',
 }
 
-export type ApStepNode = {
-  id: string;
-  type: ApNodeType.STEP;
-  position: {
-    x: number;
-    y: number;
-  };
-  data: {
-    step: FlowAction | FlowTrigger;
-  };
-  selectable?: boolean;
-  style?: React.CSSProperties;
-  draggable?: boolean;
-};
+export enum ApEdgeType {
+  FLOW = 'ApFlowEdge',
+}
 
-export type ApNoteNode = {
-  id: string;
-  type: ApNodeType.NOTE;
-  position: {
-    x: number;
-    y: number;
-  };
-  data: Pick<Note, 'content' | 'ownerId' | 'color' | 'size'>;
-};
-
-export type ApLoopReturnNode = {
-  id: string;
-  type: ApNodeType.LOOP_RETURN_NODE;
-  position: {
-    x: number;
-    y: number;
-  };
-  data: Record<string, never>;
-  selectable?: boolean;
-};
-
-export type ApButtonData = {
-  edgeId: string;
-} & (
+export type ApButtonData =
   | {
       parentStepName: string;
       stepLocationRelativeToParent:
@@ -68,121 +29,96 @@ export type ApButtonData = {
       parentStepName: string;
       stepLocationRelativeToParent: StepLocationRelativeToParent.INSIDE_BRANCH;
       branchIndex: number;
-    }
-);
+    };
 
-export type ApBigAddButtonNode = {
+export type ApOutputLabelKind =
+  | 'branch'
+  | 'fallback'
+  | 'done'
+  | 'loop'
+  | 'success'
+  | 'failure';
+
+export type ApStepOutput = {
   id: string;
-  type: ApNodeType.BIG_ADD_BUTTON;
+  offset: number;
+  labelKind: ApOutputLabelKind | null;
+  branchName: string | null;
+  branchIndex: number | null;
+  insertLocation: ApButtonData;
+  hasStub: boolean;
+};
+
+export type ApStepNode = {
+  id: string;
+  type: ApNodeType.STEP;
   position: {
     x: number;
     y: number;
   };
-  data: ApButtonData;
+  data: {
+    step: FlowAction | FlowTrigger;
+    height: number;
+    outputs: ApStepOutput[];
+    hasInput: boolean;
+    hasIncomingEdge: boolean;
+  };
   selectable?: boolean;
+  draggable?: boolean;
+  zIndex?: number;
   style?: React.CSSProperties;
 };
 
-export type ApGraphEndNode = {
+export type ApJoinNode = {
   id: string;
-  type: ApNodeType.GRAPH_END_WIDGET;
+  type: ApNodeType.JOIN;
   position: {
     x: number;
     y: number;
   };
   data: {
-    showWidget?: boolean;
+    stepName: string;
+    stub: ApButtonData | null;
   };
   selectable?: boolean;
+  draggable?: boolean;
+  zIndex?: number;
+  style?: React.CSSProperties;
 };
 
-export type ApNode =
-  | ApStepNode
-  | ApGraphEndNode
-  | ApBigAddButtonNode
-  | ApLoopReturnNode
-  | ApNoteNode;
+export type ApNoteNode = {
+  id: string;
+  type: ApNodeType.NOTE;
+  position: {
+    x: number;
+    y: number;
+  };
+  data: Pick<Note, 'content' | 'ownerId' | 'color' | 'size'>;
+  draggable?: boolean;
+  zIndex?: number;
+};
 
-export enum ApEdgeType {
-  STRAIGHT_LINE = 'ApStraightLineEdge',
-  LOOP_START_EDGE = 'ApLoopStartEdge',
-  LOOP_RETURN_EDGE = 'ApLoopReturnEdge',
-  ROUTER_START_EDGE = 'ApRouterStartEdge',
-  ROUTER_END_EDGE = 'ApRouterEndEdge',
-}
+export type ApNode = ApStepNode | ApJoinNode | ApNoteNode;
 
-export type ApStraightLineEdge = Edge & {
-  type: ApEdgeType.STRAIGHT_LINE;
+export type ApEdgeRunCheck =
+  | { kind: 'step'; stepName: string }
+  | { kind: 'branch'; stepName: string; branchIndex: number }
+  | { kind: 'cof-branch'; stepName: string; onFailure: boolean };
+
+export type ApFlowEdge = Edge & {
+  type: ApEdgeType.FLOW;
   data: {
-    drawArrowHead: boolean;
-    hideAddButton?: boolean;
-    parentStepName: string;
+    insertLocation: ApButtonData;
+    sourceStepName: string;
+    targetRunCheck: ApEdgeRunCheck;
+    targetIsJoin: boolean;
+    sourceOutput: { stepName: string; isLoopOutput: boolean } | null;
   };
 };
 
-export type ApLoopStartEdge = Edge & {
-  type: ApEdgeType.LOOP_START_EDGE;
-  data: {
-    isLoopEmpty: boolean;
-  };
-};
+export type ApEdge = ApFlowEdge;
 
-export type ApLoopReturnEdge = Edge & {
-  type: ApEdgeType.LOOP_RETURN_EDGE;
-  data: {
-    parentStepName: string;
-    isLoopEmpty: boolean;
-    drawArrowHeadAfterEnd: boolean;
-    verticalSpaceBetweenReturnNodeStartAndEnd: number;
-  };
-};
-
-export type ApRouterStartEdge = Edge & {
-  type: ApEdgeType.ROUTER_START_EDGE;
-  data: {
-    isBranchEmpty: boolean;
-    label: string;
-    drawHorizontalLine: boolean;
-    drawStartingVerticalLine: boolean;
-  } & (
-    | {
-        stepLocationRelativeToParent: StepLocationRelativeToParent.INSIDE_BRANCH;
-        branchIndex: number;
-      }
-    | {
-        stepLocationRelativeToParent:
-          | StepLocationRelativeToParent.INSIDE_ON_SUCCESS_BRANCH
-          | StepLocationRelativeToParent.INSIDE_ON_FAILURE_BRANCH;
-      }
-  );
-};
-
-export type ApRouterEndEdge = Edge & {
-  type: ApEdgeType.ROUTER_END_EDGE;
-  data: {
-    drawHorizontalLine: boolean;
-    verticalSpaceBetweenLastNodeInBranchAndEndLine: number;
-  } & (
-    | {
-        routerOrBranchStepName: string;
-        drawEndingVerticalLine: true;
-        isNextStepEmpty: boolean;
-      }
-    | {
-        drawEndingVerticalLine: false;
-      }
-  );
-};
-
-export type ApEdge =
-  | ApLoopStartEdge
-  | ApLoopReturnEdge
-  | ApStraightLineEdge
-  | ApRouterStartEdge
-  | ApRouterEndEdge;
 export type ApGraph = {
   nodes: ApNode[];
   edges: ApEdge[];
 };
-
-export type CanvasOrientation = 'vertical' | 'horizontal';

@@ -1,54 +1,42 @@
-import { useBuilderStateContext } from '@/app/builder/builder-hooks';
-import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
+import { t } from 'i18next';
+
 import { cn } from '@/lib/utils';
 
-import { StepNodeRunDurationAndPieceName } from './step-node-run-duration-and-piece-name';
+import { flowCanvasConsts } from '../../utils/consts';
 
 const StepNodeDisplayName = ({
   stepDisplayName,
-  stepIndex,
-  isSkipped,
   pieceDisplayName,
-  stepName,
+  isSkipped,
+  className,
 }: {
   stepDisplayName: string;
-  stepIndex: number;
-  isSkipped: boolean;
   pieceDisplayName: string;
-  stepName: string;
+  isSkipped: boolean;
+  className?: string;
 }) => {
-  const canvasOrientation = useBuilderStateContext(
-    (state) => state.canvasOrientation,
-  );
-  const isHorizontal = canvasOrientation === 'horizontal';
   return (
     <div
-      className={cn('grow flex flex-col justify-center min-w-0 w-full', {
-        'items-start': !isHorizontal,
-        'items-center': isHorizontal,
-      })}
+      data-step-label
+      style={{ width: flowCanvasConsts.STEP_LABEL_MIN_WIDTH }}
+      className={cn(
+        'pointer-events-none absolute top-full left-1/2 mt-2 flex -translate-x-1/2 flex-col items-center text-center',
+        className,
+      )}
     >
-      <div
-        className={cn('flex items-center min-w-0 w-full', {
-          'justify-between': !isHorizontal,
-          'justify-center': isHorizontal,
-        })}
-      >
-        <TextWithTooltip tooltipMessage={stepDisplayName} key={stepDisplayName}>
-          <div
-            className={cn('text-sm truncate grow shrink ', {
-              'text-gray-12/70': isSkipped,
-              'text-center': isHorizontal,
-            })}
-          >
-            {stepIndex}. {stepDisplayName}
-          </div>
-        </TextWithTooltip>
+      <div className="line-clamp-2 w-full text-base leading-tight font-medium wrap-anywhere text-gray-12">
+        {stepDisplayName}
       </div>
-      <StepNodeRunDurationAndPieceName
-        stepName={stepName}
-        pieceDisplayName={pieceDisplayName}
-      />
+      {isSkipped && (
+        <div className="w-full text-base leading-tight font-medium text-gray-12">
+          {t('(Skipped)')}
+        </div>
+      )}
+      {pieceDisplayName.length > 0 && (
+        <div className="mt-1 w-full truncate text-xsm leading-tight text-gray-11">
+          {pieceDisplayName}
+        </div>
+      )}
     </div>
   );
 };

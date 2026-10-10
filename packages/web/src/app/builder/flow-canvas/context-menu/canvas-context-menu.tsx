@@ -1,3 +1,5 @@
+import { createContext, useContext, useState } from 'react';
+
 import { ShortcutProps } from '@/components/custom/shortcut';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 
@@ -8,19 +10,27 @@ export enum ContextMenuType {
   STEP = 'STEP',
 }
 
+const CanvasContextMenuOpenContext = createContext(false);
+
 export const CanvasContextMenu = ({
   contextMenuType,
   children,
 }: CanvasContextMenuProps) => {
+  const [isOpen, setIsOpen] = useState(false);
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <CanvasContextMenuContent
-        contextMenuType={contextMenuType}
-      ></CanvasContextMenuContent>
-    </ContextMenu>
+    <CanvasContextMenuOpenContext.Provider value={isOpen}>
+      <ContextMenu onOpenChange={setIsOpen}>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <CanvasContextMenuContent
+          contextMenuType={contextMenuType}
+        ></CanvasContextMenuContent>
+      </ContextMenu>
+    </CanvasContextMenuOpenContext.Provider>
   );
 };
+
+export const useIsCanvasContextMenuOpen = () =>
+  useContext(CanvasContextMenuOpenContext);
 
 export type CanvasShortcutAction =
   | 'ExitDrag'

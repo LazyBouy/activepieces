@@ -1,37 +1,28 @@
-import { useBuilderStateContext } from '@/app/builder/builder-hooks';
 import { LogoPlate } from '@/components/custom/logo-plate';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const StepNodeLogo = ({
   isSkipped,
+  isLoading,
   logoUrl,
   displayName,
 }: {
   isSkipped: boolean;
-  logoUrl: string;
+  isLoading: boolean;
+  logoUrl: string | undefined;
   displayName: string;
 }) => {
-  const canvasOrientation = useBuilderStateContext(
-    (state) => state.canvasOrientation,
-  );
-  const isHorizontal = canvasOrientation === 'horizontal';
   return (
-    <div
-      className={cn('flex items-center justify-center rounded-sm shrink-0', {
-        'opacity-80': isSkipped,
+    <LogoPlate
+      src={isLoading ? undefined : logoUrl}
+      alt={displayName}
+      size="canvas"
+      className={cn('bg-panel', {
+        'opacity-50 grayscale': isSkipped,
       })}
-    >
-      <LogoPlate
-        src={logoUrl}
-        alt={displayName}
-        className={cn('rounded-lg border-gray-6/50', {
-          'size-9 p-2': !isHorizontal,
-          'size-12 p-2.5': isHorizontal,
-        })}
-        border
-        tint
-      />
-    </div>
+      fallback={<Skeleton className="size-10 rounded-sm" />}
+    />
   );
 };
 

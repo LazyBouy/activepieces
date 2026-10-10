@@ -19,20 +19,7 @@ describe('createCanvasState', () => {
     localStorage.clear();
   });
 
-  it('always lays the canvas out left to right', () => {
-    const state = createCanvasState(
-      {
-        readonly: false,
-        hideTestWidget: false,
-        run: null,
-        flowVersion: createFlowVersion(),
-      },
-      vi.fn(),
-    );
-    expect(state.canvasOrientation).toBe('horizontal');
-  });
-
-  it('ignores the old stored orientation and panning preferences', () => {
+  it('has no orientation, panning or minimap preference', () => {
     localStorage.setItem('ap.builder.canvasOrientation', 'vertical');
     localStorage.setItem('defaultPanningMode', 'grab');
     const state = createCanvasState(
@@ -44,10 +31,28 @@ describe('createCanvasState', () => {
       },
       vi.fn(),
     );
-    expect(state.canvasOrientation).toBe('horizontal');
+    expect(Object.keys(state)).not.toContain('canvasOrientation');
     expect(Object.keys(state)).not.toContain('panningMode');
     expect(Object.keys(state)).not.toContain('showMinimap');
     expect(Object.keys(state)).not.toContain('setCanvasOrientation');
+  });
+
+  it('records a step test request from the canvas and clears it', () => {
+    const set = vi.fn();
+    const state = createCanvasState(
+      {
+        readonly: false,
+        hideTestWidget: false,
+        run: null,
+        flowVersion: createFlowVersion(),
+      },
+      set,
+    );
+    expect(state.stepTestRequest).toBeNull();
+    state.requestStepTest('step_1');
+    expect(set).toHaveBeenLastCalledWith({ stepTestRequest: 'step_1' });
+    state.clearStepTestRequest();
+    expect(set).toHaveBeenLastCalledWith({ stepTestRequest: null });
   });
 });
 

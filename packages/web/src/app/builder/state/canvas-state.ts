@@ -7,12 +7,10 @@ import { flowRunUtils } from '@/features/flow-runs';
 
 import { BuilderState } from '../builder-hooks';
 import { flowCanvasUtils } from '../flow-canvas/utils/flow-canvas-utils';
-import { CanvasOrientation } from '../flow-canvas/utils/types';
 
 export type StepDataPanelView = 'drawer' | 'split';
 
 export type CanvasState = {
-  canvasOrientation: CanvasOrientation;
   readonly: boolean;
   hideTestWidget: boolean;
   rightSidebar: RightSideBarType;
@@ -43,6 +41,9 @@ export type CanvasState = {
   setStepDataPanelView: (view: StepDataPanelView) => void;
   isStepDataPanelOpen: boolean;
   setStepDataPanelOpen: (open: boolean) => void;
+  stepTestRequest: string | null;
+  requestStepTest: (stepName: string) => void;
+  clearStepTestRequest: () => void;
 };
 
 type CanvasStateInitialState = Pick<
@@ -68,7 +69,6 @@ export const createCanvasState = (
     initiallySelectedStep === 'trigger' &&
     initialState.flowVersion.trigger.type === FlowTriggerType.EMPTY;
   return {
-    canvasOrientation: 'horizontal',
     readonly: initialState.readonly,
     hideTestWidget: initialState.hideTestWidget ?? false,
     selectedStep: initiallySelectedStep,
@@ -122,6 +122,10 @@ export const createCanvasState = (
 
         return {
           openedPieceSelectorStepNameOrAddButtonId: null,
+          stepTestRequest:
+            state.stepTestRequest === selectedStep
+              ? state.stepTestRequest
+              : null,
           selectedStep,
           rightSidebar,
           selectedBranchIndex: null,
@@ -194,6 +198,9 @@ export const createCanvasState = (
         isStepDataPanelOpen: open,
       }));
     },
+    stepTestRequest: null,
+    requestStepTest: (stepName: string) => set({ stepTestRequest: stepName }),
+    clearStepTestRequest: () => set({ stepTestRequest: null }),
   };
 };
 

@@ -321,6 +321,10 @@
   --animate-skeleton-sweep: skeleton-sweep 1400ms
     cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
   --animate-fade: fade 0.2s ease-out;
+  --animate-stub-in: stub-in 200ms ease;
+  --animate-canvas-toolbar-in: overlay-in 100ms cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  --animate-trigger-test-in: trigger-test-in 100ms
+    cubic-bezier(0.55, 0.055, 0.675, 0.19);
   --animate-highlight: highlight 1s ease-out;
   --animate-typing: typing 0.7s steps(7) alternate;
   --animate-typing-sm: typing 0.5s steps(5) alternate;
@@ -545,6 +549,20 @@
   @keyframes overlay-in {
     from {
       opacity: 0;
+    }
+  }
+
+  @keyframes stub-in {
+    from {
+      opacity: 0;
+      scale: 0;
+    }
+  }
+
+  @keyframes trigger-test-in {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
     }
   }
 
@@ -779,6 +797,10 @@
   [class*='animate-blur-reveal'],
   [class*='animate-accordion'],
   [class*='animate-collapsible'],
+  [class*='animate-stub-in'],
+  [class*='animate-canvas-toolbar-in'],
+  [class*='animate-trigger-test-in'],
+  .canvas-running-ring,
   [data-slot='drawer-content'][data-vaul-drawer][data-state],
   [data-slot='drawer-overlay'][data-vaul-overlay][data-state] {
     animation: none !important;
@@ -1403,9 +1425,13 @@
     display: none;
   }
 
-  .react-flow__edge.selectable > path {
-    /* If necessary, add !important to the rule */
-    pointer-events: none !important;
+  .react-flow__edges > svg:hover {
+    z-index: 45 !important;
+  }
+
+  .react-flow__node-STEP:hover,
+  .react-flow__node-STEP:focus-within {
+    z-index: 60 !important;
   }
 
   /* This is a hack to fix the issue with the pointer events being set to none when the vaul drawer is open */
@@ -1466,6 +1492,35 @@
   html {
     @apply font-sans;
   }
+}
+
+@property --canvas-ring-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes canvas-ring-spin {
+  to {
+    --canvas-ring-angle: 360deg;
+  }
+}
+
+.canvas-running-ring {
+  background: conic-gradient(
+    from var(--canvas-ring-angle),
+    var(--canvas-running) 0%,
+    var(--canvas-running) 20%,
+    color-mix(in oklab, var(--canvas-running) 20%, transparent) 33%,
+    color-mix(in oklab, var(--canvas-running) 20%, transparent) 67%,
+    var(--canvas-running) 90%,
+    var(--canvas-running) 100%
+  );
+  animation: canvas-ring-spin 1.5s linear infinite;
+}
+
+.canvas-running-ring-slow {
+  animation-duration: 4.5s;
 }
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
