@@ -1,32 +1,32 @@
 const ACHROMATIC_CHROMA = 0.02
 const MAX_CHROMA_RATIO = 1.25
-const DEFAULT_ACCENT_SOLID = '#6e41e2'
+const DEFAULT_ACCENT_SOLID = '#ff6900'
 const WHITE = '#ffffff'
 const BLACK = '#000000'
 const TEXT_CONTRAST = 4.5
 const MARK_CONTRAST = 3
 const LIGHTNESS_STEP = 0.5
 const STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
-const LIGHT_GROUNDS = [100, 99.3, 98.2, 97, 95.5, 93.8]
-const DARK_GROUNDS = [11, 16.2, 19.5, 23.5, 27.5]
-const LIGHT_MARK_GROUNDS = [100, 99.3, 98.2]
-const DARK_MARK_GROUNDS = [11, 16.2]
+const LIGHT_GROUNDS = [100, 98.5, 97, 95.5, 92.2]
+const DARK_GROUNDS = [20.5, 26.9, 28.9, 31.7, 34.9]
+const LIGHT_MARK_GROUNDS = [100, 98.5, 97]
+const DARK_MARK_GROUNDS = [20.5, 26.9]
 const LIGHT_SHADES: Record<RampStep, number> = { 1: 25, 2: 50, 3: 100, 4: 150, 5: 200, 6: 250, 7: 300, 8: 400, 9: 600, 10: 600, 11: 700, 12: 900 }
 const DARK_SHADES: Record<RampStep, number> = { 1: 950, 2: 950, 3: 950, 4: 900, 5: 900, 6: 800, 7: 800, 8: 700, 9: 600, 10: 400, 11: 300, 12: 100 }
 const DARK_SURFACES: Partial<Record<RampStep, { lightness: number, chromaShare: number }>> = {
-    1: { lightness: 14, chromaShare: 0.35 },
-    2: { lightness: 17, chromaShare: 0.5 },
-    3: { lightness: 20.5, chromaShare: 0.6 },
-    4: { lightness: 24, chromaShare: 0.65 },
-    5: { lightness: 27.5, chromaShare: 0.7 },
-    6: { lightness: 31, chromaShare: 0.72 },
-    7: { lightness: 38, chromaShare: 0.75 },
+    1: { lightness: 21.5, chromaShare: 0.35 },
+    2: { lightness: 24.5, chromaShare: 0.5 },
+    3: { lightness: 28.5, chromaShare: 0.6 },
+    4: { lightness: 31.5, chromaShare: 0.65 },
+    5: { lightness: 34.5, chromaShare: 0.7 },
+    6: { lightness: 37, chromaShare: 0.72 },
+    7: { lightness: 41, chromaShare: 0.75 },
     8: { lightness: 47, chromaShare: 0.8 },
 }
 const SCALE_ANCHORS: Record<RampScale, { family: ColorFamily, shade: number }> = {
-    accent: { family: 'violet', shade: 600 },
+    accent: { family: 'orange', shade: 500 },
     danger: { family: 'red', shade: 600 },
-    warning: { family: 'amber', shade: 500 },
+    warning: { family: 'yellow', shade: 500 },
     success: { family: 'green', shade: 600 },
 }
 
@@ -424,7 +424,7 @@ function ramp({ hex, scale }: { hex: string, scale: RampScale }): Ramp {
         hex,
         family: achromatic ? SCALE_ANCHORS[scale].family : nearestFamily({ hue: seed.hue }),
         anchorShade: SCALE_ANCHORS[scale].shade,
-        exact: scale !== 'accent' && hex.toLowerCase() === anchorHex({ scale }),
+        exact: hex.toLowerCase() === anchorHex({ scale }),
     })
 }
 
@@ -545,7 +545,7 @@ function readable({
 }): OklchColor {
     const direction = theme === 'light' ? -LIGHTNESS_STEP : LIGHTNESS_STEP
     const passes = (candidate: OklchColor): boolean =>
-        grounds.every((ground) => luminanceContrast({ first: candidate, second: ground }) >= minimum)
+        grounds.every((ground) => luminanceContrast({ first: asWritten({ color: candidate }), second: ground }) >= minimum)
     const attempt = (candidate: OklchColor): OklchColor =>
         passes(candidate) || candidate.lightness <= 0 || candidate.lightness >= 100
             ? candidate
@@ -604,7 +604,16 @@ function normaliseHue({ hue }: { hue: number }): number {
 }
 
 function formatOklch({ color }: { color: OklchColor }): string {
-    return `oklch(${round({ value: color.lightness, places: 2 })}% ${round({ value: color.chroma, places: 4 })} ${round({ value: color.hue, places: 2 })})`
+    const { lightness, chroma, hue } = asWritten({ color })
+    return `oklch(${lightness}% ${chroma} ${hue})`
+}
+
+function asWritten({ color }: { color: OklchColor }): OklchColor {
+    return {
+        lightness: round({ value: color.lightness, places: 2 }),
+        chroma: round({ value: color.chroma, places: 4 }),
+        hue: round({ value: color.hue, places: 2 }),
+    }
 }
 
 function oklchToLinear({ color }: { color: OklchColor }): Srgb {

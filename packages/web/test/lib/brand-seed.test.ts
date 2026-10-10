@@ -1,38 +1,31 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from 'vitest';
+import { brandColors } from '@activepieces/shared';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { brandSeed } from '@/lib/brand-seed';
 
 describe('brandSeed', () => {
-  it('keeps a preview on the page when the saved branding is applied again, until it is cleared', () => {
-    brandSeed.apply({
-      primaryColor: '#6e41e2',
-      statusColors: { danger: '#b91c1c' },
-    });
-    expect(variable({ name: '--accent-light-9' })).toBe('#6e41e2');
-    expect(variable({ name: '--danger-light-9' })).toBe('#b91c1c');
+  beforeEach(() => {
+    document.documentElement.removeAttribute('style');
+  });
 
-    brandSeed.setPreview({
-      primaryColor: '#0ea5e9',
-      statusColors: { warning: '#eab308' },
-    });
-    brandSeed.apply({
-      primaryColor: '#16a34a',
-      statusColors: { danger: '#991b1b' },
-    });
-    expect(variable({ name: '--accent-light-9' })).toBe('#0ea5e9');
-    expect(variable({ name: '--warning-light-9' })).toBe('#eab308');
-    expect(variable({ name: '--danger-light-9' })).toBe('');
+  it('writes no colour variable, so the stylesheet palette is the only one', () => {
+    brandSeed.clear();
+    expect(document.documentElement.style.length).toBe(0);
+  });
 
-    brandSeed.clearPreview();
-    expect(variable({ name: '--accent-light-9' })).toBe('#16a34a');
-    expect(variable({ name: '--danger-light-9' })).toBe('#991b1b');
-    expect(variable({ name: '--warning-light-9' })).toBe('');
+  it('removes colour variables an earlier seed left on the page', () => {
+    const { style } = document.documentElement;
+    style.setProperty('--accent-light-9', '#0ea5e9');
+    style.setProperty('--danger-dark-3', '#3a0a0a');
+    style.setProperty('--on-accent', '#000000');
+    style.setProperty('--on-warning-seed', '#ffffff');
+    brandSeed.clear();
+    brandColors
+      .variableNames()
+      .forEach((name) => expect(style.getPropertyValue(name)).toBe(''));
+    expect(style.length).toBe(0);
   });
 });
-
-function variable({ name }: { name: string }): string {
-  return document.documentElement.style.getPropertyValue(name);
-}

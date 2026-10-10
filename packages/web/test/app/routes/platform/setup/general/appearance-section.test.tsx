@@ -8,10 +8,6 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  primaryColor: '#6e41e2',
-  brandColor: '#6e41e2',
-  themeColors: null as Record<string, unknown> | null,
-  statusColors: {} as Record<string, string> | undefined,
   customAppearanceEnabled: true,
   update: vi.fn(async (_formdata: FormData, _platformId: string) => undefined),
   toastSuccess: vi.fn(),
@@ -53,8 +49,8 @@ vi.mock('@/hooks/platform-hooks', () => ({
       platform: {
         id: 'platform-1',
         name: 'Northwind',
-        primaryColor: state.primaryColor,
-        themeColors: state.themeColors,
+        primaryColor: '#0ea5e9',
+        themeColors: { status: { danger: '#b91c1c' } },
         fullLogoUrl: '',
         logoIconUrl: '',
         favIconUrl: '',
@@ -67,23 +63,6 @@ vi.mock('@/hooks/platform-hooks', () => ({
 vi.mock('@/hooks/flags-hooks', () => ({
   flagsHooks: {
     queryKey: ['flags'],
-    useWebsiteBranding: () => ({
-      colors: {
-        avatar: '#515151',
-        'blue-link': '#1890ff',
-        danger: '#f94949',
-        selection: '#e2dbfa',
-        primary: {
-          default: state.brandColor,
-          dark: '#5a2fd0',
-          light: '#e2d9fb',
-          medium: '#8b6de8',
-        },
-        warn: { default: '#f78a3b', light: '#fff6e4', dark: '#cc8805' },
-        success: { default: '#14ae5c', light: '#3cad71' },
-      },
-      statusColors: state.statusColors,
-    }),
   },
 }));
 
@@ -104,20 +83,6 @@ vi.mock('@/components/ui/input', () => {
   Input.displayName = 'Input';
   return { Input };
 });
-
-vi.mock('@/components/custom/color-picker', () => ({
-  ColorPicker: ({ value, onChange }: ColorPickerMockProps) => (
-    <input
-      aria-label="colour"
-      value={value}
-      onChange={(event) => onChange(event.currentTarget.value)}
-    />
-  ),
-}));
-
-vi.mock('@/app/routes/platform/setup/general/color-preview', () => ({
-  ColorPreview: () => null,
-}));
 
 vi.mock('@/app/components/feature-banner', () => ({
   FeatureBanner: () => null,
@@ -177,14 +142,6 @@ async function save() {
   });
 }
 
-function colourInputs(): HTMLInputElement[] {
-  return [
-    ...container.querySelectorAll<HTMLInputElement>(
-      'input[aria-label="colour"]',
-    ),
-  ];
-}
-
 function buttonNamed({ name }: { name: string }): HTMLButtonElement {
   const button = [...container.querySelectorAll('button')].find(
     (candidate) => candidate.textContent === name,
@@ -205,16 +162,6 @@ function submitButton(): HTMLButtonElement {
   return button;
 }
 
-function resetButtons(): HTMLButtonElement[] {
-  return [...container.querySelectorAll('button')].filter(
-    (button) => button.textContent === 'Reset',
-  );
-}
-
-function sentThemeColors(): unknown {
-  return JSON.parse(sentFields().themeColors as string);
-}
-
 function sentFields(): Record<string, FormDataEntryValue> {
   const formdata = state.update.mock.calls[0]?.[0];
   if (!formdata) throw new Error('nothing was saved');
@@ -229,10 +176,7 @@ describe('AppearanceSection', () => {
     state.invalidate.mockClear();
     state.saving = Promise.resolve();
     state.customAppearanceEnabled = true;
-    state.primaryColor = '#6e41e2';
-    state.brandColor = '#6e41e2';
-    state.themeColors = null;
-    state.statusColors = {};
+    document.documentElement.removeAttribute('style');
   });
 
   afterEach(() => {
@@ -240,149 +184,34 @@ describe('AppearanceSection', () => {
     container.remove();
   });
 
-  it('saves a name change on a platform with a legacy colour, without sending the colour', async () => {
-    state.primaryColor = 'red';
-    state.brandColor = '#ff0000';
+  it('offers the name, logo, icon and favicon fields and no colour controls', async () => {
     await render();
+    const inputs = [...container.querySelectorAll('input')].map(
+      (input) => input.id,
+    );
+    expect(inputs).toEqual(['name', 'logoFile', 'iconFile', 'faviconFile']);
+    expect(container.textContent?.includes('Colors')).toBe(false);
     expect(
-      container.querySelector<HTMLInputElement>('input[aria-label="colour"]')
-        ?.value,
-    ).toBe('#ff0000');
+      [...container.querySelectorAll('button')].map(
+        (button) => button.textContent,
+      ),
+    ).toEqual(['Cancel', 'Save']);
+  });
+
+  it('saves a name change without sending any colour', async () => {
+    await render();
     await type({ selector: '#name', value: 'Contoso' });
     await save();
     const fields = sentFields();
     expect(fields.name).toBe('Contoso');
     expect(fields).not.toHaveProperty('primaryColor');
+    expect(fields).not.toHaveProperty('themeColors');
   });
 
-  it('sends the colour when the admin changes it', async () => {
+  it('leaves the page palette alone while editing', async () => {
     await render();
-    await type({ selector: 'input[aria-label="colour"]', value: '#0ea5e9' });
-    await save();
-    expect(sentFields().primaryColor).toBe('#0ea5e9');
-  });
-
-  it('previews a picked colour on the page and puts the saved one back on cancel', async () => {
-    await render();
-    await type({ selector: 'input[aria-label="colour"]', value: '#0ea5e9' });
-    const accent = () =>
-      document.documentElement.style.getPropertyValue('--accent-light-9');
-    expect(accent()).toBe('#0ea5e9');
-    await act(async () => {
-      buttonNamed({ name: 'Cancel' }).click();
-    });
-    expect(accent()).toBe('#6e41e2');
-    expect(state.update).not.toHaveBeenCalled();
-  });
-
-  it('shows every colour on its default with reset disabled, and no toggle', async () => {
-    await render();
-    expect(colourInputs().map((input) => input.value)).toEqual([
-      '#6e41e2',
-      '#e7000b',
-      '#fe9a00',
-      '#00a63e',
-    ]);
-    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-    const resets = resetButtons();
-    expect(resets).toHaveLength(4);
-    expect(resets.every((button) => button.disabled)).toBe(true);
-  });
-
-  it('resets the primary colour to the stock brand colour', async () => {
-    state.primaryColor = '#0ea5e9';
-    state.brandColor = '#0ea5e9';
-    await render();
-    await act(async () => {
-      resetButtons()[0].click();
-    });
-    await save();
-    expect(sentFields().primaryColor).toBe('#6e41e2');
-  });
-
-  it('saves a chosen status colour under status and keeps everything else stored', async () => {
-    state.themeColors = {
-      avatar: '#515151',
-      danger: '#f94949',
-      primary: { dark: '#5a2fd0' },
-    };
-    await render();
-    await act(async () => {
-      setInputValue({ input: colourInputs()[1], value: '#f94949' });
-    });
-    await save();
-    expect(sentThemeColors()).toStrictEqual({
-      avatar: '#515151',
-      danger: '#f94949',
-      primary: { dark: '#5a2fd0' },
-      status: { danger: '#f94949' },
-    });
-  });
-
-  it('starts from the stored status colours, not the branding flag', async () => {
-    state.themeColors = { status: { warning: '#eab308' } };
-    state.statusColors = undefined;
-    await render();
-    expect(colourInputs()[2].value).toBe('#eab308');
     await type({ selector: '#name', value: 'Contoso' });
-    await save();
-    expect(sentThemeColors()).toStrictEqual({
-      status: { warning: '#eab308' },
-    });
-  });
-
-  it('resets a status colour back to the standard palette', async () => {
-    state.themeColors = { status: { danger: '#b91c1c', success: '#16a34a' } };
-    await render();
-    await act(async () => {
-      resetButtons()[1].click();
-    });
-    await save();
-    expect(sentThemeColors()).toStrictEqual({
-      status: { success: '#16a34a' },
-    });
-  });
-
-  it('lets a saved seed be reset even when it matches the stock colour', async () => {
-    state.themeColors = { status: { danger: '#c11825' } };
-    await render();
-    expect(resetButtons()[1].disabled).toBe(false);
-    await act(async () => {
-      resetButtons()[1].click();
-    });
-    await save();
-    expect(sentThemeColors()).toStrictEqual({});
-  });
-
-  it('leaves the fields the old form saved untouched and unused', async () => {
-    state.themeColors = { danger: '#f94949', warn: { default: '#f78a3b' } };
-    await render();
-    expect(
-      resetButtons()
-        .slice(1)
-        .every((button) => button.disabled),
-    ).toBe(true);
-    await type({ selector: '#name', value: 'Contoso' });
-    await save();
-    expect(sentThemeColors()).toStrictEqual({
-      danger: '#f94949',
-      warn: { default: '#f78a3b' },
-    });
-  });
-
-  it('previews a status colour on the page and removes it on cancel', async () => {
-    await render();
-    await act(async () => {
-      setInputValue({ input: colourInputs()[3], value: '#16a34a' });
-    });
-    const seed = () =>
-      document.documentElement.style.getPropertyValue('--success-light-9');
-    expect(seed()).toBe('#16a34a');
-    await act(async () => {
-      buttonNamed({ name: 'Cancel' }).click();
-    });
-    expect(seed()).toBe('');
-    expect(state.update).not.toHaveBeenCalled();
+    expect(document.documentElement.style.length).toBe(0);
   });
 
   it('disables saving and says nothing while there are no changes', async () => {
@@ -394,9 +223,7 @@ describe('AppearanceSection', () => {
 
   it('says there are unsaved changes once something changes, and clears it on cancel', async () => {
     await render();
-    await act(async () => {
-      setInputValue({ input: colourInputs()[2], value: '#ea580c' });
-    });
+    await type({ selector: '#name', value: 'Contoso' });
     expect(hasUnsavedNotice()).toBe(true);
     expect(submitButton().disabled).toBe(false);
     await act(async () => {
@@ -460,9 +287,4 @@ type ButtonMockProps = {
 
 type InputMockProps = React.InputHTMLAttributes<HTMLInputElement> & {
   defaultFileName?: string;
-};
-
-type ColorPickerMockProps = {
-  value: string;
-  onChange: (value: string) => void;
 };

@@ -74,7 +74,7 @@ export function generateTheme({
 }
 
 export const defaultTheme = generateTheme({
-    primaryColor: '#6e41e2',
+    primaryColor: '#ff6900',
     websiteName: 'Activepieces',
     ...DEFAULT_BRAND_LOGOS,
 })

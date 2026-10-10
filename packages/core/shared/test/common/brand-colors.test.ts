@@ -1,7 +1,7 @@
 import { brandColors } from '../../src/lib/core/common/brand-colors'
 
-const LIGHT_GROUNDS = [100, 99.3, 98.2, 97, 95.5, 93.8]
-const DARK_GROUNDS = [11, 16.2, 19.5, 23.5, 27.5]
+const LIGHT_GROUNDS = [100, 98.5, 97, 95.5, 92.2]
+const DARK_GROUNDS = [20.5, 26.9, 28.9, 31.7, 34.9]
 
 describe('brandColors.cssVariables', () => {
     it('writes a light and a dark value for every accent step, plus the label', () => {
@@ -89,8 +89,16 @@ describe('brandColors.variableNames', () => {
 describe('brandColors.defaultRamp', () => {
     it('keeps the stock status steps', () => {
         expect(brandColors.defaultRamp({ scale: 'danger' }).light[11]).toBe('oklch(50.5% 0.213 27.52)')
-        expect(brandColors.defaultRamp({ scale: 'warning' }).light[3]).toBe('oklch(96.2% 0.059 95.62)')
+        expect(brandColors.defaultRamp({ scale: 'warning' }).light[3]).toBe('oklch(97.3% 0.071 103.19)')
         expect(brandColors.defaultRamp({ scale: 'success' }).light[7]).toBe('oklch(87.1% 0.15 154.45)')
+    })
+
+    it('walks the orange family unshifted for the stock accent', () => {
+        const ramp = brandColors.defaultRamp({ scale: 'accent' })
+        expect(ramp.light[3]).toBe('oklch(95.4% 0.038 75.16)')
+        expect(ramp.light[8]).toBe('oklch(75% 0.183 55.93)')
+        expect(ramp.light[11]).toBe('oklch(53.3% 0.195 38.4)')
+        expect(ramp.dark[1]).toBe('oklch(21.5% 0.0277 36.26)')
     })
 
     it('uses the default solids as step 9', () => {
@@ -123,8 +131,8 @@ describe('brandColors.ramp contrast', () => {
         const failures = scales.flatMap((scale) =>
             [...seeds, '#fde2e2', '#fffbe6', '#ffffff'].flatMap((hex) => {
                 const ramp = brandColors.ramp({ hex, scale })
-                const light = [100, 99.3, 98.2].map(neutral).filter((ground) => contrast({ first: ramp.light[10], second: ground }) < 3)
-                const dark = [11, 16.2].map(neutral).filter((ground) => contrast({ first: ramp.dark[10], second: ground }) < 3)
+                const light = [100, 98.5, 97].map(neutral).filter((ground) => contrast({ first: ramp.light[10], second: ground }) < 3)
+                const dark = [20.5, 26.9].map(neutral).filter((ground) => contrast({ first: ramp.dark[10], second: ground }) < 3)
                 return [...light, ...dark].map((ground) => `${scale} ${hex} on ${ground}`)
             }),
         )
@@ -153,7 +161,7 @@ describe('brandColors.swatches', () => {
 })
 
 describe('brandColors.onPrimaryFor', () => {
-    it('picks white on the default purple', () => {
+    it('picks white on a deep violet', () => {
         expect(brandColors.onPrimaryFor({ hex: '#6e41e2' })).toBe('#ffffff')
     })
 
@@ -167,7 +175,7 @@ describe('brandColors.contrastRatio', () => {
         expect(brandColors.contrastRatio({ foreground: '#000000', background: '#ffffff' })).toBeCloseTo(21, 1)
     })
 
-    it('reproduces the 5.97:1 that white on the default purple measures', () => {
+    it('reproduces the 5.97:1 that white on a deep violet measures', () => {
         expect(brandColors.contrastRatio({ foreground: '#ffffff', background: '#6e41e2' })).toBeCloseTo(5.97, 1)
     })
 })

@@ -47,11 +47,7 @@ export function ThemeProvider({
     }
     document.title = branding.websiteName;
     setFavicon(branding.logos.favIconUrl);
-
-    brandSeed.apply({
-      primaryColor: branding.colors.primary.default,
-      statusColors: branding.statusColors,
-    });
+    brandSeed.clear();
   }, [branding]);
 
   const value = {

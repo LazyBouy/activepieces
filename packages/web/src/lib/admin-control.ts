@@ -95,7 +95,6 @@ export enum AdminControl {
   EVENT_DESTINATIONS_HANDLER_FLOW_RUN = 'event-destinations.handler-flow.run',
   EVENT_DESTINATIONS_WEBHOOK_TEST_RUN = 'event-destinations.webhook-test.run',
   GENERAL_APPEARANCE_SUBMIT = 'general.appearance.submit',
-  GENERAL_COLOUR_RESET_RUN = 'general.colour-reset.run',
   GENERAL_PLATFORM_DELETE_CONFIRM = 'general.platform-delete.confirm',
   GENERAL_PLATFORM_DELETE_OPEN = 'general.platform-delete.open',
   HEALTH_CHECK_DOCS_LINK = 'health.check-docs.link',
