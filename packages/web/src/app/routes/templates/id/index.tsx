@@ -37,8 +37,6 @@ const TemplateDetailsPage = ({ template }: TemplateDetailsPageProps) => {
   const token = authenticationSession.getToken();
   const location = useLocation();
   const navigate = useNavigate();
-  const [hasCanvasBeenInitialised, setHasCanvasBeenInitialised] =
-    useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFlowIndex, setSelectedFlowIndex] = useState(0);
@@ -92,7 +90,6 @@ const TemplateDetailsPage = ({ template }: TemplateDetailsPageProps) => {
   }, [setOpen]);
 
   useEffect(() => {
-    setHasCanvasBeenInitialised(false);
     const timer = setTimeout(() => {
       setRenderKey((prev) => prev + 1);
     }, 50);
@@ -273,17 +270,8 @@ const TemplateDetailsPage = ({ template }: TemplateDetailsPageProps) => {
                     outputSampleData={{}}
                     inputSampleData={{}}
                   >
-                    <FlowCanvas
-                      setHasCanvasBeenInitialised={setHasCanvasBeenInitialised}
-                    />
-                    {canvasContainerRef.current && hasCanvasBeenInitialised && (
-                      <CanvasControls
-                        canvasHeight={canvasContainerRef.current.clientHeight}
-                        canvasWidth={canvasContainerRef.current.clientWidth}
-                        hasCanvasBeenInitialised={hasCanvasBeenInitialised}
-                        selectedStep={null}
-                      />
-                    )}
+                    <FlowCanvas />
+                    <CanvasControls />
                   </BuilderStateProvider>
                 </ReactFlowProvider>
               </div>

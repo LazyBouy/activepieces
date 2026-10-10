@@ -13,7 +13,6 @@ export type StepDataPanelView = 'drawer' | 'split';
 
 export type CanvasState = {
   canvasOrientation: CanvasOrientation;
-  setCanvasOrientation: (orientation: CanvasOrientation) => void;
   readonly: boolean;
   hideTestWidget: boolean;
   rightSidebar: RightSideBarType;
@@ -21,8 +20,6 @@ export type CanvasState = {
   activeDraggingStep: string | null;
   selectedBranchIndex: number | null;
   userManuallySelectedStepDuringRun: boolean;
-  showMinimap: boolean;
-  setShowMinimap: (showMinimap: boolean) => void;
   setSelectedBranchIndex: (index: number | null) => void;
   exitStepSettings: () => void;
   renameFlowClientSide: (newName: string) => void;
@@ -37,8 +34,6 @@ export type CanvasState = {
   setReadOnly: (readOnly: boolean) => void;
   selectedNodes: string[];
   setSelectedNodes: (nodes: string[]) => void;
-  panningMode: 'grab' | 'pan';
-  setPanningMode: (mode: 'grab' | 'pan') => void;
   isFocusInsideListMapperModeInput: boolean;
   setIsFocusInsideListMapperModeInput: (
     isFocusInsideListMapperModeInput: boolean,
@@ -73,18 +68,7 @@ export const createCanvasState = (
     initiallySelectedStep === 'trigger' &&
     initialState.flowVersion.trigger.type === FlowTriggerType.EMPTY;
   return {
-    canvasOrientation: getCanvasOrientationFromLocalStorage(),
-    setCanvasOrientation: (orientation: CanvasOrientation) => {
-      localStorage.setItem(
-        CANVAS_ORIENTATION_KEY_IN_LOCAL_STORAGE,
-        orientation,
-      );
-      return set(() => ({
-        canvasOrientation: orientation,
-      }));
-    },
-    showMinimap: false,
-    setShowMinimap: (showMinimap: boolean) => set({ showMinimap }),
+    canvasOrientation: 'horizontal',
     readonly: initialState.readonly,
     hideTestWidget: initialState.hideTestWidget ?? false,
     selectedStep: initiallySelectedStep,
@@ -184,13 +168,6 @@ export const createCanvasState = (
         selectedStep: null,
       }));
     },
-    panningMode: getPanningModeFromLocalStorage(),
-    setPanningMode: (mode: 'grab' | 'pan') => {
-      localStorage.setItem(DEFAULT_PANNING_MODE_KEY_IN_LOCAL_STORAGE, mode);
-      return set(() => ({
-        panningMode: mode,
-      }));
-    },
     isFocusInsideListMapperModeInput: false,
     setIsFocusInsideListMapperModeInput: (
       isFocusInsideListMapperModeInput: boolean,
@@ -219,22 +196,6 @@ export const createCanvasState = (
     },
   };
 };
-
-const CANVAS_ORIENTATION_KEY_IN_LOCAL_STORAGE = 'ap.builder.canvasOrientation';
-function getCanvasOrientationFromLocalStorage(): CanvasOrientation {
-  return localStorage.getItem(CANVAS_ORIENTATION_KEY_IN_LOCAL_STORAGE) ===
-    'horizontal'
-    ? 'horizontal'
-    : 'vertical';
-}
-
-const DEFAULT_PANNING_MODE_KEY_IN_LOCAL_STORAGE = 'defaultPanningMode';
-function getPanningModeFromLocalStorage(): 'grab' | 'pan' {
-  return localStorage.getItem(DEFAULT_PANNING_MODE_KEY_IN_LOCAL_STORAGE) ===
-    'grab'
-    ? 'grab'
-    : 'pan';
-}
 
 const STEP_DATA_PANEL_VIEW_KEY_IN_LOCAL_STORAGE = 'ap.builder.testPanelView';
 function getStepDataPanelViewFromLocalStorage(): StepDataPanelView {

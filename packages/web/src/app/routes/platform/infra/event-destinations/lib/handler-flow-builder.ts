@@ -159,8 +159,8 @@ function buildOnboardingNote({
     content,
     ownerId: null,
     color: NoteColorVariant.YELLOW,
-    position: { x: -375, y: -105 },
-    size: { width: 300, height: 298 },
+    position: { x: -384, y: -112 },
+    size: { width: 304, height: 288 },
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -179,12 +179,12 @@ function buildSampleDataNote({
     ownerId: null,
     color: NoteColorVariant.BLUE,
     position: {
-      x: -60,
-      y: -255,
+      x: -64,
+      y: -208,
     },
     size: {
-      width: 234,
-      height: 150,
+      width: 240,
+      height: 160,
     },
     createdAt: timestamp,
     updatedAt: timestamp,

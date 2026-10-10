@@ -114,7 +114,8 @@ and green families), otherwise the 600 with a white letter. Dark mode takes a ca
 4.5:1 on its own tint. The CSS values are the generator's output, and `status-scales.test.ts` fails if they drift.
 
 Store the **name** (`ColorName.YELLOW`), never the rendered value, so the value is free to differ per
-theme. A name maps to the same swatch for projects (`PROJECT_COLOR_SWATCH`) and notes. There are four warm
+theme. A name maps to a swatch for projects (`PROJECT_COLOR_SWATCH`); sticky notes map their stored
+`NoteColorVariant` to the `--canvas-note-*` fills instead, with the swatch mark kept as the picker dot. There are four warm
 names and three warm swatches, so `ORANGE` and `DEEP_ORANGE` share swatch 5 and no name uses swatch 7; `PICKABLE_COLOR_NAMES` leaves `DEEP_ORANGE` out of the pickers so
 they show no duplicate. Charts sample swatches 1, 5, 9, 3 and 7 through `--chart-1..5`. `swatchUtils.varsForSeed` picks a swatch deterministically from any string.
 
@@ -155,9 +156,11 @@ the wrapper clips) and `imageClassName` the image. On failure it renders a monog
 - **User-content previews** — `bg-white` on the SVG and HTML preview frames, which render content
   authored against a white page.
 - **The wordmark's mark** — keeps the literal Activepieces purple; the lettering is `currentColor`.
-- **The builder minimap** — fills each block with the average colour of its step's logo, so a long flow
-  stays readable at thumbnail size. It composites through `--panel` and falls back to `--gray-11`. This is
-  one of two places colour is sampled from an image; the other is the piece-logo tint (`lib/logo-tint.ts`). Do not add a third.
+- **The canvas palette** — `--canvas-*` in both theme blocks: the flow canvas's own greys (edges, handles,
+  "+" boxes, minimap, read-only stripes), the blue selection box and the sticky-note fills. They are defined
+  once there and referenced by role; where a role equals a step in both themes the variable points at the step.
+  The minimap draws every step as a flat `--canvas-minimap-step` block (notes at 20%); it no longer samples logos,
+  so the piece-logo tint (`lib/logo-tint.ts`) is the only place colour is sampled from an image.
 - **Older effects** — the `.recurring-chip`, gradient-border and note-scrollbar colours in `styles.css`, and
   the sheen, shimmer and ripple glows in `tag-with-bright.tsx`, `automatic-trial-activation.tsx`,
   `automations-empty-state.tsx` and `theme-provider.tsx`. They predate the scales and read the same in both

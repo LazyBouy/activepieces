@@ -129,6 +129,50 @@
   --color-focus: var(--focus);
   --color-focus-halo: var(--focus-halo);
   --color-canvas-dot: var(--canvas-dot);
+  --color-canvas-readonly-stripe: var(--canvas-readonly-stripe);
+  --color-canvas-label: var(--canvas-label);
+  --color-canvas-label-backdrop: var(--canvas-label-backdrop);
+  --color-canvas-step: var(--canvas-step);
+  --color-canvas-step-border: var(--canvas-step-border);
+  --color-canvas-selection-halo: var(--canvas-selection-halo);
+  --color-canvas-edge: var(--canvas-edge);
+  --color-canvas-edge-hover: var(--canvas-edge-hover);
+  --color-canvas-handle: var(--canvas-handle);
+  --color-canvas-handle-border: var(--canvas-handle-border);
+  --color-canvas-handle-hover: var(--canvas-handle-hover);
+  --color-canvas-handle-border-hover: var(--canvas-handle-border-hover);
+  --color-canvas-plus: var(--canvas-plus);
+  --color-canvas-plus-hover: var(--canvas-plus-hover);
+  --color-canvas-plus-glyph: var(--canvas-plus-glyph);
+  --color-canvas-plus-glyph-hover: var(--canvas-plus-glyph-hover);
+  --color-canvas-chrome: var(--canvas-chrome);
+  --color-canvas-placeholder: var(--canvas-placeholder);
+  --color-canvas-placeholder-ink: var(--canvas-placeholder-ink);
+  --color-canvas-minimap: var(--canvas-minimap);
+  --color-canvas-minimap-step: var(--canvas-minimap-step);
+  --color-canvas-success: var(--canvas-success);
+  --color-canvas-danger: var(--canvas-danger);
+  --color-canvas-warning: var(--canvas-warning);
+  --color-canvas-pinned: var(--canvas-pinned);
+  --color-canvas-running: var(--canvas-running);
+  --color-canvas-selection: var(--canvas-selection);
+  --color-canvas-skipped-line: var(--canvas-skipped-line);
+  --color-canvas-muted-icon: var(--canvas-muted-icon);
+  --color-canvas-divider: var(--canvas-divider);
+  --color-canvas-note-ink: var(--canvas-note-ink);
+  --color-canvas-note-ring: var(--canvas-note-ring);
+  --color-canvas-note-yellow: var(--canvas-note-yellow);
+  --color-canvas-note-yellow-border: var(--canvas-note-yellow-border);
+  --color-canvas-note-orange: var(--canvas-note-orange);
+  --color-canvas-note-orange-border: var(--canvas-note-orange-border);
+  --color-canvas-note-red: var(--canvas-note-red);
+  --color-canvas-note-red-border: var(--canvas-note-red-border);
+  --color-canvas-note-green: var(--canvas-note-green);
+  --color-canvas-note-green-border: var(--canvas-note-green-border);
+  --color-canvas-note-blue: var(--canvas-note-blue);
+  --color-canvas-note-blue-border: var(--canvas-note-blue-border);
+  --color-canvas-note-purple: var(--canvas-note-purple);
+  --color-canvas-note-purple-border: var(--canvas-note-purple-border);
 
   --color-swatch-1-mark: var(--swatch-1-mark);
   --color-swatch-1-surface: var(--swatch-1-surface);
@@ -886,6 +930,51 @@
     --focus: #8e51ff;
     --focus-halo: oklch(45.7% 0.24 277.02 / 25%);
     --canvas-dot: var(--gray-9);
+    --canvas-readonly-stripe: oklch(92.19% 0 0 / 50%);
+    --canvas-label: var(--gray-11);
+    --canvas-label-backdrop: color-mix(in oklab, var(--gray-2) 85%, transparent);
+    --canvas-step: oklch(100% 0 0);
+    --canvas-step-border: oklch(0% 0 0 / 10%);
+    --canvas-selection-halo: oklch(37.2% 0.044 257.287 / 10%);
+    --canvas-edge: oklch(83.9% 0 0);
+    --canvas-edge-hover: oklch(54.17% 0 0);
+    --canvas-handle: var(--canvas-step);
+    --canvas-handle-border: oklch(68.95% 0 0);
+    --canvas-handle-hover: oklch(97.02% 0 0);
+    --canvas-handle-border-hover: oklch(88.53% 0 0);
+    --canvas-plus: oklch(92.19% 0 0);
+    --canvas-plus-hover: oklch(90.67% 0 0);
+    --canvas-plus-glyph: oklch(38.67% 0 0);
+    --canvas-plus-glyph-hover: oklch(28.91% 0 0);
+    --canvas-chrome: var(--panel);
+    --canvas-placeholder: oklch(100% 0 0);
+    --canvas-placeholder-ink: oklch(68.3% 0 0);
+    --canvas-minimap: var(--gray-1);
+    --canvas-minimap-step: oklch(90.67% 0 0);
+    --canvas-minimap-mask: oklch(95.51% 0 0 / 60%);
+    --canvas-success: var(--success-9);
+    --canvas-danger: var(--danger-9);
+    --canvas-warning: oklch(61.78% 0.1267 70.31);
+    --canvas-pinned: oklch(54.1% 0.281 293.009);
+    --canvas-running: var(--accent-9);
+    --canvas-selection: oklch(54.6% 0.245 262.881);
+    --canvas-skipped-line: oklch(90.67% 0 0);
+    --canvas-muted-icon: oklch(68.3% 0 0);
+    --canvas-divider: var(--gray-6);
+    --canvas-note-ink: oklch(28.91% 0 0);
+    --canvas-note-ring: var(--gray-4);
+    --canvas-note-yellow: oklch(97.3% 0.071 103.193);
+    --canvas-note-yellow-border: oklch(94.5% 0.129 101.54);
+    --canvas-note-orange: oklch(95.4% 0.038 75.164);
+    --canvas-note-orange-border: oklch(83.7% 0.128 66.29);
+    --canvas-note-red: oklch(93.6% 0.032 17.717);
+    --canvas-note-red-border: oklch(80.8% 0.114 19.571);
+    --canvas-note-green: oklch(96.2% 0.044 156.743);
+    --canvas-note-green-border: oklch(87.1% 0.15 154.449);
+    --canvas-note-blue: oklch(93.2% 0.032 255.585);
+    --canvas-note-blue-border: oklch(88.2% 0.059 254.128);
+    --canvas-note-purple: oklch(89.4% 0.057 293.283);
+    --canvas-note-purple-border: oklch(81.1% 0.111 293.571);
     --scrollbar-thumb: var(--gray-6);
     --scrollbar-thumb-hover: var(--gray-9);
 
@@ -1059,6 +1148,51 @@
     --focus: #8e51ff;
     --focus-halo: oklch(45.7% 0.24 277.02 / 25%);
     --canvas-dot: var(--gray-7);
+    --canvas-readonly-stripe: oklch(26.86% 0 0 / 50%);
+    --canvas-label: oklch(68.3% 0 0);
+    --canvas-label-backdrop: color-mix(in oklab, var(--gray-2) 85%, transparent);
+    --canvas-step: var(--gray-3);
+    --canvas-step-border: oklch(100% 0 0 / 20%);
+    --canvas-selection-halo: oklch(100% 0 0 / 40%);
+    --canvas-edge: oklch(42.02% 0 0);
+    --canvas-edge-hover: oklch(62.01% 0 0);
+    --canvas-handle: var(--canvas-step);
+    --canvas-handle-border: oklch(49.97% 0 0);
+    --canvas-handle-hover: oklch(38.67% 0 0);
+    --canvas-handle-border-hover: oklch(88.53% 0 0);
+    --canvas-plus: oklch(28.91% 0 0);
+    --canvas-plus-hover: oklch(31.71% 0 0);
+    --canvas-plus-glyph: oklch(90.67% 0 0);
+    --canvas-plus-glyph-hover: oklch(95.51% 0 0);
+    --canvas-chrome: var(--panel);
+    --canvas-placeholder: oklch(20.46% 0 0);
+    --canvas-placeholder-ink: oklch(79.21% 0 0);
+    --canvas-minimap: var(--gray-1);
+    --canvas-minimap-step: oklch(38.67% 0 0);
+    --canvas-minimap-mask: oklch(35.63% 0 0 / 60%);
+    --canvas-success: var(--success-9);
+    --canvas-danger: oklch(70.4% 0.191 22.216);
+    --canvas-warning: oklch(61.78% 0.1267 70.31);
+    --canvas-pinned: oklch(60.6% 0.25 292.717);
+    --canvas-running: var(--accent-9);
+    --canvas-selection: oklch(54.6% 0.245 262.881);
+    --canvas-skipped-line: oklch(38.67% 0 0);
+    --canvas-muted-icon: oklch(79.21% 0 0);
+    --canvas-divider: var(--gray-4);
+    --canvas-note-ink: oklch(97% 0 0);
+    --canvas-note-ring: oklch(100% 0 0 / 40%);
+    --canvas-note-yellow: oklch(42.1% 0.095 57.708);
+    --canvas-note-yellow-border: oklch(47.6% 0.114 61.907);
+    --canvas-note-orange: oklch(40.8% 0.123 38.172);
+    --canvas-note-orange-border: oklch(47% 0.157 37.304);
+    --canvas-note-red: oklch(25.8% 0.092 26.042);
+    --canvas-note-red-border: oklch(39.6% 0.141 25.723);
+    --canvas-note-green: oklch(26.6% 0.065 152.934);
+    --canvas-note-green-border: oklch(39.3% 0.095 152.535);
+    --canvas-note-blue: oklch(37.9% 0.146 265.522);
+    --canvas-note-blue-border: oklch(42.4% 0.199 265.638);
+    --canvas-note-purple: oklch(28.3% 0.141 291.089);
+    --canvas-note-purple-border: oklch(43.2% 0.232 292.759);
     --scrollbar-thumb: var(--gray-8);
     --scrollbar-thumb-hover: var(--gray-11);
 
@@ -1213,15 +1347,19 @@
   }
 
   .react-flow {
-    --xy-edge-stroke: var(--gray-7) !important;
+    --xy-edge-stroke: var(--canvas-edge) !important;
     --node-boxshadow-selected-default: 0 0 0 0 #b1b1b7 !important;
     --selection-border-default: 0px solid #b1b1b7 !important;
     --node-border-default: 0px solid #b1b1b7 !important;
-    --xy-selection-border-default: 1px dotted var(--accent-8) !important;
+    --xy-selection-border-default: 1px dotted
+      color-mix(in oklab, var(--canvas-selection) 80%, transparent) !important;
     --xy-selection-background-color-default: color-mix(
       in oklab,
-      var(--accent-9),
-      transparent 90%
+      var(--canvas-selection) 8%,
+      transparent
+    ) !important;
+    --xy-minimap-mask-background-color-default: var(
+      --canvas-minimap-mask
     ) !important;
     --xy-resize-background-color: transparent !important;
     .react-flow__resize-control.handle {
@@ -1232,6 +1370,37 @@
   .react-flow__pane.selection,
   .react-flow__nodesselection-rect {
     cursor: default !important;
+  }
+
+  .react-flow__pane.dragging {
+    cursor: grabbing !important;
+  }
+
+  .react-flow__node.draggable {
+    cursor: pointer !important;
+  }
+
+  .react-flow__node.draggable.dragging {
+    cursor: grabbing !important;
+  }
+
+  .react-flow__nodesselection-rect {
+    background: transparent !important;
+    border: 0 !important;
+  }
+
+  .react-flow__nodesselection-rect::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    pointer-events: none;
+    border: var(--xy-selection-border-default);
+    background: var(--xy-selection-background-color-default);
+  }
+
+  [data-single-selection='true'] .react-flow__nodesselection-rect::before,
+  [data-single-selection='true'] [data-selection-rect-chevron] {
+    display: none;
   }
 
   .react-flow__edge.selectable > path {
@@ -1328,6 +1497,49 @@
     border-radius: 100px;
     border: 1px;
   }
+}
+
+.note-node .react-flow__resize-control {
+  z-index: 1;
+}
+
+.note-node .react-flow__resize-control.line {
+  border-color: transparent;
+}
+
+.note-node .react-flow__resize-control.line.left,
+.note-node .react-flow__resize-control.line.right {
+  width: 16px;
+}
+
+.note-node .react-flow__resize-control.line.top,
+.note-node .react-flow__resize-control.line.bottom {
+  height: 16px;
+}
+
+.note-node .react-flow__resize-control.handle {
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+:is(.note-node, .note-drag-overlay) .tiptap :is(h1, h2, h3) {
+  font-weight: 600;
+}
+
+:is(.note-node, .note-drag-overlay) .tiptap h1 {
+  font-size: 1.5rem;
+}
+
+:is(.note-node, .note-drag-overlay) .tiptap h2 {
+  font-size: 1.25rem;
+}
+
+:is(.note-node, .note-drag-overlay) .tiptap h3 {
+  font-size: 1rem;
 }
 
 .tiptap {

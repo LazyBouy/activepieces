@@ -4,7 +4,9 @@ import {
   Permission,
   UpdateRunProgressRequest,
 } from '@activepieces/shared';
+import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
+import { Square } from 'lucide-react';
 
 import { EditFlowOrViewDraftButton } from '@/app/builder/builder-header/flow-status/view-draft-or-edit-flow-button';
 import {
@@ -12,12 +14,22 @@ import {
   useBuilderStore,
 } from '@/app/builder/builder-hooks';
 import { ChatDrawerSource } from '@/app/builder/types';
-import { flowRunUtils } from '@/features/flow-runs';
+import { Button } from '@/components/ui/button';
+import { internalErrorToast } from '@/components/ui/sonner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { flowRunsApi, flowRunUtils } from '@/features/flow-runs';
 import { flowHooks } from '@/features/flows';
 import { pieceSelectorUtils } from '@/features/pieces';
 import { useAuthorization } from '@/hooks/authorization-hooks';
 
+import { flowCanvasConsts } from '../utils/consts';
+
 import { AboveTriggerButton } from './above-trigger-button';
+import { testRunUtils } from './test-run-utils';
 
 const TestFlowWidget = () => {
   const [
@@ -27,6 +39,7 @@ const TestFlowWidget = () => {
     hideTestWidget,
     setRun,
     publishedVersionId,
+    run,
   ] = useBuilderStateContext((state) => [
     state.setChatDrawerOpenSource,
     state.flowVersion,
@@ -34,6 +47,7 @@ const TestFlowWidget = () => {
     state.hideTestWidget,
     state.setRun,
     state.flow.publishedVersionId,
+    state.run,
   ]);
   const builderStore = useBuilderStore();
 
@@ -74,6 +88,22 @@ const TestFlowWidget = () => {
       },
     });
 
+  const { mutate: cancelRun, isPending: isCancellingRun } = useMutation({
+    mutationFn: async () => {
+      const currentRun = builderStore.getState().run;
+      assertNotNullOrUndefined(currentRun, 'run');
+      await flowRunsApi.bulkCancel({
+        projectId: currentRun.projectId,
+        flowRunIds: [currentRun.id],
+      });
+      return flowRunsApi.getPopulated(currentRun.id);
+    },
+    onSuccess: (cancelledRun) => {
+      setRun(cancelledRun, builderStore.getState().flowVersion);
+    },
+    onError: () => internalErrorToast(),
+  });
+
   if (!flowVersion.valid) {
     return null;
   }
@@ -88,6 +118,30 @@ const TestFlowWidget = () => {
     return null;
   }
 
+  const { isRunning, isCancellable } = testRunUtils.getTestRunState({
+    run,
+    isStartingTestRun: isTestingFlow,
+  });
+  const runText = isChatTrigger
+    ? t('Open Chat')
+    : isManualTrigger
+    ? t('Run Flow')
+    : t('Test Flow');
+
+  if (isRunning) {
+    return (
+      <>
+        <AboveTriggerButton onClick={() => runFlow()} text={runText} loading />
+        {isCancellable && (
+          <StopRunButton
+            onClick={() => cancelRun()}
+            loading={isCancellingRun}
+          />
+        )}
+      </>
+    );
+  }
+
   if (readonly) {
     return (
       <EditFlowOrViewDraftButton onCanvas={true}></EditFlowOrViewDraftButton>
@@ -100,14 +154,11 @@ const TestFlowWidget = () => {
         onClick={() => {
           setChatDrawerOpenSource(ChatDrawerSource.TEST_FLOW);
         }}
-        text={t('Open Chat')}
-        loading={isTestingFlow}
+        text={runText}
       />
     );
   }
 
-  // Starting a manual run requires WRITE_RUN (enforced server-side). Hide the action
-  // from users who lack it so they cannot fire a run the server would reject.
   if (isManualTrigger && !userHasPermissionToRun) {
     return null;
   }
@@ -117,10 +168,34 @@ const TestFlowWidget = () => {
       onClick={() => {
         runFlow();
       }}
-      text={isManualTrigger ? t('Run Flow') : t('Test Flow')}
+      text={runText}
       disable={!triggerHasSampleData && !isManualTrigger}
-      loading={isTestingFlow}
     />
+  );
+};
+
+const StopRunButton = ({
+  onClick,
+  loading,
+}: {
+  onClick: () => void;
+  loading: boolean;
+}) => {
+  return (
+    <Tooltip delayDuration={flowCanvasConsts.CHROME_TOOLTIP_DELAY}>
+      <TooltipTrigger asChild>
+        <Button
+          variant="secondary"
+          size="icon-lg"
+          aria-label={t('Stop')}
+          loading={loading}
+          onClick={onClick}
+        >
+          <Square className="size-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{t('Stop')}</TooltipContent>
+    </Tooltip>
   );
 };
 

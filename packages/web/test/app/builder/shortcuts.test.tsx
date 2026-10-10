@@ -21,7 +21,24 @@ import {
   BuilderStore,
   createBuilderStore,
 } from '@/app/builder/builder-hooks';
-import { useHandleKeyPressOnCanvas } from '@/app/builder/shortcuts';
+import {
+  canvasShortcutUtils,
+  TIDY_UP_SHORTCUT,
+  useHandleKeyPressOnCanvas,
+} from '@/app/builder/shortcuts';
+import { NoteDragOverlayMode } from '@/app/builder/state/notes-state';
+
+const reactFlow = vi.hoisted(() => ({
+  fitView: vi.fn(),
+  zoomIn: vi.fn(),
+  zoomOut: vi.fn(),
+  zoomTo: vi.fn(),
+}));
+
+vi.mock('@xyflow/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@xyflow/react')>()),
+  useReactFlow: () => reactFlow,
+}));
 
 declare global {
   // eslint-disable-next-line no-var
@@ -102,21 +119,23 @@ function Probe() {
 }
 
 function dispatchKeyFrom(target: HTMLElement, init: KeyboardEventInit): void {
-  target.dispatchEvent(
-    new KeyboardEvent('keydown', { bubbles: true, ...init }),
-  );
+  act(() => {
+    target.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, ...init }),
+    );
+  });
 }
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
 
-async function setup() {
+async function setup({ readonly = false }: { readonly?: boolean } = {}) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
   const store = createStore();
   const applyOperation = vi.fn();
-  store.setState({ applyOperation });
+  store.setState({ applyOperation, readonly });
   store.getState().selectStepByName('step_1');
   const mountedRoot = root;
   await act(async () => {
@@ -126,7 +145,7 @@ async function setup() {
       </BuilderStateContext.Provider>,
     );
   });
-  return { container, applyOperation };
+  return { container, applyOperation, store };
 }
 
 describe('canvas shortcuts while editing step inputs (GIT-1445)', () => {
@@ -187,5 +206,195 @@ describe('canvas shortcuts while editing step inputs (GIT-1445)', () => {
       type: FlowOperationType.DELETE_ACTION,
       request: { names: ['step_1'] },
     });
+  });
+});
+
+describe('canvas keyboard map', () => {
+  afterEach(async () => {
+    const mountedRoot = root;
+    if (mountedRoot) {
+      await act(async () => {
+        mountedRoot.unmount();
+      });
+    }
+    container?.remove();
+    root = null;
+    container = null;
+    vi.clearAllMocks();
+  });
+
+  it('skips the selected steps with D', async () => {
+    const { applyOperation } = await setup();
+    dispatchKeyFrom(document.body, { key: 'd' });
+    expect(applyOperation).toHaveBeenCalledWith({
+      type: FlowOperationType.SET_SKIP_ACTION,
+      request: { names: ['step_1'], skip: true },
+    });
+  });
+
+  it('ignores D while a modifier is held', async () => {
+    const { applyOperation } = await setup();
+    dispatchKeyFrom(document.body, { key: 'd', ctrlKey: true });
+    dispatchKeyFrom(document.body, { key: 'd', altKey: true });
+    expect(applyOperation).not.toHaveBeenCalled();
+  });
+
+  it.each(['Delete', 'Backspace'])(
+    'deletes the selected steps with %s',
+    async (key) => {
+      const { applyOperation } = await setup();
+      dispatchKeyFrom(document.body, { key });
+      expect(applyOperation).toHaveBeenCalledWith({
+        type: FlowOperationType.DELETE_ACTION,
+        request: { names: ['step_1'] },
+      });
+    },
+  );
+
+  it('never sends the trigger to the delete operation', async () => {
+    const { applyOperation, store } = await setup();
+    await act(async () => {
+      store.getState().setSelectedNodes(['trigger']);
+    });
+    dispatchKeyFrom(document.body, { key: 'Backspace' });
+    expect(applyOperation).not.toHaveBeenCalled();
+  });
+
+  it('leaves selected notes out of step operations', async () => {
+    const { applyOperation, store } = await setup();
+    await act(async () => {
+      store.getState().setSelectedNodes(['note-1', 'step_1']);
+    });
+    dispatchKeyFrom(document.body, { key: 'Delete' });
+    expect(applyOperation).toHaveBeenCalledWith({
+      type: FlowOperationType.DELETE_ACTION,
+      request: { names: ['step_1'] },
+    });
+  });
+
+  it('ignores single keys when focus is outside the canvas', async () => {
+    const { container, applyOperation } = await setup();
+    const button = document.createElement('button');
+    container.appendChild(button);
+    dispatchKeyFrom(button, { key: 'd' });
+    dispatchKeyFrom(button, { key: 'Backspace' });
+    dispatchKeyFrom(button, { key: '1' });
+    expect(applyOperation).not.toHaveBeenCalled();
+    expect(reactFlow.fitView).not.toHaveBeenCalled();
+  });
+
+  it('handles single keys when focus is inside the canvas', async () => {
+    const { container, applyOperation } = await setup();
+    const canvas = document.createElement('div');
+    canvas.className = 'react-flow';
+    const step = document.createElement('div');
+    canvas.appendChild(step);
+    container.appendChild(canvas);
+    dispatchKeyFrom(step, { key: 'd' });
+    expect(applyOperation).toHaveBeenCalledTimes(1);
+  });
+
+  it('fits the view with 1 and resets the zoom with 0', async () => {
+    await setup();
+    dispatchKeyFrom(document.body, { key: '1' });
+    expect(reactFlow.fitView).toHaveBeenCalledWith({
+      padding: 0.2,
+      maxZoom: 1,
+      duration: 0,
+    });
+    dispatchKeyFrom(document.body, { key: '0' });
+    expect(reactFlow.zoomTo).toHaveBeenCalledWith(1, { duration: 0 });
+  });
+
+  it.each([
+    { key: '+', shiftKey: true },
+    { key: '+', shiftKey: false },
+    { key: '=', shiftKey: false },
+  ])('zooms in with $key', async ({ key, shiftKey }) => {
+    await setup();
+    dispatchKeyFrom(document.body, { key, shiftKey });
+    expect(reactFlow.zoomIn).toHaveBeenCalledWith({ duration: 0 });
+  });
+
+  it('zooms out with -', async () => {
+    await setup();
+    dispatchKeyFrom(document.body, { key: '-' });
+    expect(reactFlow.zoomOut).toHaveBeenCalledWith({ duration: 0 });
+  });
+
+  it('starts placing a new note with Shift+S', async () => {
+    const { store } = await setup();
+    dispatchKeyFrom(document.body, { key: 'S', shiftKey: true });
+    expect(store.getState().noteDragOverlayMode).toBe(
+      NoteDragOverlayMode.CREATE,
+    );
+    expect(store.getState().draggedNote?.size).toEqual({
+      width: 240,
+      height: 160,
+    });
+  });
+
+  it('keeps editing keys off on a read-only canvas but still zooms', async () => {
+    const { store, applyOperation } = await setup({ readonly: true });
+    dispatchKeyFrom(document.body, { key: 'S', shiftKey: true });
+    dispatchKeyFrom(document.body, { key: 'd' });
+    dispatchKeyFrom(document.body, { key: 'Delete' });
+    expect(store.getState().noteDragOverlayMode).toBeNull();
+    expect(applyOperation).not.toHaveBeenCalled();
+    dispatchKeyFrom(document.body, { key: '-' });
+    expect(reactFlow.zoomOut).toHaveBeenCalled();
+  });
+});
+
+describe('canvasShortcutUtils.matchesShortcut', () => {
+  const noModifiers = {
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+  };
+
+  it('matches tidy-up on the physical T key even when Option changes the character', () => {
+    expect(
+      canvasShortcutUtils.matchesShortcut({
+        event: {
+          ...noModifiers,
+          key: '†',
+          code: 'KeyT',
+          shiftKey: true,
+          altKey: true,
+        },
+        shortcut: TIDY_UP_SHORTCUT,
+      }),
+    ).toBe(true);
+  });
+
+  it('requires every listed modifier', () => {
+    expect(
+      canvasShortcutUtils.matchesShortcut({
+        event: { ...noModifiers, key: 'T', code: 'KeyT', shiftKey: true },
+        shortcut: TIDY_UP_SHORTCUT,
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts the meta key wherever control is listed', () => {
+    expect(
+      canvasShortcutUtils.matchesShortcut({
+        event: { ...noModifiers, key: 'c', code: 'KeyC', metaKey: true },
+        shortcut: { shortcutKey: 'c', withCtrl: true },
+      }),
+    ).toBe(true);
+  });
+
+  it('no longer binds a minimap toggle', () => {
+    expect(
+      canvasShortcutUtils.findShortcutMatch({
+        ...noModifiers,
+        key: 'm',
+        code: 'KeyM',
+        ctrlKey: true,
+      }),
+    ).toBeNull();
   });
 });

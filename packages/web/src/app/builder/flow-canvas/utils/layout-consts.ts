@@ -6,6 +6,7 @@ import {
   FLOW_CANVAS_STEP_HEIGHT,
   FLOW_CANVAS_STEP_WIDTH,
   FLOW_CANVAS_VSPACE,
+  NoteColorVariant,
 } from '@activepieces/shared';
 
 import { ApNodeType, CanvasOrientation } from './types';
@@ -57,6 +58,8 @@ const ORIENTATION_LAYOUT: Record<CanvasOrientation, OrientationLayout> = {
 };
 
 const NODE_SELECTION_RECT_CLASS_NAME = 'react-flow__nodesselection-rect';
+const NOTE_DEFAULT_SIZE = { width: 240, height: 160 };
+const NOTE_DEFAULT_COLOR = NoteColorVariant.YELLOW;
 
 const doesNodeAffectBoundingBoxWidth: (
   type: ApNodeType,
@@ -74,6 +77,8 @@ export const flowCanvasLayoutConsts = {
   STEP_NODE_SIZE,
   HORIZONTAL_STEP_LABEL_WIDTH,
   NODE_SELECTION_RECT_CLASS_NAME,
+  NOTE_DEFAULT_SIZE,
+  NOTE_DEFAULT_COLOR,
   doesNodeAffectBoundingBox: doesNodeAffectBoundingBoxWidth,
 };
 

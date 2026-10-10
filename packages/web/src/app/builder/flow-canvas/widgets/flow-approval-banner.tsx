@@ -115,13 +115,13 @@ const FlowApprovalBanner = () => {
 
   return (
     <LargeWidgetWrapper>
-      <div className="flex items-center gap-2">
-        <ShieldAlert className="size-5" />
-        <div className="flex flex-col">
+      <div className="flex items-center gap-3">
+        <ShieldAlert className="size-3.5 shrink-0 text-gray-9" />
+        <div className="flex items-center gap-2">
           <span>{t('Awaiting approval to publish this flow.')}</span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-xs text-gray-11">
+              <span className="text-gray-11">
                 {t('Submitted {time}', { time: submittedAgo })}
               </span>
             </TooltipTrigger>
@@ -136,7 +136,7 @@ const FlowApprovalBanner = () => {
           <>
             <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
               <Button
-                size="sm"
+                size="xs"
                 variant="outline"
                 disabled={busy}
                 onClick={() => setRejectOpen(true)}
@@ -180,7 +180,7 @@ const FlowApprovalBanner = () => {
               </DialogContent>
             </Dialog>
             <Button
-              size="sm"
+              size="xs"
               variant="default"
               loading={isApproving}
               disabled={busy}
@@ -192,7 +192,7 @@ const FlowApprovalBanner = () => {
         )}
         {showWithdraw && (
           <Button
-            size="sm"
+            size="xs"
             variant="ghost"
             loading={isWithdrawing}
             disabled={busy}

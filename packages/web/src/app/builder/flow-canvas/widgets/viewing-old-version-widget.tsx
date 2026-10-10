@@ -44,8 +44,8 @@ const ViewingOldVersionWidget = () => {
   return (
     <LargeWidgetWrapper>
       <>
-        <div className="flex items-center gap-2">
-          <Info className="size-5" />
+        <div className="flex items-center gap-3">
+          <Info className="size-3.5 shrink-0 text-gray-9" />
           <span>
             {t('Viewing version')} #{versionNumber}
           </span>
@@ -58,7 +58,7 @@ const ViewingOldVersionWidget = () => {
               versionNumber={versionNumber}
               onConfirm={undefined}
             >
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="xs">
                 {t('Use as Draft')}
               </Button>
             </OverwriteDraftDialog>

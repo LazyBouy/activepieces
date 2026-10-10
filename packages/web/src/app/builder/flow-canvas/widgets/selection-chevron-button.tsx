@@ -12,9 +12,9 @@ const showChevronNextToSelection = (targetDiv: HTMLElement) => {
   const root = createRoot(container);
   root.render(
     <Button
-      variant="outline"
-      size="icon"
-      className="absolute top-[10px] -left-10 z-50"
+      variant="ghost"
+      size="icon-sm"
+      className="absolute -top-2 -left-10 z-50 bg-panel shadow-xs"
       {...{
         [`data-${flowCanvasConsts.SELECTION_RECT_CHEVRON_ATTRIBUTE}`]: true,
       }}

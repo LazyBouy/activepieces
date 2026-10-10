@@ -1,7 +1,7 @@
 import { NoteColorVariant } from '@activepieces/shared';
 import { Editor } from '@tiptap/core';
 import { t } from 'i18next';
-import { TrashIcon } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { forwardRef, useRef, useState } from 'react';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
@@ -15,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 export const NoteTools = ({ editor, currentColor, id }: NoteToolsProps) => {
@@ -27,31 +26,29 @@ export const NoteTools = ({ editor, currentColor, id }: NoteToolsProps) => {
   return (
     <div
       ref={containerRef}
-      className="absolute cursor-default -top-[45px] w-full left-0"
+      className="absolute right-0 bottom-full cursor-default pb-3"
     >
-      <div className="flex items-center justify-center">
-        <div className="p-1 bg-gray-1 flex items-center gap-0.5 shadow-md rounded-lg scale-65 border border-solid border-gray-6">
-          <NoteColorPicker
-            currentColor={currentColor}
-            setCurrentColor={(color: NoteColorVariant) => {
-              updateNoteColor(id, color);
+      <div className="flex items-center rounded-sm bg-gray-2">
+        <NoteColorPicker
+          currentColor={currentColor}
+          setCurrentColor={(color: NoteColorVariant) => {
+            updateNoteColor(id, color);
+          }}
+          container={containerRef.current}
+        />
+        <MarkdownTools editor={editor} />
+        <ToolWrapper tooltip={t('Delete')}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('Delete')}
+            onClick={() => {
+              deleteNote(id);
             }}
-            container={containerRef.current}
-          />
-          <MarkdownTools editor={editor} />
-          <Separator orientation="vertical" className="h-[30px]"></Separator>
-          <ToolWrapper tooltip={t('Delete')}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                deleteNote(id);
-              }}
-            >
-              <TrashIcon className="size-4 text-danger-11" />
-            </Button>
-          </ToolWrapper>
-        </div>
+          >
+            <Trash2 className="size-3.5 text-danger-11" />
+          </Button>
+        </ToolWrapper>
       </div>
     </div>
   );
@@ -132,15 +129,12 @@ const ColorButton = forwardRef<HTMLButtonElement, ColorButtonProps>(
         key={color}
         ref={ref}
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         role="button"
         className={cn('size-5 shrink-0 grow flex items-center justify-center', {
-          'size-6': big,
+          'size-7': big,
         })}
         onClick={onClick}
-        onFocus={() => {
-          console.log('focus');
-        }}
       >
         <div
           className={cn(
@@ -148,7 +142,7 @@ const ColorButton = forwardRef<HTMLButtonElement, ColorButtonProps>(
               NoteColorPickerClassName[NoteColorVariant.YELLOW],
             'size-4 shrink-0 rounded-full',
             {
-              'size-5': big,
+              'size-3.5': big,
             },
           )}
         ></div>

@@ -1,4 +1,4 @@
-import { isNil } from '@activepieces/core-utils';
+import { isNil, tryCatch } from '@activepieces/core-utils';
 import {
   FlowAction,
   FlowActionType,
@@ -6,6 +6,7 @@ import {
   flowStructureUtil,
   StepLocationRelativeToParent,
 } from '@activepieces/shared';
+import { useReactFlow } from '@xyflow/react';
 import { t } from 'i18next';
 import {
   ArrowLeftRight,
@@ -14,6 +15,7 @@ import {
   ClipboardPlus,
   Copy,
   CopyPlus,
+  ImageDown,
   Route,
   RouteOff,
   Trash,
@@ -39,6 +41,7 @@ import {
   pasteNodes,
   toggleSkipSelectedNodes,
 } from '../utils/bulk-actions';
+import { flowScreenshotUtils } from '../utils/flow-screenshot-utils';
 
 import { CanvasContextMenuProps, ContextMenuType } from './canvas-context-menu';
 
@@ -77,6 +80,19 @@ export const CanvasContextMenuContent = ({
     state.readonly,
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
   ]);
+  const { getNodes } = useReactFlow();
+  const downloadFlowAsImage = async () => {
+    const { error } = await tryCatch(() =>
+      flowScreenshotUtils.downloadFlowAsImage({
+        nodes: getNodes(),
+        flowName: flowVersion.displayName,
+      }),
+    );
+    if (error) {
+      console.error(error);
+      toast.error(t('Failed to capture the flow image'));
+    }
+  };
   const disabled = selectedNodes.length === 0;
   const areAllStepsSkipped = selectedNodes.every(
     (node) =>
@@ -93,6 +109,7 @@ export const CanvasContextMenuContent = ({
   );
   const showPasteAfterLastStep =
     !readonly && contextMenuType === ContextMenuType.CANVAS;
+  const showDownloadImage = contextMenuType === ContextMenuType.CANVAS;
   const showPasteAsFirstLoopAction =
     selectedNodes.length === 1 &&
     firstSelectedStep?.type === FlowActionType.LOOP_ON_ITEMS &&
@@ -159,6 +176,7 @@ export const CanvasContextMenuContent = ({
     showPasteAsCofBranchChild ||
     showPasteAfterCurrentStep ||
     showPasteAfterLastStep ||
+    showDownloadImage ||
     showDelete;
   if (!showContextMenuContent) {
     return null;
@@ -255,6 +273,17 @@ export const CanvasContextMenuContent = ({
           >
             <ClipboardPlus className="w-4 h-4"></ClipboardPlus>{' '}
             {t('Paste After Last Step')}
+          </ContextMenuItem>
+        )}
+
+        {showDownloadImage && (
+          <ContextMenuItem
+            onClick={() => {
+              downloadFlowAsImage().catch(() => undefined);
+            }}
+            className="flex items-center gap-2"
+          >
+            <ImageDown className="w-4 h-4"></ImageDown> {t('Download as image')}
           </ContextMenuItem>
         )}
 

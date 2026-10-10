@@ -196,7 +196,6 @@ export const useFocusOnStep = () => {
 
 export const useResizeCanvas = (
   containerRef: React.RefObject<HTMLDivElement | null>,
-  setHasCanvasBeenInitialised: (hasCanvasBeenInitialised: boolean) => void,
 ) => {
   const containerSizeRef = useRef({
     width: 0,
@@ -208,16 +207,18 @@ export const useResizeCanvas = (
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
-      setHasCanvasBeenInitialised(true);
-      const { x, y, zoom } = getViewport();
-      if (containerRef.current && width !== containerSizeRef.current.width) {
-        const newX = x + (width - containerSizeRef.current.width) / 2;
-        setViewport({ x: newX, y, zoom });
+      const previousSize = containerSizeRef.current;
+      containerSizeRef.current = { width, height };
+      const hadSize = previousSize.width > 0 && previousSize.height > 0;
+      if (!hadSize) {
+        return;
       }
-      containerSizeRef.current = {
-        width,
-        height,
-      };
+      const { x, y, zoom } = getViewport();
+      setViewport({
+        x: x + (width - previousSize.width) / 2,
+        y: y + (height - previousSize.height) / 2,
+        zoom,
+      });
     });
     resizeObserver.observe(containerRef.current);
     return () => {

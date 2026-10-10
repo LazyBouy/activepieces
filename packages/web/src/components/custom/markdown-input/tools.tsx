@@ -81,42 +81,50 @@ export const MarkdownTools = ({ editor }: { editor: Editor }) => {
   }, [isStrikeActive, isBoldActive, isItalicActive, isUnderlineActive]);
   const containerRef = useRef<HTMLDivElement>(null);
   return (
-    <div ref={containerRef} className="flex items-center gap-0.5 text-gray-12">
+    <div ref={containerRef} className="flex items-center text-gray-12">
       <ImageTool editor={editor} containerRef={containerRef} />
       <ToolWrapper tooltip={t('Strike')}>
         <Button
           onClick={handleStrike}
-          size={'icon'}
-          variant={isStrikeActive ? 'default' : 'ghost'}
+          size={'icon-sm'}
+          variant={'ghost'}
+          data-active={isStrikeActive || undefined}
+          className="data-[active=true]:bg-gray-5"
         >
-          <Strikethrough className="size-4" />
+          <Strikethrough className="size-3.5" />
         </Button>
       </ToolWrapper>
       <ToolWrapper tooltip={t('Bold')}>
         <Button
           onClick={handleBold}
-          size={'icon'}
-          variant={isBoldActive ? 'default' : 'ghost'}
+          size={'icon-sm'}
+          variant={'ghost'}
+          data-active={isBoldActive || undefined}
+          className="data-[active=true]:bg-gray-5"
         >
-          <BoldIcon className="size-4" />
+          <BoldIcon className="size-3.5" />
         </Button>
       </ToolWrapper>
       <ToolWrapper tooltip={t('Italic')}>
         <Button
           onClick={handleItalic}
-          size={'icon'}
-          variant={isItalicActive ? 'default' : 'ghost'}
+          size={'icon-sm'}
+          variant={'ghost'}
+          data-active={isItalicActive || undefined}
+          className="data-[active=true]:bg-gray-5"
         >
-          <ItalicIcon className="size-4" />
+          <ItalicIcon className="size-3.5" />
         </Button>
       </ToolWrapper>
       <ToolWrapper tooltip={t('Underline')}>
         <Button
           onClick={handleUnderline}
-          size={'icon'}
-          variant={isUnderlineActive ? 'default' : 'ghost'}
+          size={'icon-sm'}
+          variant={'ghost'}
+          data-active={isUnderlineActive || undefined}
+          className="data-[active=true]:bg-gray-5"
         >
-          <UnderlineIcon className="size-4" />
+          <UnderlineIcon className="size-3.5" />
         </Button>
       </ToolWrapper>
     </div>
@@ -146,8 +154,8 @@ const ImageTool = ({
     <Popover modal={false} open={open} onOpenChange={setOpen}>
       <ToolWrapper tooltip={t('Image')}>
         <PopoverTrigger asChild>
-          <Button size={'icon'} variant={'ghost'}>
-            <ImageIcon className="size-4" />
+          <Button size={'icon-sm'} variant={'ghost'}>
+            <ImageIcon className="size-3.5" />
           </Button>
         </PopoverTrigger>
       </ToolWrapper>

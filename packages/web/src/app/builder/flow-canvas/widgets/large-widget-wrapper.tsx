@@ -8,10 +8,10 @@ const LargeWidgetWrapper = ({
   containerClassName?: string;
 }) => {
   return (
-    <div className="absolute top-6 z-40 w-full px-2 flex justify-center">
+    <div className="pointer-events-none absolute top-10 z-40 flex w-full justify-center px-4">
       <div
         className={cn(
-          'py-1.5 px-3.5 border min-h-11.5  border border-gray-6  bg-gray-1 z-40  w-full animate-fade duration-300 rounded-md  flex items-center justify-between',
+          'pointer-events-auto flex max-w-full items-center justify-between gap-3 rounded-sm border border-gray-6 bg-panel p-3 text-xs leading-normal text-gray-12/87 motion-safe:animate-overlay-in',
           containerClassName,
         )}
       >

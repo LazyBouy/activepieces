@@ -1,14 +1,12 @@
-import { ViewportPortal } from '@xyflow/react';
 import React from 'react';
 
-import FlowEndWidget from '@/app/builder/flow-canvas/widgets/flow-end-widget';
 import IncompleteSettingsButton from '@/app/builder/flow-canvas/widgets/incomplete-settings-widget';
 import { TestFlowWidget } from '@/app/builder/flow-canvas/widgets/test-flow-widget';
 
 import { useBuilderStateContext } from '../../builder-hooks';
 import { flowCanvasConsts } from '../utils/consts';
 
-const AboveFlowWidgets = React.memo(() => {
+const CanvasTestBar = React.memo(() => {
   const [
     flowVersion,
     selectStepByName,
@@ -21,69 +19,23 @@ const AboveFlowWidgets = React.memo(() => {
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
   ]);
   return (
-    <ViewportPortal>
-      <WidgetWrapper>
-        <div
-          style={{
-            transform: `translate(0px,-${flowCanvasConsts.AP_NODE_SIZE.STEP.height}px )`,
-            position: 'absolute',
-            pointerEvents: 'auto',
-          }}
-        >
-          <div className="justify-center items-center flex w-[260px]">
-            <TestFlowWidget></TestFlowWidget>
-            {!readonly && (
-              <IncompleteSettingsButton
-                flowVersion={flowVersion}
-                selectStepByName={selectStepByName}
-                setOpenedPieceSelectorStepNameOrAddButtonId={
-                  setOpenedPieceSelectorStepNameOrAddButtonId
-                }
-              ></IncompleteSettingsButton>
-            )}
-          </div>
-        </div>
-      </WidgetWrapper>
-    </ViewportPortal>
-  );
-});
-AboveFlowWidgets.displayName = 'AboveFlowWidgets';
-const BelowFlowWidget = React.memo(() => {
-  return (
-    <ViewportPortal>
-      <WidgetWrapper>
-        <div
-          style={{
-            pointerEvents: 'auto',
-          }}
-        >
-          <div
-            className="flex items-center justify-center gap-2"
-            style={{ width: flowCanvasConsts.AP_NODE_SIZE.STEP.width + 'px' }}
-          >
-            <FlowEndWidget></FlowEndWidget>
-          </div>
-        </div>
-      </WidgetWrapper>
-    </ViewportPortal>
-  );
-});
-
-const WidgetWrapper = ({ children }: { children: React.ReactNode }) => {
-  const canvasOrientation = useBuilderStateContext(
-    (state) => state.canvasOrientation,
-  );
-  return (
     <div
-      style={{
-        width: flowCanvasConsts.STEP_NODE_SIZE[canvasOrientation].width + 'px',
-      }}
-      className="flex items-center justify-center"
+      {...{ [`data-${flowCanvasConsts.CANVAS_CHROME_ATTRIBUTE}`]: true }}
+      className="absolute right-4 bottom-4 z-10 flex items-center gap-3 @3xl:right-auto @3xl:left-1/2 @3xl:-translate-x-1/2"
     >
-      {children}
+      <TestFlowWidget />
+      {!readonly && (
+        <IncompleteSettingsButton
+          flowVersion={flowVersion}
+          selectStepByName={selectStepByName}
+          setOpenedPieceSelectorStepNameOrAddButtonId={
+            setOpenedPieceSelectorStepNameOrAddButtonId
+          }
+        />
+      )}
     </div>
   );
-};
+});
 
-BelowFlowWidget.displayName = 'BelowFlowWidget';
-export { AboveFlowWidgets, BelowFlowWidget };
+CanvasTestBar.displayName = 'CanvasTestBar';
+export { CanvasTestBar };

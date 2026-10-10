@@ -10,6 +10,7 @@ import {
   FlowTriggerType,
   FlowVersion,
   FlowVersionState,
+  NoteColorVariant,
 } from '@activepieces/shared';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -141,7 +142,7 @@ describe('flowCanvasUtils.createFlowGraph', () => {
     const graph = flowCanvasUtils.createFlowGraph({
       version: createFlowVersion(createCodeAction('step_1')),
       notes: [],
-      orientation: 'vertical',
+      orientation: 'horizontal',
     });
     const triggerEdge = graph.edges.find((edge) => edge.source === 'trigger');
     expect(triggerEdge?.type).toEqual(ApEdgeType.STRAIGHT_LINE);
@@ -156,7 +157,7 @@ describe('flowCanvasUtils.createFlowGraph with an AI router', () => {
     const graph = flowCanvasUtils.createFlowGraph({
       version: createFlowVersion(createAiRouter()),
       notes: [],
-      orientation: 'vertical',
+      orientation: 'horizontal',
     });
 
     const branchLabels = graph.edges
@@ -170,7 +171,7 @@ describe('flowCanvasUtils.createFlowGraph with an AI router', () => {
     const graph = flowCanvasUtils.createFlowGraph({
       version: createFlowVersion(createAiRouter()),
       notes: [],
-      orientation: 'vertical',
+      orientation: 'horizontal',
     });
 
     const addButtons = graph.nodes.filter(
@@ -180,3 +181,90 @@ describe('flowCanvasUtils.createFlowGraph with an AI router', () => {
     expect(addButtons).toHaveLength(3);
   });
 });
+
+describe('flowCanvasUtils.getAddStepParentName', () => {
+  it('adds after the selected step', () => {
+    const version = createFlowVersion(
+      createCodeAction('step_1', createCodeAction('step_2')),
+    );
+    expect(
+      flowCanvasUtils.getAddStepParentName({
+        trigger: version.trigger,
+        selectedStep: 'step_1',
+      }),
+    ).toBe('step_1');
+  });
+
+  it('adds after the last step of the main chain when nothing is selected', () => {
+    const version = createFlowVersion(
+      createCodeAction('step_1', createCodeAction('step_2')),
+    );
+    expect(
+      flowCanvasUtils.getAddStepParentName({
+        trigger: version.trigger,
+        selectedStep: null,
+      }),
+    ).toBe('step_2');
+  });
+
+  it('ignores a selection that is no longer in the flow', () => {
+    const version = createFlowVersion(createCodeAction('step_1'));
+    expect(
+      flowCanvasUtils.getAddStepParentName({
+        trigger: version.trigger,
+        selectedStep: 'deleted_step',
+      }),
+    ).toBe('step_1');
+  });
+
+  it('adds after the trigger of an empty flow', () => {
+    const version = createFlowVersion();
+    expect(
+      flowCanvasUtils.getAddStepParentName({
+        trigger: version.trigger,
+        selectedStep: null,
+      }),
+    ).toBe('trigger');
+  });
+});
+
+describe('flowCanvasUtils.createNoteDraft', () => {
+  it('starts a new note at the default size and colour', () => {
+    const draft = flowCanvasUtils.createNoteDraft();
+    expect(draft.size).toEqual({ width: 240, height: 160 });
+    expect(draft.color).toBe(NoteColorVariant.YELLOW);
+    expect(draft.content).toBe('');
+  });
+});
+
+describe('flowCanvasUtils.createFocusStepInGraphParams', () => {
+  it('pans to the step at 100% with a 200ms tween', () => {
+    expect(flowCanvasUtils.createFocusStepInGraphParams('step_1')).toEqual({
+      nodes: [{ id: 'step_1' }],
+      duration: 200,
+      minZoom: 1,
+      maxZoom: 1,
+    });
+  });
+
+  it('jumps instantly when the user prefers reduced motion', () => {
+    vi.stubGlobal('matchMedia', () => createMediaQueryList(true));
+    expect(
+      flowCanvasUtils.createFocusStepInGraphParams('step_1').duration,
+    ).toBe(0);
+    vi.unstubAllGlobals();
+  });
+});
+
+function createMediaQueryList(matches: boolean): MediaQueryList {
+  return {
+    matches,
+    media: '(prefers-reduced-motion: reduce)',
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  };
+}

@@ -20,7 +20,11 @@ export type NotesState = {
   addNote: (request: Omit<AddNoteRequest, 'id'>) => void;
   deleteNote: (id: string) => void;
   moveNote: (id: string, position: { x: number; y: number }) => void;
-  resizeNote: (id: string, size: { width: number; height: number }) => void;
+  resizeNote: (params: {
+    id: string;
+    size: { width: number; height: number };
+    position?: { x: number; y: number };
+  }) => void;
   draggedNote: Note | null;
   updateContent: (id: string, content: string) => void;
   updateNoteColor: (id: string, color: NoteColorVariant) => void;
@@ -118,7 +122,7 @@ export const createNotesState = (
         },
       });
     },
-    resizeNote: (id: string, size: { width: number; height: number }) => {
+    resizeNote: ({ id, size, position }) => {
       set(() => {
         return {
           noteDragOverlayMode: null,
@@ -134,6 +138,7 @@ export const createNotesState = (
         request: {
           ...note,
           size,
+          position: position ?? note.position,
         },
       });
     },

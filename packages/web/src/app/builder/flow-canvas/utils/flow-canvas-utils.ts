@@ -43,6 +43,9 @@ import {
  * below, edge SVG paths by svgPathUtils.transposePath inside the edge
  * components — turning the top-to-bottom layout into a left-to-right one.
  */
+const FOCUS_STEP_DURATION = 200;
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
 const getLayout = (orientation: CanvasOrientation) =>
   flowCanvasLayoutConsts.ORIENTATION_LAYOUT[orientation];
 
@@ -225,10 +228,46 @@ function mergeGraph(graph1: ApGraph, graph2: ApGraph): ApGraph {
 function createFocusStepInGraphParams(stepName: string) {
   return {
     nodes: [{ id: stepName }],
-    duration: 1000,
-    maxZoom: 1.25,
-    minZoom: 1.25,
+    duration: prefersReducedMotion() ? 0 : FOCUS_STEP_DURATION,
+    maxZoom: 1,
+    minZoom: 1,
   };
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+
+function createNoteDraft(): Note {
+  return {
+    id: '',
+    content: '',
+    createdAt: '',
+    updatedAt: '',
+    position: { x: 0, y: 0 },
+    size: { ...flowCanvasLayoutConsts.NOTE_DEFAULT_SIZE },
+    color: flowCanvasLayoutConsts.NOTE_DEFAULT_COLOR,
+  };
+}
+
+function getAddStepParentName({
+  trigger,
+  selectedStep,
+}: {
+  trigger: FlowTrigger;
+  selectedStep: string | null;
+}): string {
+  const selected = isNil(selectedStep)
+    ? undefined
+    : flowStructureUtil.getStep(selectedStep, trigger);
+  if (!isNil(selected)) {
+    return selected.name;
+  }
+  const mainChain = flowStructureUtil.getAllNextActionsWithoutChildren(trigger);
+  return mainChain.at(-1)?.name ?? trigger.name;
 }
 
 const calculateGraphBoundingBox = ({
@@ -721,6 +760,8 @@ export const flowCanvasUtils = {
     return mergeGraph(orientedGraph, notesGraph);
   },
   createFocusStepInGraphParams,
+  createNoteDraft,
+  getAddStepParentName,
   calculateGraphBoundingBox,
   createAddOperationFromAddButtonData,
   getStepStatus,

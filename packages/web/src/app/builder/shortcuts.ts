@@ -1,15 +1,24 @@
+import { isNil } from '@activepieces/core-utils';
 import {
   flowStructureUtil,
   StepLocationRelativeToParent,
 } from '@activepieces/shared';
+import { useReactFlow } from '@xyflow/react';
 import { useCallback, useEffect } from 'react';
 
 import { isEditableTarget } from '@/lib/dom-utils';
 
 import { useBuilderStateContext } from './builder-hooks';
-import { CanvasShortcutsProps } from './flow-canvas/context-menu/canvas-context-menu';
+import { useFitToView } from './flow-canvas/canvas-controls/use-fit-to-view';
+import {
+  CanvasShortcutAction,
+  CanvasShortcutProps,
+  CanvasShortcutsProps,
+} from './flow-canvas/context-menu/canvas-context-menu';
 import { canvasBulkActions } from './flow-canvas/utils/bulk-actions';
 import { flowCanvasConsts } from './flow-canvas/utils/consts';
+import { flowCanvasUtils } from './flow-canvas/utils/flow-canvas-utils';
+import { NoteDragOverlayMode } from './state/notes-state';
 
 export const useHandleKeyPressOnCanvas = () => {
   const [
@@ -19,8 +28,6 @@ export const useHandleKeyPressOnCanvas = () => {
     exitStepSettings,
     applyOperation,
     readonly,
-    setShowMinimap,
-    showMinimap,
     setDraggedNote,
     setDraggedStep,
   ] = useBuilderStateContext((state) => [
@@ -30,15 +37,22 @@ export const useHandleKeyPressOnCanvas = () => {
     state.exitStepSettings,
     state.applyOperation,
     state.readonly,
-    state.setShowMinimap,
-    state.showMinimap,
     state.setDraggedNote,
     state.setActiveDraggingStep,
   ]);
+  const { zoomIn, zoomOut, zoomTo } = useReactFlow();
+  const fitToView = useFitToView();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) {
+        return;
+      }
+      const match = findShortcutMatch(e);
+      if (!match) {
+        return;
+      }
+      if (match.shortcut.requiresCanvasFocus && !isCanvasTarget(e.target)) {
         return;
       }
       const insideSelectionRect =
@@ -55,11 +69,11 @@ export const useHandleKeyPressOnCanvas = () => {
       const selectedNodesWithoutTrigger = selectedNodes.filter(
         (node) => node !== flowVersion.trigger.name,
       );
+      const selectedActionNames = selectedNodesWithoutTrigger.filter(
+        (node) => !isNil(flowStructureUtil.getStep(node, flowVersion.trigger)),
+      );
 
-      shortcutHandler(e, {
-        Minimap: () => {
-          setShowMinimap(!showMinimap);
-        },
+      const handlers: Record<CanvasShortcutAction, () => void> = {
         Copy: () => {
           if (
             selectedNodesWithoutTrigger.length > 0 &&
@@ -78,13 +92,13 @@ export const useHandleKeyPressOnCanvas = () => {
           if (readonly) {
             return;
           }
-          if (selectedNodes.length > 0) {
+          if (selectedActionNames.length > 0) {
             e.stopPropagation();
             e.preventDefault();
             canvasBulkActions.deleteSelectedNodes({
               exitStepSettings,
               selectedStep,
-              selectedNodes,
+              selectedNodes: selectedActionNames,
               applyOperation,
             });
           }
@@ -93,9 +107,10 @@ export const useHandleKeyPressOnCanvas = () => {
           if (readonly) {
             return;
           }
-          if (selectedNodesWithoutTrigger.length > 0) {
+          if (selectedActionNames.length > 0) {
+            e.preventDefault();
             canvasBulkActions.toggleSkipSelectedNodes({
-              selectedNodes: selectedNodesWithoutTrigger,
+              selectedNodes: selectedActionNames,
               flowVersion,
               applyOperation,
             });
@@ -136,7 +151,34 @@ export const useHandleKeyPressOnCanvas = () => {
             }
           });
         },
-      });
+        FitView: () => {
+          e.preventDefault();
+          fitToView();
+        },
+        ResetZoom: () => {
+          e.preventDefault();
+          zoomTo(1, { duration: 0 });
+        },
+        ZoomIn: () => {
+          e.preventDefault();
+          zoomIn({ duration: 0 });
+        },
+        ZoomOut: () => {
+          e.preventDefault();
+          zoomOut({ duration: 0 });
+        },
+        AddNote: () => {
+          if (readonly) {
+            return;
+          }
+          e.preventDefault();
+          setDraggedNote(
+            flowCanvasUtils.createNoteDraft(),
+            NoteDragOverlayMode.CREATE,
+          );
+        },
+      };
+      handlers[match.action]();
     },
     [
       selectedNodes,
@@ -145,10 +187,12 @@ export const useHandleKeyPressOnCanvas = () => {
       selectedStep,
       exitStepSettings,
       readonly,
-      setShowMinimap,
-      showMinimap,
       setDraggedNote,
       setDraggedStep,
+      fitToView,
+      zoomIn,
+      zoomOut,
+      zoomTo,
     ],
   );
 
@@ -157,23 +201,68 @@ export const useHandleKeyPressOnCanvas = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 };
-const shortcutHandler = (
-  event: KeyboardEvent,
-  handlers: Record<keyof CanvasShortcutsProps, () => void>,
-) => {
-  const shortcutActivated = Object.entries(CanvasShortcuts).find(
-    ([_, shortcut]) =>
-      shortcut.shortcutKey?.toLowerCase() === event.key.toLowerCase() &&
-      !!(
-        shortcut.withCtrl === event.ctrlKey ||
-        shortcut.withCtrl === event.metaKey
-      ) &&
-      !!shortcut.withShift === event.shiftKey,
+
+function matchesShortcut({
+  event,
+  shortcut,
+}: {
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+  >;
+  shortcut: CanvasShortcutProps;
+}): boolean {
+  const keyMatches = shortcut.shortcutCode
+    ? event.code === shortcut.shortcutCode
+    : event.key.toLowerCase() === shortcut.shortcutKey.toLowerCase();
+  const ctrlMatches = (event.ctrlKey || event.metaKey) === !!shortcut.withCtrl;
+  const shiftMatches =
+    !!shortcut.ignoreShift || event.shiftKey === !!shortcut.withShift;
+  const altMatches = event.altKey === !!shortcut.withAlt;
+  return keyMatches && ctrlMatches && shiftMatches && altMatches;
+}
+
+function findShortcutMatch(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+  >,
+): ShortcutMatch | null {
+  const bindings = CANVAS_SHORTCUT_ACTIONS.flatMap((action) =>
+    [CanvasShortcuts[action], ...(CanvasShortcutAliases[action] ?? [])].map(
+      (shortcut) => ({ action, shortcut }),
+    ),
   );
-  if (shortcutActivated) {
-    handlers[shortcutActivated[0] as keyof CanvasShortcutsProps]();
+  return (
+    bindings.find(({ shortcut }) => matchesShortcut({ event, shortcut })) ??
+    null
+  );
+}
+
+function isCanvasTarget(target: EventTarget | null): boolean {
+  if (target === document.body || target === document.documentElement) {
+    return true;
   }
-};
+  return (
+    target instanceof Element &&
+    target.closest(
+      `.react-flow, [data-${flowCanvasConsts.CANVAS_CHROME_ATTRIBUTE}]`,
+    ) !== null
+  );
+}
+
+const CANVAS_SHORTCUT_ACTIONS: CanvasShortcutAction[] = [
+  'ExitDrag',
+  'Paste',
+  'Copy',
+  'Delete',
+  'Skip',
+  'FitView',
+  'ResetZoom',
+  'ZoomIn',
+  'ZoomOut',
+  'AddNote',
+];
 
 export const CanvasShortcuts: CanvasShortcutsProps = {
   ExitDrag: {
@@ -181,29 +270,74 @@ export const CanvasShortcuts: CanvasShortcutsProps = {
     withShift: false,
     shortcutKey: 'Escape',
   },
-  Minimap: {
-    withCtrl: true,
-    withShift: false,
-    shortcutKey: 'm',
-  },
   Paste: {
     withCtrl: true,
     withShift: false,
     shortcutKey: 'v',
-  },
-  Delete: {
-    withCtrl: false,
-    withShift: true,
-    shortcutKey: 'Delete',
   },
   Copy: {
     withCtrl: true,
     withShift: false,
     shortcutKey: 'c',
   },
-  Skip: {
-    withCtrl: true,
-    withShift: false,
-    shortcutKey: 'e',
+  Delete: {
+    shortcutKey: 'Delete',
+    requiresCanvasFocus: true,
   },
+  Skip: {
+    shortcutKey: 'd',
+    requiresCanvasFocus: true,
+  },
+  FitView: {
+    shortcutKey: '1',
+    requiresCanvasFocus: true,
+  },
+  ResetZoom: {
+    shortcutKey: '0',
+    requiresCanvasFocus: true,
+  },
+  ZoomIn: {
+    shortcutKey: '+',
+    ignoreShift: true,
+    requiresCanvasFocus: true,
+  },
+  ZoomOut: {
+    shortcutKey: '-',
+    requiresCanvasFocus: true,
+  },
+  AddNote: {
+    shortcutKey: 's',
+    withShift: true,
+    requiresCanvasFocus: true,
+  },
+};
+
+export const CanvasShortcutAliases: Partial<
+  Record<CanvasShortcutAction, CanvasShortcutProps[]>
+> = {
+  Delete: [
+    { shortcutKey: 'Backspace', requiresCanvasFocus: true },
+    { shortcutKey: 'Delete', withShift: true },
+  ],
+  Skip: [{ shortcutKey: 'e', withCtrl: true }],
+  ZoomIn: [{ shortcutKey: '=', requiresCanvasFocus: true }],
+};
+
+export const TIDY_UP_SHORTCUT: CanvasShortcutProps = {
+  shortcutKey: 't',
+  shortcutCode: 'KeyT',
+  withShift: true,
+  withAlt: true,
+  requiresCanvasFocus: true,
+};
+
+export const canvasShortcutUtils = {
+  matchesShortcut,
+  findShortcutMatch,
+  isCanvasTarget,
+};
+
+type ShortcutMatch = {
+  action: CanvasShortcutAction;
+  shortcut: CanvasShortcutProps;
 };

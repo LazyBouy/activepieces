@@ -31,6 +31,7 @@ import { FlowCanvas } from './flow-canvas';
 import { flowCanvasHooks } from './flow-canvas/hooks';
 import { flowCanvasConsts } from './flow-canvas/utils/consts';
 import { BuilderBanner } from './flow-canvas/widgets/builder-banner';
+import { CanvasToolbar } from './flow-canvas/widgets/canvas-toolbar';
 import { FlowVersionsList } from './flow-versions';
 import { RunsList } from './run-list';
 import { CursorPositionProvider } from './state/cursor-position-context';
@@ -48,7 +49,6 @@ const BuilderPage = () => {
   const [
     flowVersion,
     rightSidebar,
-    selectedStepName,
     removeAllStepTestsListeners,
     selectedStep,
     stepDataPanelView,
@@ -58,7 +58,6 @@ const BuilderPage = () => {
   ] = useBuilderStateContext((state) => [
     state.flowVersion,
     state.rightSidebar,
-    state.selectedStep,
     state.removeAllStepTestsListeners,
     flowStructureUtil.getStep(
       state.selectedStep ?? '',
@@ -146,9 +145,6 @@ const BuilderPage = () => {
   flowCanvasHooks.useSetSocketListener(refetchPiece);
   flowCanvasHooks.useListenToExistingRun();
 
-  const [hasCanvasBeenInitialised, setHasCanvasBeenInitialised] =
-    useState(false);
-
   return (
     <div className="flex h-full w-full flex-col relative max-h-[100vh]">
       <div className="z-40">
@@ -158,21 +154,12 @@ const BuilderPage = () => {
         <ResizablePanel defaultSize="100%" id="flow-canvas">
           <div ref={middlePanelRef} className="relative h-full w-full">
             <CursorPositionProvider>
-              <FlowCanvas
-                setHasCanvasBeenInitialised={setHasCanvasBeenInitialised}
-              ></FlowCanvas>
+              <FlowCanvas></FlowCanvas>
             </CursorPositionProvider>
 
             <BuilderBanner />
-            {middlePanelRef.current &&
-              middlePanelRef.current.clientWidth > 0 && (
-                <CanvasControls
-                  canvasHeight={middlePanelRef.current?.clientHeight ?? 0}
-                  canvasWidth={middlePanelRef.current?.clientWidth ?? 0}
-                  hasCanvasBeenInitialised={hasCanvasBeenInitialised}
-                  selectedStep={selectedStepName}
-                ></CanvasControls>
-              )}
+            <CanvasControls />
+            <CanvasToolbar />
 
             <ShowPoweredBy
               position="absolute"

@@ -9,10 +9,10 @@ function ResourceLockWidget({
   resourceLabel,
 }: ResourceLockWidgetProps) {
   return (
-    <div className="absolute top-6 z-40 w-full px-2 flex justify-center">
-      <div className="py-1.5 px-3.5 border min-h-11.5 border-gray-6 bg-gray-1 z-40 w-full animate-fade duration-300 rounded-md flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Lock className="size-5" />
+    <div className="pointer-events-none absolute top-10 z-40 flex w-full justify-center px-4">
+      <div className="pointer-events-auto flex max-w-full items-center justify-between gap-3 rounded-sm border border-gray-6 bg-panel p-3 text-xs leading-normal text-gray-12/87 motion-safe:animate-overlay-in">
+        <div className="flex items-center gap-3">
+          <Lock className="size-3.5 shrink-0 text-gray-9" />
           <span>
             {t(
               '{name} is editing this {resource}. Only one person can edit at a time.',
@@ -23,7 +23,7 @@ function ResourceLockWidget({
             )}
           </span>
         </div>
-        <Button variant="ghost" size="sm" onClick={takeOver}>
+        <Button variant="ghost" size="xs" onClick={takeOver}>
           {t('Take Over')}
         </Button>
       </div>

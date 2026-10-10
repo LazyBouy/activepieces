@@ -1,6 +1,9 @@
 import { t } from 'i18next';
+import { Play } from 'lucide-react';
 import { useEffect } from 'react';
 
+import { Shortcut, ShortcutProps } from '@/components/custom/shortcut';
+import { LoadingSpinner } from '@/components/custom/spinner';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -10,15 +13,7 @@ import {
 import { isEditableTarget, isMac } from '@/lib/dom-utils';
 import { cn } from '@/lib/utils';
 
-type AboveTriggerButtonProps = {
-  onClick: () => void;
-  text: string;
-  disable?: boolean;
-  loading?: boolean;
-  showKeyboardShortcut?: boolean;
-  shortCutIsEscape?: boolean;
-  showPrimaryBg?: boolean;
-};
+import { flowCanvasConsts } from '../utils/consts';
 
 const AboveTriggerButton = ({
   onClick,
@@ -28,6 +23,7 @@ const AboveTriggerButton = ({
   showKeyboardShortcut = true,
   shortCutIsEscape = false,
   showPrimaryBg = true,
+  icon,
 }: AboveTriggerButtonProps) => {
   const isMacSystem = isMac();
 
@@ -37,14 +33,13 @@ const AboveTriggerButton = ({
         return;
       }
       const isEscapePressed = event.key === 'Escape' && shortCutIsEscape;
-      const ctrlAndDPressed =
-        (isMacSystem &&
-          event.metaKey &&
-          event.key.toLocaleLowerCase() === 'd') ||
-        (!isMacSystem &&
-          event.ctrlKey &&
-          event.key.toLocaleLowerCase() === 'd');
-      if (isEscapePressed || ctrlAndDPressed) {
+      const isModifierPressed = isMacSystem ? event.metaKey : event.ctrlKey;
+      const key = event.key.toLocaleLowerCase();
+      const runShortcutPressed =
+        !shortCutIsEscape &&
+        isModifierPressed &&
+        (key === 'd' || key === 'enter');
+      if (isEscapePressed || runShortcutPressed) {
         event.preventDefault();
         event.stopPropagation();
         if (!loading && !disable) {
@@ -58,52 +53,61 @@ const AboveTriggerButton = ({
     return () => {
       window.removeEventListener('keydown', keydownHandler, { capture: true });
     };
-  }, [isMac, loading, onClick]);
+  }, [isMacSystem, loading, disable, onClick, shortCutIsEscape]);
+
+  const shortcut: ShortcutProps = shortCutIsEscape
+    ? { shortcutKey: 'Esc' }
+    : { shortcutKey: 'd', withCtrl: true };
 
   return (
-    <Tooltip>
+    <Tooltip delayDuration={flowCanvasConsts.CHROME_TOOLTIP_DELAY}>
       <TooltipTrigger asChild>
-        <div className="bg-gray-2">
+        <span className={cn('inline-flex', { 'cursor-not-allowed': disable })}>
           <Button
-            variant="ghost"
-            className={cn(
-              'h-8 bg-gray-1 border-gray-6 border p-2.5 border-solid rounded-lg animate-fade',
-              {
-                'bg-accent-3! text-accent-11 hover:text-accent-11 disabled:pointer-events-auto hover:border-accent-9!  border-accent-7':
-                  showPrimaryBg,
-              },
-            )}
-            loading={loading}
-            disabled={disable}
+            variant={showPrimaryBg ? 'default' : 'secondary'}
+            size={loading ? 'icon-lg' : 'lg'}
+            className={cn('disabled:pointer-events-none', {
+              'px-3': !loading,
+              'disabled:opacity-100': loading,
+            })}
+            aria-label={loading ? text : undefined}
+            aria-busy={loading || undefined}
+            disabled={disable || loading}
             onClick={onClick}
           >
-            <div className="flex justify-center items-center gap-2">
-              {text}
-              {showKeyboardShortcut && (
-                <span
-                  className={cn(
-                    'text-[10px] bg-gray-3 h-[20px] flex items-center justify-center px-1 rounded-sm tracking-widest whitespace-nowrap text-gray-11',
-                    {
-                      'bg-accent-5 text-accent-11': showPrimaryBg,
-                    },
-                  )}
-                >
-                  {shortCutIsEscape
-                    ? 'Esc'
-                    : isMacSystem
-                    ? '⌘ + D'
-                    : 'Ctrl + D'}
-                </span>
-              )}
-            </div>
+            {loading ? (
+              <span
+                key="running"
+                className="flex items-center justify-center motion-safe:animate-overlay-in"
+              >
+                <LoadingSpinner
+                  className={cn('size-4 [animation-duration:400ms]', {
+                    'stroke-on-accent': showPrimaryBg,
+                  })}
+                />
+              </span>
+            ) : (
+              <span
+                key="ready"
+                className="flex items-center gap-1.5 motion-safe:animate-overlay-in"
+              >
+                {icon ?? <Play className="size-4 fill-current" />}
+                {text}
+              </span>
+            )}
           </Button>
-        </div>
+        </span>
       </TooltipTrigger>
-      {disable && (
-        <TooltipContent side="bottom">
-          {t('Please test the trigger first')}
-        </TooltipContent>
-      )}
+      <TooltipContent side="top">
+        {disable ? (
+          t('Please test the trigger first')
+        ) : (
+          <span className="flex items-center gap-2">
+            {text}
+            {showKeyboardShortcut && <Shortcut {...shortcut} variant="keys" />}
+          </span>
+        )}
+      </TooltipContent>
     </Tooltip>
   );
 };
@@ -111,3 +115,14 @@ const AboveTriggerButton = ({
 AboveTriggerButton.displayName = 'AboveTriggerButton';
 
 export { AboveTriggerButton };
+
+type AboveTriggerButtonProps = {
+  onClick: () => void;
+  text: string;
+  disable?: boolean;
+  loading?: boolean;
+  showKeyboardShortcut?: boolean;
+  shortCutIsEscape?: boolean;
+  showPrimaryBg?: boolean;
+  icon?: React.ReactNode;
+};
