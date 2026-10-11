@@ -1,131 +1,155 @@
-import { isNil } from '@activepieces/core-utils';
-import {
-  FlowActionType,
-  FlowTriggerType,
-  TelemetryEventName,
-} from '@activepieces/shared';
+import { TelemetryEventName } from '@activepieces/shared';
 import { t } from 'i18next';
-import { MoveLeft } from 'lucide-react';
-import React from 'react';
 
-import { CardList } from '@/components/custom/card-list';
 import { useTelemetry } from '@/components/providers/telemetry-provider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+  PieceIcon,
   PieceSelectorItem,
   PieceSelectorOperation,
-  StepMetadataWithSuggestions,
-  pieceSelectorUtils,
-  stepUtils,
-  usePieceSearchContext,
+  PieceStepMetadataWithSuggestions,
+  stepsHooks,
 } from '@/features/pieces';
 
 import { useBuilderStateContext } from '../builder-hooks';
 
-import GenericActionOrTriggerItem from './generic-piece-selector-item';
-type PieceActionsOrTriggersListProps = {
-  hidePieceIconAndDescription: boolean;
-  stepMetadataWithSuggestions: StepMetadataWithSuggestions | null;
-  operation: PieceSelectorOperation;
-};
-export const convertStepMetadataToPieceSelectorItems = (
-  stepMetadataWithSuggestions: StepMetadataWithSuggestions,
-): PieceSelectorItem[] => {
-  switch (stepMetadataWithSuggestions.type) {
-    case FlowActionType.PIECE: {
-      const actions = pieceSelectorUtils.removeHiddenActions(
-        stepMetadataWithSuggestions,
-      );
-      return actions.map((action) => ({
-        actionOrTrigger: action,
-        type: FlowActionType.PIECE,
-        pieceMetadata: stepMetadataWithSuggestions,
-      }));
-    }
-    case FlowTriggerType.PIECE: {
-      const triggers = Object.values(
-        stepMetadataWithSuggestions.suggestedTriggers ?? {},
-      );
-      return triggers.map((trigger) => ({
-        actionOrTrigger: trigger,
-        type: FlowTriggerType.PIECE,
-        pieceMetadata: stepMetadataWithSuggestions,
-      }));
-    }
-    case FlowActionType.CODE:
-    case FlowActionType.LOOP_ON_ITEMS:
-    case FlowActionType.ROUTER:
-    case FlowActionType.AI_ROUTER: {
-      return stepUtils
-        .coreActionsMetadata()
-        .filter((step) => step.type === stepMetadataWithSuggestions.type);
-    }
-    default: {
-      return [];
-    }
-  }
-};
+import { PiecePanelSubViewHeader } from './piece-panel-header';
+import {
+  PiecePanelRow,
+  PiecePanelViewModel,
+  piecePanelUtils,
+} from './piece-panel-utils';
+import { PiecePanelView, PiecePanelViewBaseProps } from './piece-panel-view';
 
-export const PieceActionsOrTriggersList: React.FC<
-  PieceActionsOrTriggersListProps
-> = ({
-  stepMetadataWithSuggestions,
-  hidePieceIconAndDescription,
+export const PieceActionsOrTriggersList = ({
+  metadata,
   operation,
-}) => {
-  const { capture } = useTelemetry();
-  const { searchQuery } = usePieceSearchContext();
-  const [handleAddingOrUpdatingStep] = useBuilderStateContext((state) => [
-    state.handleAddingOrUpdatingStep,
-  ]);
-  if (isNil(stepMetadataWithSuggestions)) {
-    return (
-      <div className="flex flex-col gap-2 items-center justify-center h-full w-full">
-        <MoveLeft className="w-10 h-10 rtl:rotate-180" />
-        <div className="text-sm">{t('Please select a piece first')}</div>
-      </div>
-    );
-  }
-
-  const actionsOrTriggers = convertStepMetadataToPieceSelectorItems(
-    stepMetadataWithSuggestions,
-  );
+  query,
+  isTop,
+  depth,
+  onQueryChange,
+  onPop,
+  onClose,
+}: PieceActionsOrTriggersListProps) => {
+  const stepKind = piecePanelUtils.getStepKind(operation);
+  const { metadata: allSteps } = stepsHooks.useAllStepsMetadata({
+    searchQuery: '',
+    type: stepKind,
+  });
+  const fullMetadata =
+    allSteps
+      ?.filter(piecePanelUtils.isPieceMetadata)
+      .find((step) => step.pieceName === metadata.pieceName) ?? metadata;
+  const pick = usePickPieceSelectorItem({ operation });
+  const items = piecePanelUtils.filterItems({
+    items: piecePanelUtils.getItems(fullMetadata),
+    query,
+  });
+  const rows = piecePanelUtils.buildLabelledItemRows({
+    label: stepKind === 'trigger' ? t('Triggers') : t('Actions'),
+    items,
+    keyPrefix: `piece:${metadata.pieceName}`,
+  });
   return (
-    <ScrollArea className="h-full" viewPortClassName="h-full">
-      <CardList className="min-w-[350px] h-full gap-0" listClassName="gap-0">
-        {actionsOrTriggers &&
-          actionsOrTriggers.map((item, index) => {
-            return (
-              <GenericActionOrTriggerItem
-                key={index}
-                item={item}
-                hidePieceIconAndDescription={hidePieceIconAndDescription}
-                stepMetadataWithSuggestions={stepMetadataWithSuggestions}
-                onClick={() => {
-                  if (
-                    item.type === FlowActionType.PIECE ||
-                    item.type === FlowTriggerType.PIECE
-                  ) {
-                    capture({
-                      name: TelemetryEventName.PIECE_SELECTOR_SEARCH,
-                      payload: {
-                        search: searchQuery,
-                        isTrigger: item.type === FlowTriggerType.PIECE,
-                        selectedActionOrTriggerName: item.actionOrTrigger.name,
-                      },
-                    });
-                  }
-
-                  handleAddingOrUpdatingStep({
-                    pieceSelectorItem: item,
-                    operation,
-                    selectStepAfter: true,
-                  });
-                }}
-              />
-            );
-          })}
-      </CardList>
-    </ScrollArea>
+    <PiecePanelView
+      header={
+        <PiecePanelSubViewHeader
+          icon={
+            <PieceIcon
+              logoUrl={fullMetadata.logoUrl}
+              displayName={fullMetadata.displayName}
+              showTooltip={false}
+              size="row"
+            />
+          }
+          title={fullMetadata.displayName}
+          description={
+            fullMetadata.description
+              ? piecePanelUtils.trimTrailingPeriod(fullMetadata.description)
+              : null
+          }
+          onBack={onPop}
+        />
+      }
+      query={query}
+      onQueryChange={onQueryChange}
+      rows={rows}
+      isLoading={false}
+      isTop={isTop}
+      canPop={depth > 0}
+      onPop={onPop}
+      onClose={onClose}
+      onActivate={(row) => {
+        if (row.kind === 'item') {
+          pick({ item: row.item, query });
+        }
+      }}
+    />
   );
+};
+
+export function usePickPieceSelectorItem({
+  operation,
+}: {
+  operation: PieceSelectorOperation;
+}) {
+  const { capture } = useTelemetry();
+  const handleAddingOrUpdatingStep = useBuilderStateContext(
+    (state) => state.handleAddingOrUpdatingStep,
+  );
+  return ({
+    item,
+    query,
+    captureSearch = true,
+  }: {
+    item: PieceSelectorItem;
+    query: string;
+    captureSearch?: boolean;
+  }) => {
+    if (captureSearch && piecePanelUtils.isPieceItem(item)) {
+      capture({
+        name: TelemetryEventName.PIECE_SELECTOR_SEARCH,
+        payload: {
+          search: query,
+          isTrigger: piecePanelUtils.getItemInfo(item).isTrigger,
+          selectedActionOrTriggerName: item.actionOrTrigger.name,
+        },
+      });
+    }
+    handleAddingOrUpdatingStep({
+      pieceSelectorItem: item,
+      operation,
+      selectStepAfter: true,
+    });
+  };
+}
+
+export function useActivatePiecePanelRow({
+  operation,
+  query,
+  onPush,
+}: {
+  operation: PieceSelectorOperation;
+  query: string;
+  onPush: (view: PiecePanelViewModel) => void;
+}) {
+  const pick = usePickPieceSelectorItem({ operation });
+  return (row: PiecePanelRow) => {
+    switch (row.kind) {
+      case 'group':
+        onPush({ kind: 'group', tab: row.tab });
+        return;
+      case 'piece':
+        onPush({ kind: 'piece', metadata: row.metadata });
+        return;
+      case 'item':
+        pick({ item: row.item, query });
+        return;
+      default:
+        return;
+    }
+  };
+}
+
+type PieceActionsOrTriggersListProps = PiecePanelViewBaseProps & {
+  metadata: PieceStepMetadataWithSuggestions;
 };

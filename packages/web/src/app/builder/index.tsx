@@ -27,6 +27,7 @@ import { flowCanvasConsts } from './flow-canvas/utils/consts';
 import { BuilderBanner } from './flow-canvas/widgets/builder-banner';
 import { CanvasToolbar } from './flow-canvas/widgets/canvas-toolbar';
 import { FlowVersionsList } from './flow-versions';
+import { PiecePanel } from './pieces-selector';
 import { RunsList } from './run-list';
 import { CursorPositionProvider } from './state/cursor-position-context';
 import { StepModal } from './step-modal';
@@ -86,59 +87,66 @@ const BuilderPage = () => {
       <div className="z-40">
         <BuilderHeader />
       </div>
-      <ResizablePanelGroup orientation="horizontal">
-        <ResizablePanel defaultSize="100%" id="flow-canvas">
-          <div className="relative h-full w-full">
-            <CursorPositionProvider>
-              <FlowCanvas></FlowCanvas>
-            </CursorPositionProvider>
+      <div className="@container/builder-body relative flex min-h-0 flex-1">
+        <ResizablePanelGroup orientation="horizontal">
+          <ResizablePanel defaultSize="100%" id="flow-canvas">
+            <div className="relative h-full w-full">
+              <CursorPositionProvider>
+                <FlowCanvas></FlowCanvas>
+              </CursorPositionProvider>
 
-            <BuilderBanner />
-            <CanvasControls />
-            <CanvasToolbar />
+              <BuilderBanner />
+              <CanvasControls />
+              <CanvasToolbar />
 
-            <ShowPoweredBy
-              position="absolute"
-              show={platform?.plan.showPoweredBy}
-            />
-          </div>
-        </ResizablePanel>
+              <ShowPoweredBy
+                position="absolute"
+                show={platform?.plan.showPoweredBy}
+              />
+            </div>
+          </ResizablePanel>
 
-        <ResizableHandle
-          disabled={rightSidebar === RightSideBarType.NONE}
-          withHandle={rightSidebar !== RightSideBarType.NONE}
-          onPointerDown={() => setIsDraggingHandle(true)}
-          onPointerUp={() => setIsDraggingHandle(false)}
-          onPointerCancel={() => setIsDraggingHandle(false)}
-          className={
-            rightSidebar === RightSideBarType.NONE ? 'bg-transparent' : ''
-          }
-        />
+          <ResizableHandle
+            disabled={rightSidebar === RightSideBarType.NONE}
+            withHandle={rightSidebar !== RightSideBarType.NONE}
+            onPointerDown={() => setIsDraggingHandle(true)}
+            onPointerUp={() => setIsDraggingHandle(false)}
+            onPointerCancel={() => setIsDraggingHandle(false)}
+            className={
+              rightSidebar === RightSideBarType.NONE ? 'bg-transparent' : ''
+            }
+          />
 
-        <ResizablePanel
-          panelRef={rightHandleRef}
-          id="right-sidebar"
-          collapsedSize="0%"
-          defaultSize="0%"
-          minSize={
-            rightSidebar === RightSideBarType.NONE ? '0%' : DEFAULT_MIN_SIZE
-          }
-          maxSize={rightSidebar === RightSideBarType.NONE ? '0%' : '60%'}
-          className={cn('min-w-0 bg-panel z-30', {
-            'transition-all': !isDraggingHandle,
-          })}
-          style={{
-            transitionDuration: `${
-              isDraggingHandle ? 0 : flowCanvasConsts.SIDEBAR_ANIMATION_DURATION
-            }ms`,
-          }}
-        >
-          <div className="h-full w-full">
-            {rightSidebar === RightSideBarType.RUNS && <RunsList />}
-            {rightSidebar === RightSideBarType.VERSIONS && <FlowVersionsList />}
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          <ResizablePanel
+            panelRef={rightHandleRef}
+            id="right-sidebar"
+            collapsedSize="0%"
+            defaultSize="0%"
+            minSize={
+              rightSidebar === RightSideBarType.NONE ? '0%' : DEFAULT_MIN_SIZE
+            }
+            maxSize={rightSidebar === RightSideBarType.NONE ? '0%' : '60%'}
+            className={cn('min-w-0 bg-panel z-30', {
+              'transition-all': !isDraggingHandle,
+            })}
+            style={{
+              transitionDuration: `${
+                isDraggingHandle
+                  ? 0
+                  : flowCanvasConsts.SIDEBAR_ANIMATION_DURATION
+              }ms`,
+            }}
+          >
+            <div className="h-full w-full">
+              {rightSidebar === RightSideBarType.RUNS && <RunsList />}
+              {rightSidebar === RightSideBarType.VERSIONS && (
+                <FlowVersionsList />
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+        <PiecePanel />
+      </div>
 
       <StepModal
         pieceModel={pieceModel}

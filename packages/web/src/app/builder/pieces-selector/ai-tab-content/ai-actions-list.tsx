@@ -1,32 +1,93 @@
-import {
-  ApFlagId,
-  FlowActionType,
-  TelemetryEventName,
-} from '@activepieces/shared';
+import { ApFlagId, FlowActionType } from '@activepieces/shared';
 import { t } from 'i18next';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { useTelemetry } from '@/components/providers/telemetry-provider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  PieceSelectorOperation,
-  StepMetadataWithSuggestions,
-  usePieceSearchContext,
+  PieceSelectorItem,
+  PieceStepMetadataWithSuggestions,
 } from '@/features/pieces';
 import { flagsHooks } from '@/hooks/flags-hooks';
 
-import { useBuilderStateContext } from '../../builder-hooks';
-import { convertStepMetadataToPieceSelectorItems } from '../piece-actions-or-triggers-list';
+import { usePickPieceSelectorItem } from '../piece-actions-or-triggers-list';
+import { piecePanelUtils } from '../piece-panel-utils';
+import { PiecePanelView, PiecePanelViewBaseProps } from '../piece-panel-view';
 
-import AIActionItem from './ai-action';
-
-type AIPieceActionsListProps = {
-  hidePieceIconAndDescription: boolean;
-  stepMetadataWithSuggestions: StepMetadataWithSuggestions;
-  operation: PieceSelectorOperation;
+export const AIPieceActionsList = ({
+  header,
+  metadata,
+  isLoading,
+  emptyState,
+  operation,
+  query,
+  isTop,
+  depth,
+  onQueryChange,
+  onPop,
+  onClose,
+}: AIPieceActionsListProps) => {
+  const pick = usePickPieceSelectorItem({ operation });
+  const { data: isAgentsConfigured } = flagsHooks.useFlag<boolean>(
+    ApFlagId.AGENTS_CONFIGURED,
+  );
+  const navigate = useNavigate();
+  const rows =
+    metadata === null
+      ? []
+      : piecePanelUtils.buildLabelledItemRows({
+          label: null,
+          items: piecePanelUtils.filterItems({
+            items: piecePanelUtils.getItems(metadata),
+            query,
+          }),
+          keyPrefix: 'ai',
+          getLogoUrl: getAiActionIcon,
+        });
+  return (
+    <PiecePanelView
+      header={header}
+      query={query}
+      onQueryChange={onQueryChange}
+      rows={rows}
+      isLoading={isLoading}
+      isTop={isTop}
+      canPop={depth > 0}
+      onPop={onPop}
+      onClose={onClose}
+      emptyState={emptyState}
+      onActivate={(row) => {
+        if (row.kind !== 'item') {
+          return;
+        }
+        if (!isAgentsConfigured) {
+          toast('Connect to OpenAI', {
+            description: t(
+              "To create an agent, you'll first need to connect to OpenAI in platform settings.",
+            ),
+            action: {
+              label: 'Set Up',
+              onClick: () => {
+                navigate('/platform/ai');
+              },
+            },
+          });
+          return;
+        }
+        pick({ item: row.item, query });
+      }}
+    />
+  );
 };
+
+function getAiActionIcon(item: PieceSelectorItem): string | undefined {
+  return item.type === FlowActionType.PIECE
+    ? ACTION_ICON_MAP[item.actionOrTrigger.name]
+    : FALLBACK_AI_ICON;
+}
+
+const FALLBACK_AI_ICON =
+  'https://cdn.activepieces.com/pieces/new-core/image-ai.svg';
 
 const ACTION_ICON_MAP: Record<string, string> = {
   run_agent: 'https://cdn.activepieces.com/pieces/new-core/agent.svg',
@@ -38,78 +99,9 @@ const ACTION_ICON_MAP: Record<string, string> = {
     'https://cdn.activepieces.com/pieces/new-core/utility-ai.svg',
 };
 
-export const AIPieceActionsList: React.FC<AIPieceActionsListProps> = ({
-  stepMetadataWithSuggestions,
-  hidePieceIconAndDescription,
-  operation,
-}) => {
-  const { capture } = useTelemetry();
-  const { searchQuery } = usePieceSearchContext();
-  const [handleAddingOrUpdatingStep] = useBuilderStateContext((state) => [
-    state.handleAddingOrUpdatingStep,
-  ]);
-  const { data: isAgentsConfigured } = flagsHooks.useFlag<boolean>(
-    ApFlagId.AGENTS_CONFIGURED,
-  );
-  const navigate = useNavigate();
-
-  const aiActions = convertStepMetadataToPieceSelectorItems(
-    stepMetadataWithSuggestions,
-  );
-
-  return (
-    <ScrollArea className="h-full" viewPortClassName="h-full">
-      <div className="grid grid-cols-3 p-2 gap-3 min-w-[350px]">
-        {aiActions.map((item, index) => {
-          const actionIcon =
-            item.type === FlowActionType.PIECE
-              ? ACTION_ICON_MAP[item.actionOrTrigger.name]
-              : 'https://cdn.activepieces.com/pieces/new-core/image-ai.svg';
-          return (
-            <AIActionItem
-              key={index}
-              item={item}
-              hidePieceIconAndDescription={hidePieceIconAndDescription}
-              stepMetadataWithSuggestions={{
-                ...stepMetadataWithSuggestions,
-                logoUrl: actionIcon,
-              }}
-              onClick={() => {
-                if (!isAgentsConfigured) {
-                  toast('Connect to OpenAI', {
-                    description: t(
-                      "To create an agent, you'll first need to connect to OpenAI in platform settings.",
-                    ),
-                    action: {
-                      label: 'Set Up',
-                      onClick: () => {
-                        navigate('/platform/ai');
-                      },
-                    },
-                  });
-                  return;
-                }
-
-                if (item.type === FlowActionType.PIECE) {
-                  capture({
-                    name: TelemetryEventName.PIECE_SELECTOR_SEARCH,
-                    payload: {
-                      search: searchQuery,
-                      isTrigger: false,
-                      selectedActionOrTriggerName: item.actionOrTrigger.name,
-                    },
-                  });
-                }
-                handleAddingOrUpdatingStep({
-                  pieceSelectorItem: item,
-                  operation,
-                  selectStepAfter: true,
-                });
-              }}
-            />
-          );
-        })}
-      </div>
-    </ScrollArea>
-  );
+type AIPieceActionsListProps = PiecePanelViewBaseProps & {
+  header: React.ReactNode;
+  metadata: PieceStepMetadataWithSuggestions | null;
+  isLoading: boolean;
+  emptyState: React.ReactNode;
 };

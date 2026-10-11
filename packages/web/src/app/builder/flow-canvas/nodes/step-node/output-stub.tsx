@@ -3,7 +3,6 @@ import { useStore } from '@xyflow/react';
 import { t } from 'i18next';
 import { useState } from 'react';
 
-import { PieceSelector } from '@/app/builder/pieces-selector';
 import { cn } from '@/lib/utils';
 
 import { useBuilderStateContext } from '../../../builder-hooks';
@@ -31,7 +30,7 @@ const OutputStub = ({
   hasRunData: boolean;
   itemCount: number | null;
 }) => {
-  const [readonly, isPieceSelectorOpen, dropTargetState] =
+  const [readonly, isPieceSelectorOpen, dropTargetState, openPieceSelector] =
     useBuilderStateContext((state) => [
       state.readonly,
       state.openedPieceSelectorStepNameOrAddButtonId === id,
@@ -40,6 +39,7 @@ const OutputStub = ({
         dropTargetId: state.dropTargetId,
         id,
       }),
+      state.openPieceSelector,
     ]);
   const isConnectingFromSource = useStore(
     (state) =>
@@ -88,40 +88,43 @@ const OutputStub = ({
           )}
         </div>
         {!readonly && (
-          <PieceSelector
-            id={id}
-            operation={flowCanvasUtils.createAddOperationFromAddButtonData(
-              insertLocation,
-            )}
+          <button
+            type="button"
+            data-testid="add-action-button"
+            data-piece-selector-opener
+            aria-label={t('Add step')}
+            style={{
+              width: flowCanvasConsts.STUB_BOX_SIZE,
+              height: flowCanvasConsts.STUB_BOX_SIZE,
+            }}
+            className="group/stub flex shrink-0 cursor-pointer items-center justify-center outline-hidden"
+            onClick={(e) => {
+              e.stopPropagation();
+              openPieceSelector({
+                id,
+                operation:
+                  flowCanvasUtils.createAddOperationFromAddButtonData(
+                    insertLocation,
+                  ),
+              });
+            }}
           >
-            <button
-              type="button"
-              data-testid="add-action-button"
-              aria-label={t('Add step')}
-              style={{
-                width: flowCanvasConsts.STUB_BOX_SIZE,
-                height: flowCanvasConsts.STUB_BOX_SIZE,
-              }}
-              className="group/stub flex shrink-0 cursor-pointer items-center justify-center outline-hidden"
-              onClick={(e) => e.stopPropagation()}
+            <span
+              data-drop-target={id}
+              data-drop-target-armed={isArmed || undefined}
+              className={cn(
+                'flex size-5.5 items-center justify-center rounded-sm bg-canvas-plus text-canvas-plus-glyph transition-colors group-hover/stub:bg-canvas-plus-hover group-hover/stub:text-canvas-plus-glyph-hover group-focus-visible/stub:outline-2 group-focus-visible/stub:outline-focus-halo',
+                {
+                  'bg-canvas-plus-hover text-canvas-plus-glyph-hover':
+                    isPieceSelectorOpen,
+                  'bg-accent-3 text-accent-9 ring-2 ring-accent-9 group-hover/stub:bg-accent-3 group-hover/stub:text-accent-9':
+                    isArmed,
+                },
+              )}
             >
-              <span
-                data-drop-target={id}
-                data-drop-target-armed={isArmed || undefined}
-                className={cn(
-                  'flex size-5.5 items-center justify-center rounded-sm bg-canvas-plus text-canvas-plus-glyph transition-colors group-hover/stub:bg-canvas-plus-hover group-hover/stub:text-canvas-plus-glyph-hover group-focus-visible/stub:outline-2 group-focus-visible/stub:outline-focus-halo',
-                  {
-                    'bg-canvas-plus-hover text-canvas-plus-glyph-hover':
-                      isPieceSelectorOpen,
-                    'bg-accent-3 text-accent-9 ring-2 ring-accent-9 group-hover/stub:bg-accent-3 group-hover/stub:text-accent-9':
-                      isArmed,
-                  },
-                )}
-              >
-                <PlusGlyph />
-              </span>
-            </button>
-          </PieceSelector>
+              <PlusGlyph />
+            </span>
+          </button>
         )}
       </div>
     </div>

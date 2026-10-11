@@ -68,7 +68,7 @@ export const FlowCanvas = React.memo(() => {
     commitStepDrag,
     endStepDrag,
     setPendingStepPosition,
-    setOpenedPieceSelectorStepNameOrAddButtonId,
+    openPieceSelector,
   ] = useBuilderStateContext((state) => {
     return [
       state.flowVersion,
@@ -84,7 +84,7 @@ export const FlowCanvas = React.memo(() => {
       state.commitStepDrag,
       state.endStepDrag,
       state.setPendingStepPosition,
-      state.setOpenedPieceSelectorStepNameOrAddButtonId,
+      state.openPieceSelector,
     ];
   });
   const builderStore = useBuilderStore();
@@ -276,14 +276,19 @@ export const FlowCanvas = React.memo(() => {
         selectorId,
         position: screenToFlowPosition(end),
       });
-      setOpenedPieceSelectorStepNameOrAddButtonId(selectorId);
+      openPieceSelector({
+        id: selectorId,
+        operation: flowCanvasUtils.createAddOperationFromAddButtonData(
+          output.insertLocation,
+        ),
+      });
     },
     [
       readonly,
       graph,
       screenToFlowPosition,
       setPendingStepPosition,
-      setOpenedPieceSelectorStepNameOrAddButtonId,
+      openPieceSelector,
     ],
   );
   const [contextMenuType, setContextMenuType] = useState<ContextMenuType>(

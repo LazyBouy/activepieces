@@ -32,7 +32,7 @@ import {
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu';
 
-import { useBuilderStateContext } from '../../builder-hooks';
+import { useBuilderStateContext, useBuilderStore } from '../../builder-hooks';
 import { CanvasShortcuts } from '../../shortcuts';
 import {
   copySelectedNodes,
@@ -80,6 +80,7 @@ export const CanvasContextMenuContent = ({
     state.readonly,
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
   ]);
+  const builderStore = useBuilderStore();
   const { getNodes } = useReactFlow();
   const downloadFlowAsImage = async () => {
     const { error } = await tryCatch(() =>
@@ -183,16 +184,25 @@ export const CanvasContextMenuContent = ({
   }
 
   return (
-    <ContextMenuContent>
+    <ContextMenuContent
+      onCloseAutoFocus={(event) => {
+        const { openedPieceSelectorStepNameOrAddButtonId } =
+          builderStore.getState();
+        if (openedPieceSelectorStepNameOrAddButtonId !== null) {
+          event.preventDefault();
+        }
+      }}
+    >
       {showReplace && (
         <ContextMenuItem
           disabled={disabled}
           onClick={() => {
             setOpenedPieceSelectorStepNameOrAddButtonId(selectedNodes[0]);
           }}
-          className="flex items-center gap-2"
         >
-          <ArrowLeftRight className="w-4 h-4"></ArrowLeftRight> {t('Replace')}
+          <ShortcutWrapper shortcut={CanvasShortcuts['ReplaceStep']}>
+            <ArrowLeftRight className="w-4 h-4"></ArrowLeftRight> {t('Replace')}
+          </ShortcutWrapper>
         </ContextMenuItem>
       )}
       {showCopy && (

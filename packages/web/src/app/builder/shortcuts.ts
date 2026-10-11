@@ -32,6 +32,8 @@ export const useHandleKeyPressOnCanvas = () => {
     tidyUp,
     isStepModalOpen,
     openStepModal,
+    openAddStepPieceSelector,
+    setOpenedPieceSelectorStepNameOrAddButtonId,
   ] = useBuilderStateContext((state) => [
     state.selectedNodes,
     state.flowVersion,
@@ -43,6 +45,8 @@ export const useHandleKeyPressOnCanvas = () => {
     state.tidyUp,
     state.isStepModalOpen,
     state.openStepModal,
+    state.openAddStepPieceSelector,
+    state.setOpenedPieceSelectorStepNameOrAddButtonId,
   ]);
   const { zoomIn, zoomOut, zoomTo } = useReactFlow();
   const fitToView = useFitToView();
@@ -209,6 +213,28 @@ export const useHandleKeyPressOnCanvas = () => {
           e.preventDefault();
           openStepModal({ stepName: stepToOpen, editName: !readonly });
         },
+        AddStep: () => {
+          if (readonly) {
+            return;
+          }
+          e.preventDefault();
+          openAddStepPieceSelector();
+        },
+        ReplaceStep: () => {
+          const stepToReplace = getSingleSelectedStep({
+            selectedNodes,
+            selectedStep,
+          });
+          if (
+            readonly ||
+            isNil(stepToReplace) ||
+            isNil(flowStructureUtil.getStep(stepToReplace, flowVersion.trigger))
+          ) {
+            return;
+          }
+          e.preventDefault();
+          setOpenedPieceSelectorStepNameOrAddButtonId(stepToReplace);
+        },
       };
       handlers[match.action]();
     },
@@ -227,6 +253,8 @@ export const useHandleKeyPressOnCanvas = () => {
       zoomTo,
       isStepModalOpen,
       openStepModal,
+      openAddStepPieceSelector,
+      setOpenedPieceSelectorStepNameOrAddButtonId,
     ],
   );
 
@@ -319,6 +347,8 @@ const CANVAS_SHORTCUT_ACTIONS: CanvasShortcutAction[] = [
   'TidyUp',
   'OpenStepModal',
   'RenameStep',
+  'AddStep',
+  'ReplaceStep',
 ];
 
 export const CanvasShortcuts: CanvasShortcutsProps = {
@@ -380,6 +410,14 @@ export const CanvasShortcuts: CanvasShortcutsProps = {
   },
   RenameStep: {
     shortcutKey: 'F2',
+    requiresCanvasFocus: true,
+  },
+  AddStep: {
+    shortcutKey: 'n',
+    requiresCanvasFocus: true,
+  },
+  ReplaceStep: {
+    shortcutKey: 'r',
     requiresCanvasFocus: true,
   },
 };

@@ -98,6 +98,10 @@ type UsePiecesSearchProps = {
   enabled?: boolean;
   type: 'action' | 'trigger';
   shouldCaptureEvent: boolean;
+  tab?: {
+    type: PieceSelectorTabType;
+    customTabId?: string | null;
+  };
 };
 
 export const piecesHooks = {
@@ -238,7 +242,11 @@ export const piecesHooks = {
     isLoading: boolean;
     data: CategorizedStepMetadataWithSuggestions[];
   } => {
-    const { selectedTab, selectedCustomTabId } = usePieceSelectorTabs();
+    const tabsContext = usePieceSelectorTabs();
+    const selectedTab = props.tab?.type ?? tabsContext.selectedTab;
+    const selectedCustomTabId = props.tab
+      ? props.tab.customTabId ?? null
+      : tabsContext.selectedCustomTabId;
     const { capture } = useTelemetry();
     const { data: environment } = flagsHooks.useFlag<ApEnvironment>(
       ApFlagId.ENVIRONMENT,

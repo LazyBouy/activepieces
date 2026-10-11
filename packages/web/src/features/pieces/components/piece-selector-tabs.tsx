@@ -1,53 +1,71 @@
-import { Tabs, TabsTrigger, TabsList } from '@/components/ui/tabs';
+import { t } from 'i18next';
+import { ArrowRight } from 'lucide-react';
 
-import {
-  PieceSelectorTabType,
-  usePieceSelectorTabs,
-} from '../stores/piece-selector-tabs-provider';
+import { CardListOption } from '@/components/custom/card-list';
+import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
+
+import { PieceSelectorTabType } from '../stores/piece-selector-tabs-provider';
 import { ResolvedPieceSelectorTab } from '../utils/piece-selector-customization';
 
-export const PieceSelectorTabs = ({
-  tabs,
-}: {
-  tabs: ResolvedPieceSelectorTab[];
-}) => {
-  const { selectedTab, selectedCustomTabId, setSelectedTab } =
-    usePieceSelectorTabs();
-  const selectedTabKey =
-    selectedTab === PieceSelectorTabType.CUSTOM
-      ? selectedCustomTabId ?? ''
-      : selectedTab;
+export const PieceSelectorTabRow = ({
+  tab,
+  id,
+  active,
+  hoverEnabled,
+  onClick,
+}: PieceSelectorTabRowProps) => {
+  const description = getTabDescription(tab.type);
   return (
-    <Tabs
-      value={selectedTabKey}
-      onValueChange={(value) => {
-        const tab = tabs.find((candidate) => candidate.key === value);
-        if (tab) {
-          setSelectedTab(tab.type, tab.customTabId ?? null);
-        }
-      }}
-      className="w-full min-w-0"
+    <CardListOption
+      id={id}
+      active={active}
+      hoverEnabled={hoverEnabled}
+      onClick={onClick}
+      data-piece-panel-group={tab.key}
+      className="min-h-12 gap-4 py-3 pr-2 pl-4"
     >
-      <TabsList
-        className={`h-full w-full flex gap-3 px-2 justify-start rounded-none bg-gray-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]`}
-      >
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.key}
-            value={tab.key}
-            className={`flex flex-col h-full rounded-md w-[85px] max-w-[85px] shrink-0
-              hover:bg-gray-4
-               data-[state=active]:text-accent-11 data-[state=active]:shadow-none
-               border-transparent data-[state=active]:border-accent-9 data-[state=active]:bg-transparent
-               text-gray-12 [&>svg]:size-5 [&>svg]:shrink-0`}
-          >
-            {tab.icon}
-            <span className="mt-1.5 text-sm truncate w-full text-center">
-              {tab.name}
-            </span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+      <span className="flex shrink-0 text-gray-11 [&>svg]:size-5">
+        {tab.icon}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TextWithTooltip tooltipMessage={tab.name}>
+          <div className="text-sm leading-4.5 font-medium text-gray-12">
+            {tab.name}
+          </div>
+        </TextWithTooltip>
+        {description && (
+          <div className="mt-0.5 truncate text-xs leading-4 text-gray-11">
+            {description}
+          </div>
+        )}
+      </div>
+      <ArrowRight className="size-4 shrink-0 text-gray-11 group-hover/option:text-gray-12" />
+    </CardListOption>
   );
+};
+
+function getTabDescription(type: PieceSelectorTabType): string | null {
+  switch (type) {
+    case PieceSelectorTabType.EXPLORE:
+      return t('Popular pieces to get started');
+    case PieceSelectorTabType.AI_AND_AGENTS:
+      return t('Use AI models and agents in this flow');
+    case PieceSelectorTabType.APPS:
+      return t('Do something in an app or service');
+    case PieceSelectorTabType.UTILITY:
+      return t('Code, loops, routers, HTTP and other core tools');
+    case PieceSelectorTabType.APPROVALS:
+      return t('Pause the flow until someone responds');
+    case PieceSelectorTabType.CUSTOM:
+    case PieceSelectorTabType.NONE:
+      return null;
+  }
+}
+
+type PieceSelectorTabRowProps = {
+  tab: ResolvedPieceSelectorTab;
+  id: string;
+  active: boolean;
+  hoverEnabled: boolean;
+  onClick: () => void;
 };

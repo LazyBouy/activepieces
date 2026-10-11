@@ -17,7 +17,6 @@ import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
-import { PieceSelector } from '@/app/builder/pieces-selector';
 import { stepsHooks } from '@/features/pieces';
 import { cn } from '@/lib/utils';
 
@@ -150,27 +149,14 @@ const StepBoxNode = ({
           },
         )}
       >
-        <PieceSelector
-          operation={{
-            type: getPieceSelectorOperationType(step),
-            stepName,
-          }}
-          id={stepName}
-          openSelectorOnClick={false}
-          stepToReplacePieceDisplayName={stepMetadata?.displayName}
-        >
-          <div
-            className="flex size-full items-center justify-center"
-            onClick={(e) => handleStepClick(e)}
-          >
-            <StepNodeLogo
-              isSkipped={isSkipped}
-              isLoading={isLoading}
-              logoUrl={stepMetadata?.logoUrl}
-              displayName={stepMetadata?.displayName ?? step.displayName}
-            />
-          </div>
-        </PieceSelector>
+        <div className="flex size-full items-center justify-center">
+          <StepNodeLogo
+            isSkipped={isSkipped}
+            isLoading={isLoading}
+            logoUrl={stepMetadata?.logoUrl}
+            displayName={stepMetadata?.displayName ?? step.displayName}
+          />
+        </div>
       </div>
       {showStrikeLine && <StepNodeSkippedLine />}
       {visual.corner && <StepNodeCornerIcon corner={visual.corner} />}
@@ -271,8 +257,11 @@ const EmptyTriggerNode = ({ data }: { data: ApStepNode['data'] }) => {
   const stepName = data.step.name;
   const { step, readonly, handleStepClick, handleContextMenu } =
     useStepInteractions({ stepName, fallbackStep: data.step });
-  const isPieceSelectorOpen = useBuilderStateContext(
-    (state) => state.openedPieceSelectorStepNameOrAddButtonId === stepName,
+  const [isPieceSelectorOpen, openPieceSelector] = useBuilderStateContext(
+    (state) => [
+      state.openedPieceSelectorStepNameOrAddButtonId === stepName,
+      state.openPieceSelector,
+    ],
   );
   const output = data.outputs[0];
   const hasNextStep = !isNil(data.step.nextAction);
@@ -292,30 +281,33 @@ const EmptyTriggerNode = ({ data }: { data: ApStepNode['data'] }) => {
       className="relative"
       onContextMenu={handleContextMenu}
     >
-      <PieceSelector
-        operation={{ type: FlowOperationType.UPDATE_TRIGGER }}
-        id={stepName}
-        openSelectorOnClick={false}
+      <div
+        data-empty-trigger
+        data-piece-selector-opener
+        className={cn(
+          'group/placeholder absolute -inset-0.5 flex items-center justify-center rounded-lg border-2 border-dashed border-canvas-placeholder-ink bg-canvas-placeholder',
+          { 'cursor-pointer': !readonly },
+        )}
+        onClick={(e) => {
+          handleStepClick(e);
+          if (!readonly) {
+            openPieceSelector({
+              id: stepName,
+              operation: { type: FlowOperationType.UPDATE_TRIGGER },
+            });
+          }
+        }}
       >
-        <div
-          data-empty-trigger
+        <Plus
           className={cn(
-            'group/placeholder absolute -inset-0.5 flex items-center justify-center rounded-lg border-2 border-dashed border-canvas-placeholder-ink bg-canvas-placeholder',
-            { 'cursor-pointer': !readonly },
+            'size-10 text-canvas-placeholder-ink transition-colors duration-200',
+            {
+              'group-hover/placeholder:text-accent-9': !readonly,
+              'text-accent-9': isPieceSelectorOpen,
+            },
           )}
-          onClick={(e) => handleStepClick(e)}
-        >
-          <Plus
-            className={cn(
-              'size-10 text-canvas-placeholder-ink transition-colors duration-200',
-              {
-                'group-hover/placeholder:text-accent-9': !readonly,
-                'text-accent-9': isPieceSelectorOpen,
-              },
-            )}
-          />
-        </div>
-      </PieceSelector>
+        />
+      </div>
       <div
         data-step-label
         className="pointer-events-none absolute top-full left-1/2 mt-2.5 -translate-x-1/2 text-base leading-6 font-medium whitespace-nowrap text-gray-12"
@@ -480,13 +472,6 @@ function isOverBoxOrToolbar(target: EventTarget): boolean {
       '[data-step-box], [data-step-toolbar], [data-step-corner], [data-step-badge]',
     ) !== null
   );
-}
-
-function getPieceSelectorOperationType(step: Step) {
-  if (flowStructureUtil.isTrigger(step.type)) {
-    return FlowOperationType.UPDATE_TRIGGER;
-  }
-  return FlowOperationType.UPDATE_ACTION;
 }
 
 const LABEL_TO_PLUS_GAP = 4;

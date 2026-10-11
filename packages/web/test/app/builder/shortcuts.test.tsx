@@ -9,6 +9,7 @@ import {
   FlowTriggerType,
   FlowVersionState,
   PopulatedFlow,
+  StepLocationRelativeToParent,
 } from '@activepieces/shared';
 import { QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
@@ -401,6 +402,71 @@ describe('canvas keyboard map', () => {
     });
     dispatchKeyFrom(document.body, { key: 'T', code: 'KeyT', shiftKey: true });
     expect(tidyUp).not.toHaveBeenCalled();
+  });
+
+  it('opens the piece panel to add a step after the selected step with N', async () => {
+    const { store } = await setup();
+    const event = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'n',
+    });
+    act(() => {
+      document.body.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(store.getState().openedPieceSelectorStepNameOrAddButtonId).toBe(
+      'canvas-toolbar-add-step',
+    );
+    expect(store.getState().pieceSelectorOperation).toEqual({
+      type: FlowOperationType.ADD_ACTION,
+      actionLocation: {
+        parentStep: 'step_1',
+        stepLocationRelativeToParent: StepLocationRelativeToParent.AFTER,
+      },
+    });
+  });
+
+  it('opens the piece panel in replace mode for the selected step with R', async () => {
+    const { store } = await setup();
+    dispatchKeyFrom(document.body, { key: 'r' });
+    expect(store.getState().openedPieceSelectorStepNameOrAddButtonId).toBe(
+      'step_1',
+    );
+    expect(store.getState().pieceSelectorOperation).toEqual({
+      type: FlowOperationType.UPDATE_ACTION,
+      stepName: 'step_1',
+    });
+  });
+
+  it('opens trigger mode when R is pressed on the trigger', async () => {
+    const { store } = await setup();
+    await act(async () => {
+      store.getState().selectStepByName('trigger');
+    });
+    dispatchKeyFrom(document.body, { key: 'r' });
+    expect(store.getState().pieceSelectorOperation).toEqual({
+      type: FlowOperationType.UPDATE_TRIGGER,
+    });
+  });
+
+  it('does not open the piece panel from N or R on a read-only canvas or inside an input', async () => {
+    const { container, store } = await setup({ readonly: true });
+    dispatchKeyFrom(document.body, { key: 'n' });
+    dispatchKeyFrom(document.body, { key: 'r' });
+    expect(
+      store.getState().openedPieceSelectorStepNameOrAddButtonId,
+    ).toBeNull();
+    await act(async () => {
+      store.setState({ readonly: false });
+    });
+    const field = document.createElement('input');
+    container.appendChild(field);
+    dispatchKeyFrom(field, { key: 'n' });
+    dispatchKeyFrom(field, { key: 'n', ctrlKey: true });
+    expect(
+      store.getState().openedPieceSelectorStepNameOrAddButtonId,
+    ).toBeNull();
   });
 
   it('keeps editing keys off on a read-only canvas but still zooms', async () => {

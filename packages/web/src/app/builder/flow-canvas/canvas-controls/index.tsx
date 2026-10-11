@@ -21,7 +21,7 @@ const CanvasControls = () => {
     <div
       id="canvas-controls"
       {...{ [`data-${flowCanvasConsts.CANVAS_CHROME_ATTRIBUTE}`]: true }}
-      className="absolute bottom-4 left-4 z-50 flex items-center rounded-md bg-panel p-0.5 shadow-xs"
+      className="absolute bottom-4 left-4 z-35 flex items-center rounded-md bg-panel p-0.5 shadow-xs"
     >
       <CanvasControlButton
         tooltip={t('Fit to view')}

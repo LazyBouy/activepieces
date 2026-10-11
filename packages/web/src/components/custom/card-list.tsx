@@ -71,6 +71,64 @@ const CardListItem = React.forwardRef<HTMLDivElement, CardListItemProps>(
 CardListItem.displayName = 'CardListItem';
 export { CardListItem };
 
+type CardListOptionProps = React.HTMLAttributes<HTMLDivElement> & {
+  active?: boolean;
+  hoverEnabled?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+};
+
+const CardListOption = React.forwardRef<HTMLDivElement, CardListOptionProps>(
+  (
+    {
+      children,
+      className,
+      active = false,
+      hoverEnabled = true,
+      disabled = false,
+      onClick,
+      onMouseDown,
+      ...props
+    },
+    ref,
+  ) => {
+    return (
+      <div
+        ref={ref}
+        role="option"
+        aria-selected={active}
+        aria-disabled={disabled || undefined}
+        data-active={active || undefined}
+        className={cn(
+          'group/option relative flex w-full items-center',
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+          className,
+        )}
+        onMouseDown={(event) => {
+          event.preventDefault();
+          onMouseDown?.(event);
+        }}
+        onClick={disabled ? undefined : onClick}
+        {...props}
+      >
+        <span
+          aria-hidden
+          className={cn('absolute inset-y-0 left-0 w-0.5 bg-transparent', {
+            'group-hover/option:bg-gray-11': hoverEnabled && !disabled,
+            'bg-accent-9 group-hover/option:bg-accent-9': active,
+          })}
+        />
+        <div className={cn('contents', { '*:opacity-45': disabled })}>
+          {children}
+        </div>
+      </div>
+    );
+  },
+);
+
+CardListOption.displayName = 'CardListOption';
+export { CardListOption };
+
 type CardListItemSkeletonProps = {
   numberOfCards?: number;
   withCircle?: boolean;

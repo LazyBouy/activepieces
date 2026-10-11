@@ -184,6 +184,7 @@
   --color-canvas-skipped-line: var(--canvas-skipped-line);
   --color-canvas-muted-icon: var(--canvas-muted-icon);
   --color-canvas-divider: var(--canvas-divider);
+  --color-canvas-panel-header: var(--canvas-panel-header);
   --color-canvas-data-pane: var(--canvas-data-pane);
   --color-canvas-pill-border: var(--canvas-pill-border);
   --color-canvas-table-line: var(--canvas-table-line);
@@ -1021,6 +1022,7 @@
     --canvas-skipped-line: oklch(90.67% 0 0);
     --canvas-muted-icon: oklch(68.3% 0 0);
     --canvas-divider: var(--gray-6);
+    --canvas-panel-header: var(--gray-3);
     --canvas-data-pane: var(--gray-3);
     --canvas-pill-border: var(--gray-4);
     --canvas-table-line: oklch(0% 0 0 / 10%);
@@ -1255,6 +1257,7 @@
     --canvas-skipped-line: oklch(38.67% 0 0);
     --canvas-muted-icon: oklch(79.21% 0 0);
     --canvas-divider: var(--gray-4);
+    --canvas-panel-header: var(--gray-7);
     --canvas-data-pane: var(--panel);
     --canvas-pill-border: oklch(37.15% 0 0);
     --canvas-table-line: oklch(100% 0 0 / 10%);

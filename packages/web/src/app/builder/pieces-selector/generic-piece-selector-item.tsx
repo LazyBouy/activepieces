@@ -1,105 +1,88 @@
-import { FlowActionType, FlowTriggerType } from '@activepieces/shared';
+import { Zap } from 'lucide-react';
 
-import { CardListItem } from '@/components/custom/card-list';
+import { CardListOption } from '@/components/custom/card-list';
+import { TextWithTooltip } from '@/components/custom/text-with-tooltip';
 import { Badge } from '@/components/ui/badge';
-import {
-  PieceIcon,
-  PieceSelectorItem,
-  StepMetadataWithSuggestions,
-  PIECE_SELECTOR_ELEMENTS_HEIGHTS,
-} from '@/features/pieces';
+import { PieceIcon, PieceSelectorItem } from '@/features/pieces';
 import { ACTION_CLASSIFICATION_BADGES } from '@/features/pieces/utils/action-classification';
-import { cn } from '@/lib/utils';
-type GenericActionOrTriggerItemProps = {
-  item: PieceSelectorItem;
-  hidePieceIconAndDescription: boolean;
-  stepMetadataWithSuggestions: StepMetadataWithSuggestions;
-  onClick: () => void;
-};
 
-const getPieceSelectorItemInfo = (item: PieceSelectorItem) => {
-  if (
-    item.type === FlowActionType.PIECE ||
-    item.type === FlowTriggerType.PIECE
-  ) {
-    return {
-      displayName: item.actionOrTrigger.displayName,
-      description: item.actionOrTrigger.description,
-      classification: item.actionOrTrigger.classification,
-    };
-  }
-  return {
-    displayName: item.displayName,
-    description: item.description,
-    classification: undefined,
-  };
-};
+import { piecePanelUtils } from './piece-panel-utils';
 
 const GenericActionOrTriggerItem = ({
   item,
-  hidePieceIconAndDescription,
-  stepMetadataWithSuggestions,
+  logoUrl,
+  logoName,
+  hideLogo,
+  id,
+  active,
+  hoverEnabled,
+  disabled = false,
   onClick,
 }: GenericActionOrTriggerItemProps) => {
-  // we add this style because we hide the piece icon when they are in a virtualized list
-  const style = hidePieceIconAndDescription
-    ? {
-        height: `${PIECE_SELECTOR_ELEMENTS_HEIGHTS.ACTION_OR_TRIGGER_ITEM_HEIGHT}px`,
-        maxHeight: `${PIECE_SELECTOR_ELEMENTS_HEIGHTS.ACTION_OR_TRIGGER_ITEM_HEIGHT}px`,
-      }
-    : {
-        minHeight: '54px',
-      };
-  const pieceSelectorItemInfo = getPieceSelectorItemInfo(item);
+  const info = piecePanelUtils.getItemInfo(item);
+  const description = piecePanelUtils.trimTrailingPeriod(
+    info.description ?? '',
+  );
   return (
-    <CardListItem className="p-2 w-full" onClick={onClick} style={style}>
-      <div className="flex gap-3 items-center w-full min-w-0">
-        <div
-          className={cn({
-            'opacity-0': hidePieceIconAndDescription,
-          })}
-        >
-          <PieceIcon
-            logoUrl={stepMetadataWithSuggestions.logoUrl}
-            displayName={stepMetadataWithSuggestions.displayName}
-            showTooltip={false}
-            size={'sm'}
-          />
-        </div>
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div
-              className={cn('text-sm', {
-                truncate: hidePieceIconAndDescription,
-              })}
-            >
-              {pieceSelectorItemInfo.displayName}
+    <CardListOption
+      id={id}
+      active={active}
+      hoverEnabled={hoverEnabled}
+      disabled={disabled}
+      onClick={onClick}
+      data-piece-panel-item={info.displayName}
+      className="min-h-12 gap-4 py-3 pr-2 pl-4"
+    >
+      {hideLogo ? (
+        <span aria-hidden className="size-6 shrink-0" />
+      ) : (
+        <PieceIcon
+          logoUrl={logoUrl}
+          displayName={logoName}
+          showTooltip={false}
+          size="list"
+        />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 items-center">
+          <TextWithTooltip tooltipMessage={info.displayName}>
+            <div className="min-w-0 text-sm leading-4.5 font-medium text-gray-12">
+              {info.displayName}
             </div>
-            {pieceSelectorItemInfo.classification && (
-              <Badge
-                variant="accent"
-                className="shrink-0 px-1.5 py-0 text-xss font-normal"
-              >
-                {ACTION_CLASSIFICATION_BADGES[
-                  pieceSelectorItemInfo.classification
-                ].label()}
-              </Badge>
-            )}
-          </div>
-          <div
-            className={cn('text-xs text-gray-11', {
-              truncate: hidePieceIconAndDescription,
-            })}
-          >
-            {pieceSelectorItemInfo.description.endsWith('.')
-              ? pieceSelectorItemInfo.description.slice(0, -1)
-              : pieceSelectorItemInfo.description}
-          </div>
+          </TextWithTooltip>
+          {info.isTrigger && (
+            <Zap
+              aria-hidden
+              className="ml-1 size-3 shrink-0 fill-accent-9 text-accent-9"
+            />
+          )}
+          {info.classification && (
+            <Badge variant="accent" className="ml-1.5 h-5 shrink-0 px-1.5">
+              {ACTION_CLASSIFICATION_BADGES[info.classification].label()}
+            </Badge>
+          )}
         </div>
+        {description !== '' && (
+          <div className="mt-0.5 line-clamp-2 text-xs leading-4 text-gray-11">
+            {description}
+          </div>
+        )}
       </div>
-    </CardListItem>
+    </CardListOption>
   );
 };
 
 GenericActionOrTriggerItem.displayName = 'GenericActionOrTriggerItem';
-export default GenericActionOrTriggerItem;
+export { GenericActionOrTriggerItem };
+
+type GenericActionOrTriggerItemProps = {
+  item: PieceSelectorItem;
+  logoUrl: string;
+  logoName: string;
+  hideLogo: boolean;
+  id: string;
+  active: boolean;
+  hoverEnabled: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+};

@@ -1,18 +1,17 @@
 import { isNil } from '@activepieces/core-utils';
-import { FlowActionType, FlowOperationType } from '@activepieces/shared';
+import { FlowActionType } from '@activepieces/shared';
 
-import { CardList, CardListItemSkeleton } from '@/components/custom/card-list';
 import {
   piecesHooks,
-  PieceSelectorTabType,
-  usePieceSelectorTabs,
-  PieceSelectorOperation,
+  PieceSelectorItem,
+  ResolvedPieceSelectorTab,
   stepUtils,
 } from '@/features/pieces';
 
-import { useBuilderStateContext } from '../builder-hooks';
-
-import GenericActionOrTriggerItem from './generic-piece-selector-item';
+import { usePickPieceSelectorItem } from './piece-actions-or-triggers-list';
+import { PiecePanelSubViewHeader } from './piece-panel-header';
+import { piecePanelUtils } from './piece-panel-utils';
+import { PiecePanelView, PiecePanelViewBaseProps } from './piece-panel-view';
 
 const APPROVAL_PIECES_CONFIG = [
   {
@@ -48,96 +47,80 @@ const APPROVAL_PIECES_CONFIG = [
 ];
 
 const ApprovalsTabContent = ({
+  tab,
   operation,
-}: {
-  operation: PieceSelectorOperation;
-}) => {
-  const { selectedTab } = usePieceSelectorTabs();
-  const [handleAddingOrUpdatingStep] = useBuilderStateContext((state) => [
-    state.handleAddingOrUpdatingStep,
-  ]);
-
+  query,
+  isTop,
+  depth,
+  onQueryChange,
+  onPop,
+  onClose,
+}: ApprovalsTabContentProps) => {
+  const pick = usePickPieceSelectorItem({ operation });
   const pieceQueries = piecesHooks.useMultiplePieces({
     names: APPROVAL_PIECES_CONFIG.map((config) => config.pieceName),
   });
-
   const isLoading = pieceQueries.some((query) => query.isLoading);
-  const allPiecesLoaded = pieceQueries.every(
-    (query) => query.isSuccess && !isNil(query.data),
-  );
-
-  if (
-    selectedTab !== PieceSelectorTabType.APPROVALS ||
-    ![FlowOperationType.ADD_ACTION, FlowOperationType.UPDATE_ACTION].includes(
-      operation.type,
-    )
-  ) {
-    return null;
-  }
-
-  if (isLoading || !allPiecesLoaded) {
-    return (
-      <div className="flex flex-col gap-2 w-full p-2">
-        <CardListItemSkeleton numberOfCards={3} withCircle={false} />
-      </div>
-    );
-  }
-
-  const allApprovalActions = pieceQueries.flatMap((query) => {
-    if (!query.data) return [];
-
-    const config = APPROVAL_PIECES_CONFIG.find(
-      (config) => config.pieceName === query.data.name,
-    );
-    if (isNil(config)) return [];
-    const pieceMetadata = stepUtils.mapPieceToMetadata({
-      piece: query.data,
-      type: 'action',
-    });
-
-    return config.approvalActionNames
-      .map((actionName) => {
-        const action = query.data.actions[actionName];
-        if (!action) return null;
-        return {
-          action,
+  const approvalItems: PieceSelectorItem[] = pieceQueries.flatMap(
+    (pieceQuery) => {
+      const piece = pieceQuery.data;
+      if (isNil(piece)) {
+        return [];
+      }
+      const config = APPROVAL_PIECES_CONFIG.find(
+        (candidate) => candidate.pieceName === piece.name,
+      );
+      if (isNil(config)) {
+        return [];
+      }
+      const pieceMetadata = stepUtils.mapPieceToMetadata({
+        piece,
+        type: 'action',
+      });
+      return config.approvalActionNames
+        .map((actionName) => piece.actions[actionName])
+        .filter((action) => !isNil(action))
+        .map((action) => ({
+          actionOrTrigger: action,
+          type: FlowActionType.PIECE,
           pieceMetadata,
-        };
-      })
-      .filter((item) => !isNil(item));
+        }));
+    },
+  );
+  const rows = piecePanelUtils.buildLabelledItemRows({
+    label: null,
+    items: piecePanelUtils.filterItems({ items: approvalItems, query }),
+    keyPrefix: 'approvals',
   });
-
   return (
-    <CardList listClassName="gap-0">
-      {allApprovalActions.map((item) => (
-        <GenericActionOrTriggerItem
-          key={`${item.pieceMetadata.pieceName}-${item.action.name}`}
-          item={{
-            actionOrTrigger: item.action,
-            type: FlowActionType.PIECE,
-            pieceMetadata: item.pieceMetadata,
-          }}
-          hidePieceIconAndDescription={false}
-          stepMetadataWithSuggestions={{
-            ...item.pieceMetadata,
-            suggestedActions: [item.action],
-            suggestedTriggers: [],
-          }}
-          onClick={() => {
-            handleAddingOrUpdatingStep({
-              pieceSelectorItem: {
-                actionOrTrigger: item.action,
-                type: FlowActionType.PIECE,
-                pieceMetadata: item.pieceMetadata,
-              },
-              operation,
-              selectStepAfter: true,
-            });
-          }}
+    <PiecePanelView
+      header={
+        <PiecePanelSubViewHeader
+          icon={tab.icon}
+          title={tab.name}
+          description={null}
+          onBack={onPop}
         />
-      ))}
-    </CardList>
+      }
+      query={query}
+      onQueryChange={onQueryChange}
+      rows={rows}
+      isLoading={isLoading}
+      isTop={isTop}
+      canPop={depth > 0}
+      onPop={onPop}
+      onClose={onClose}
+      onActivate={(row) => {
+        if (row.kind === 'item') {
+          pick({ item: row.item, query, captureSearch: false });
+        }
+      }}
+    />
   );
 };
 
 export { ApprovalsTabContent };
+
+type ApprovalsTabContentProps = PiecePanelViewBaseProps & {
+  tab: ResolvedPieceSelectorTab;
+};

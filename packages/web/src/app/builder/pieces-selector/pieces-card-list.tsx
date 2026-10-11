@@ -1,227 +1,88 @@
-import {
-  FlowActionType,
-  FlowOperationType,
-  FlowTriggerType,
-} from '@activepieces/shared';
-import React, { useState } from 'react';
+import { useDebounce } from 'use-debounce';
 
-import { CardListItemSkeleton } from '@/components/custom/card-list';
-import { Separator } from '@/components/ui/separator';
-import { VirtualizedScrollArea } from '@/components/ui/virtualized-scroll-area';
 import {
   piecesHooks,
-  PieceSelectorTabType,
-  usePieceSelectorTabs,
   PieceSelectorOperation,
-  StepMetadataWithSuggestions,
-  CategorizedStepMetadataWithSuggestions,
-  PIECE_SELECTOR_ELEMENTS_HEIGHTS,
-  pieceSelectorUtils,
+  PieceSelectorTabType,
+  ResolvedPieceSelectorTab,
 } from '@/features/pieces';
-import { useIsMobile } from '@/hooks/use-mobile';
 
-import { cn } from '../../../lib/utils';
-import { useBuilderStateContext } from '../builder-hooks';
+import { useActivatePiecePanelRow } from './piece-actions-or-triggers-list';
+import { PiecePanelSubViewHeader } from './piece-panel-header';
+import { PiecePanelRow, piecePanelUtils } from './piece-panel-utils';
+import { PiecePanelView, PiecePanelViewBaseProps } from './piece-panel-view';
 
-import { NoResultsFound } from './no-results-found';
-import { PieceActionsOrTriggersList } from './piece-actions-or-triggers-list';
-import { PieceCardListItem } from './piece-card-item';
-
-type PiecesCardListProps = {
-  searchQuery: string;
-  operation: PieceSelectorOperation;
-  stepToReplacePieceDisplayName?: string;
-};
-
-export const PiecesCardList: React.FC<PiecesCardListProps> = ({
-  searchQuery,
+export const PiecesCardList = ({
+  tab,
   operation,
-  stepToReplacePieceDisplayName,
-}) => {
-  const isMobile = useIsMobile();
-  const [selectedPieceMetadataInPieceSelector] = useBuilderStateContext(
-    (state) => [state.selectedPieceMetadataInPieceSelector],
-  );
-  const { isLoading: isLoadingPieces, data: categories } =
-    piecesHooks.usePiecesSearch({
-      shouldCaptureEvent: true,
-      searchQuery,
-      type:
-        operation.type === FlowOperationType.UPDATE_TRIGGER
-          ? 'trigger'
-          : 'action',
-    });
-
-  const noResultsFound = !isLoadingPieces && categories.length === 0;
-  const [mouseMoved, setMouseMoved] = useState(false);
-  const showActionsOrTriggersInsidePiecesList =
-    searchQuery.length > 0 || isMobile;
-  const virtualizedItems = transformPiecesMetadataToVirtualizedItems(
-    categories,
-    showActionsOrTriggersInsidePiecesList,
-  );
-
-  const initialIndexToScrollToInPiecesList = virtualizedItems.findIndex(
-    (item) => item.displayName === stepToReplacePieceDisplayName,
-  );
-  const { selectedTab } = usePieceSelectorTabs();
-
-  const isLoading = isLoadingPieces;
-  const showActionsOrTriggersList =
-    searchQuery.length === 0 && !isMobile && !noResultsFound && !isLoading;
-  const showPiecesList = !noResultsFound && !isLoading;
-  if (
-    [
-      PieceSelectorTabType.EXPLORE,
-      PieceSelectorTabType.AI_AND_AGENTS,
-      PieceSelectorTabType.APPROVALS,
-    ].includes(selectedTab)
-  ) {
-    return null;
-  }
+  query,
+  isTop,
+  depth,
+  onQueryChange,
+  onPush,
+  onPop,
+  onClose,
+}: PiecesCardListProps) => {
+  const activateRow = useActivatePiecePanelRow({ operation, query, onPush });
+  const { data: categories, isLoading } = piecesHooks.usePiecesSearch({
+    shouldCaptureEvent: false,
+    searchQuery: '',
+    type: piecePanelUtils.getStepKind(operation),
+    tab: { type: tab.type, customTabId: tab.customTabId ?? null },
+  });
+  const rows = piecePanelUtils.buildSectionRows({
+    categories: piecePanelUtils.filterCategories({ categories, query }),
+  });
   return (
-    <>
-      <div
-        onMouseMove={() => {
-          setMouseMoved(!isLoadingPieces);
-        }}
-        className={cn('w-full md:w-[250px] md:min-w-[250px] transition-all ', {
-          'w-full md:w-full': searchQuery.length > 0 || noResultsFound,
-        })}
-      >
-        {isLoading && (
-          <div className="flex flex-col gap-2">
-            <CardListItemSkeleton numberOfCards={2} withCircle={false} />
-          </div>
-        )}
-
-        {showPiecesList && (
-          <VirtualizedScrollArea
-            key={`${selectedTab}-${searchQuery}`}
-            initialScroll={{
-              index: initialIndexToScrollToInPiecesList,
-              clickAfterScroll: true,
-            }}
-            items={virtualizedItems}
-            estimateSize={(index) => virtualizedItems[index].height}
-            getItemKey={(index) => virtualizedItems[index].id}
-            renderItem={(item) => {
-              if (item.isCategory) {
-                return (
-                  <div
-                    className={cn('p-2 pb-0 text-sm text-gray-11')}
-                    id={item.displayName}
-                  >
-                    {item.displayName}
-                  </div>
-                );
-              }
-              return (
-                <PieceCardListItem
-                  pieceMetadata={item.pieceMetadata}
-                  searchQuery={searchQuery}
-                  operation={operation}
-                  isTemporaryDisabledUntilNextCursorMove={!mouseMoved}
-                />
-              );
-            }}
-          />
-        )}
-
-        {noResultsFound && <NoResultsFound />}
-      </div>
-
-      {showActionsOrTriggersList && (
-        <>
-          <Separator orientation="vertical" className="h-full" />
-          <PieceActionsOrTriggersList
-            stepMetadataWithSuggestions={selectedPieceMetadataInPieceSelector}
-            hidePieceIconAndDescription={false}
-            operation={operation}
-          />
-        </>
-      )}
-    </>
+    <PiecePanelView
+      header={
+        <PiecePanelSubViewHeader
+          icon={tab.icon}
+          title={tab.name}
+          description={null}
+          onBack={onPop}
+        />
+      }
+      query={query}
+      onQueryChange={onQueryChange}
+      rows={rows}
+      isLoading={isLoading}
+      isTop={isTop}
+      canPop={depth > 0}
+      onPop={onPop}
+      onClose={onClose}
+      onActivate={activateRow}
+    />
   );
 };
 
-type VirtualizedItem = {
-  id: string;
-  displayName: string;
-  height: number;
-} & (
-  | {
-      isCategory: true;
-    }
-  | {
-      isCategory: false;
-      pieceMetadata: StepMetadataWithSuggestions;
-    }
-);
-const transformPiecesMetadataToVirtualizedItems = (
-  searchResult: CategorizedStepMetadataWithSuggestions[],
-  showActionsOrTriggersInsidePiecesList: boolean,
-) => {
-  return searchResult.reduce<VirtualizedItem[]>((result, category) => {
-    if (!showActionsOrTriggersInsidePiecesList) {
-      result.push({
-        id: category.title,
-        displayName: category.title,
-        height: PIECE_SELECTOR_ELEMENTS_HEIGHTS.CATEGORY_ITEM_HEIGHT,
-        isCategory: true,
-      });
-    }
-    category.metadata.forEach((pieceMetadata, index) => {
-      result.push({
-        id: `${pieceMetadata.displayName}-${index}`,
-        height: getItemHeight(
-          pieceMetadata,
-          showActionsOrTriggersInsidePiecesList,
-        ),
-        isCategory: false,
-        pieceMetadata,
-        displayName: pieceMetadata.displayName,
-      });
-    });
-    return result;
-  }, []);
-};
+export function usePieceSearchResultRows({
+  query,
+  operation,
+}: {
+  query: string;
+  operation: PieceSelectorOperation;
+}): { rows: PiecePanelRow[]; isLoading: boolean } {
+  const [debouncedQuery] = useDebounce(query, SEARCH_DEBOUNCE_MS);
+  const effectiveQuery = query === '' ? '' : debouncedQuery;
+  const { data: categories, isLoading } = piecesHooks.usePiecesSearch({
+    shouldCaptureEvent: true,
+    searchQuery: effectiveQuery,
+    enabled: effectiveQuery !== '',
+    type: piecePanelUtils.getStepKind(operation),
+    tab: { type: PieceSelectorTabType.NONE },
+  });
+  if (effectiveQuery === '' || isLoading) {
+    return { rows: [], isLoading: true };
+  }
+  return {
+    rows: piecePanelUtils.buildSearchResultRows({ categories }),
+    isLoading: false,
+  };
+}
 
-const getItemHeight = (
-  pieceMetadata: StepMetadataWithSuggestions,
-  showActionsOrTriggersInsidePiecesList: boolean,
-) => {
-  const { ACTION_OR_TRIGGER_ITEM_HEIGHT, PIECE_ITEM_HEIGHT } =
-    PIECE_SELECTOR_ELEMENTS_HEIGHTS;
-  if (
-    pieceMetadata.type === FlowActionType.PIECE &&
-    showActionsOrTriggersInsidePiecesList
-  ) {
-    const actionsListWithoutHiddenActions =
-      pieceSelectorUtils.removeHiddenActions(pieceMetadata);
-    return (
-      ACTION_OR_TRIGGER_ITEM_HEIGHT *
-        Object.values(actionsListWithoutHiddenActions).length +
-      PIECE_ITEM_HEIGHT
-    );
-  }
-  if (
-    pieceMetadata.type === FlowTriggerType.PIECE &&
-    showActionsOrTriggersInsidePiecesList
-  ) {
-    return (
-      ACTION_OR_TRIGGER_ITEM_HEIGHT *
-        Object.values(pieceMetadata.suggestedTriggers ?? {}).length +
-      PIECE_ITEM_HEIGHT
-    );
-  }
-  const isCoreAction =
-    pieceMetadata.type === FlowActionType.CODE ||
-    pieceMetadata.type === FlowActionType.LOOP_ON_ITEMS ||
-    pieceMetadata.type === FlowActionType.ROUTER ||
-    pieceMetadata.type === FlowActionType.AI_ROUTER;
-  if (isCoreAction && showActionsOrTriggersInsidePiecesList) {
-    return ACTION_OR_TRIGGER_ITEM_HEIGHT + PIECE_ITEM_HEIGHT;
-  }
-  return PIECE_ITEM_HEIGHT;
+const SEARCH_DEBOUNCE_MS = 300;
+
+type PiecesCardListProps = PiecePanelViewBaseProps & {
+  tab: ResolvedPieceSelectorTab;
 };

@@ -5,7 +5,6 @@ import { t } from 'i18next';
 import { Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
-import { PieceSelector } from '@/app/builder/pieces-selector';
 import {
   Tooltip,
   TooltipContent,
@@ -149,6 +148,7 @@ const ApFlowCanvasEdge = React.memo(
             <EdgeToolbar
               id={id}
               data={data}
+              isPieceSelectorOpen={isPieceSelectorOpen}
               x={geometry.labelX}
               y={geometry.labelY}
               onPointerEnter={hover.enter}
@@ -172,6 +172,7 @@ const ApFlowCanvasEdge = React.memo(
 const EdgeToolbar = ({
   id,
   data,
+  isPieceSelectorOpen,
   x,
   y,
   onPointerEnter,
@@ -179,11 +180,15 @@ const EdgeToolbar = ({
 }: {
   id: string;
   data: ApFlowEdge['data'];
+  isPieceSelectorOpen: boolean;
   x: number;
   y: number;
   onPointerEnter: () => void;
   onPointerLeave: () => void;
 }) => {
+  const openPieceSelector = useBuilderStateContext(
+    (state) => state.openPieceSelector,
+  );
   return (
     <div
       data-edge-toolbar={id}
@@ -196,24 +201,32 @@ const EdgeToolbar = ({
       onPointerLeave={onPointerLeave}
     >
       <Tooltip delayDuration={flowCanvasConsts.CHROME_TOOLTIP_DELAY}>
-        <PieceSelector
-          id={id}
-          operation={flowCanvasUtils.createAddOperationFromAddButtonData(
-            data.insertLocation,
-          )}
-        >
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              data-testid="add-action-button"
-              aria-label={t('Add step')}
-              className="flex size-7 cursor-pointer items-center justify-center rounded-sm bg-canvas-plus text-canvas-plus-glyph outline-hidden transition-colors hover:bg-canvas-plus-hover hover:text-canvas-plus-glyph-hover focus-visible:outline-2 focus-visible:outline-focus-halo"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Plus className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-        </PieceSelector>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            data-testid="add-action-button"
+            data-piece-selector-opener
+            aria-label={t('Add step')}
+            className={cn(
+              'flex size-7 cursor-pointer items-center justify-center rounded-sm bg-canvas-plus text-canvas-plus-glyph outline-hidden transition-colors hover:bg-canvas-plus-hover hover:text-canvas-plus-glyph-hover focus-visible:outline-2 focus-visible:outline-focus-halo',
+              {
+                'bg-canvas-plus-hover text-canvas-plus-glyph-hover':
+                  isPieceSelectorOpen,
+              },
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              openPieceSelector({
+                id,
+                operation: flowCanvasUtils.createAddOperationFromAddButtonData(
+                  data.insertLocation,
+                ),
+              });
+            }}
+          >
+            <Plus className="size-3.5" />
+          </button>
+        </TooltipTrigger>
         <TooltipContent side="top">{t('Add step')}</TooltipContent>
       </Tooltip>
     </div>

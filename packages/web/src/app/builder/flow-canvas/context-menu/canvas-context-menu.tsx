@@ -45,7 +45,9 @@ export type CanvasShortcutAction =
   | 'AddNote'
   | 'TidyUp'
   | 'OpenStepModal'
-  | 'RenameStep';
+  | 'RenameStep'
+  | 'AddStep'
+  | 'ReplaceStep';
 
 export type CanvasShortcutProps = ShortcutProps & {
   shortcutCode?: string;

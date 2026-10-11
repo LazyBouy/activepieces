@@ -5,7 +5,7 @@ export { PieceIcon } from './components/piece-icon';
 export { PieceIconWithPieceName } from './components/piece-icon-from-name';
 export { PieceIconList } from './components/piece-icon-list';
 export { PiecesSearchInput } from './components/piece-selector-search';
-export { PieceSelectorTabs } from './components/piece-selector-tabs';
+export { PieceSelectorTabRow } from './components/piece-selector-tabs';
 export {
   piecesHooks,
   piecesMutations,
@@ -14,10 +14,6 @@ export {
 } from './hooks/pieces-hooks';
 export { stepsHooks } from './hooks/steps-hooks';
 export { usePieceOutputSchema } from './hooks/use-piece-output-schema';
-export {
-  usePieceSearchContext,
-  PieceSearchProvider,
-} from './stores/piece-search-context';
 export {
   PieceSelectorTabsProvider,
   PieceSelectorTabType,
@@ -37,10 +33,7 @@ export type {
   CategorizedStepMetadataWithSuggestions,
 } from './types';
 export { formUtils } from './utils/form-utils';
-export {
-  PIECE_SELECTOR_ELEMENTS_HEIGHTS,
-  pieceSelectorUtils,
-} from './utils/piece-selector-utils';
+export { pieceSelectorUtils } from './utils/piece-selector-utils';
 export {
   extractPieceNamesAndCoreMetadata,
   stepUtils,

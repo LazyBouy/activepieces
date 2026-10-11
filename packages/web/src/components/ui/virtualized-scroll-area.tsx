@@ -19,6 +19,8 @@ interface VirtualizedScrollAreaProps<T> {
     index: number;
     clickAfterScroll: boolean;
   };
+  measureItems?: boolean;
+  scrollToIndex?: number;
 }
 
 const VirtualizedScrollArea = <T,>({
@@ -29,6 +31,8 @@ const VirtualizedScrollArea = <T,>({
   getItemKey,
   initialScroll,
   className,
+  measureItems = false,
+  scrollToIndex,
   ...props
 }: VirtualizedScrollAreaProps<T>) => {
   const scrollAreaViewportRef = React.useRef<HTMLDivElement>(null);
@@ -65,6 +69,12 @@ const VirtualizedScrollArea = <T,>({
       }
     }
   }, [rowVirtualizer]);
+  React.useEffect(() => {
+    if (isNil(scrollToIndex) || scrollToIndex < 0) {
+      return;
+    }
+    rowVirtualizer.scrollToIndex(scrollToIndex, { align: 'auto' });
+  }, [rowVirtualizer, scrollToIndex]);
   return (
     <ScrollArea
       viewPortRef={scrollAreaViewportRef}
@@ -82,12 +92,14 @@ const VirtualizedScrollArea = <T,>({
           <div
             key={virtualItem.key}
             data-virtual-index={virtualItem.index}
+            data-index={virtualItem.index}
+            ref={measureItems ? rowVirtualizer.measureElement : undefined}
             style={{
               position: 'absolute',
               top: 0,
               left: 0,
               width: '100%',
-              height: `${virtualItem.size}px`,
+              height: measureItems ? undefined : `${virtualItem.size}px`,
               transform: `translateY(${virtualItem.start}px)`,
             }}
           >

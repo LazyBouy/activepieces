@@ -1,7 +1,3 @@
-import {
-  FlowOperationType,
-  StepLocationRelativeToParent,
-} from '@activepieces/shared';
 import { t } from 'i18next';
 import { Plus, Search, StickyNote } from 'lucide-react';
 
@@ -9,7 +5,6 @@ import { useGlobalSearch } from '@/app/components/global-search/global-search-co
 import { useEmbedding } from '@/components/providers/embed-provider';
 
 import { useBuilderStateContext } from '../../builder-hooks';
-import { PieceSelector } from '../../pieces-selector';
 import { CanvasShortcuts } from '../../shortcuts';
 import { NoteDragOverlayMode } from '../../state/notes-state';
 import { CanvasControlButton } from '../canvas-controls/canvas-control-button';
@@ -19,59 +14,39 @@ import { flowCanvasUtils } from '../utils/flow-canvas-utils';
 const CanvasToolbar = () => {
   const [
     readonly,
-    flowVersion,
-    selectedStep,
-    openedPieceSelectorId,
+    isPiecePanelOpen,
     noteDragOverlayMode,
     setDraggedNote,
+    openAddStepPieceSelector,
   ] = useBuilderStateContext((state) => [
     state.readonly,
-    state.flowVersion,
-    state.selectedStep,
-    state.openedPieceSelectorStepNameOrAddButtonId,
+    state.openedPieceSelectorStepNameOrAddButtonId !== null &&
+      state.pieceSelectorOperation !== null,
     state.noteDragOverlayMode,
     state.setDraggedNote,
+    state.openAddStepPieceSelector,
   ]);
   const { setOpen: setSearchOpen } = useGlobalSearch();
   const {
     embedState: { hideGlobalSearch },
   } = useEmbedding();
 
-  const isAnotherPieceSelectorOpen =
-    openedPieceSelectorId !== null &&
-    openedPieceSelectorId !== CANVAS_TOOLBAR_ADD_STEP_ID;
-  if (readonly || isAnotherPieceSelectorOpen) {
+  if (readonly || isPiecePanelOpen) {
     return null;
   }
-  const parentStepName = flowCanvasUtils.getAddStepParentName({
-    trigger: flowVersion.trigger,
-    selectedStep,
-  });
 
   return (
     <div
       {...{ [`data-${flowCanvasConsts.CANVAS_CHROME_ATTRIBUTE}`]: true }}
-      className="absolute top-4 right-4 z-50 flex flex-col items-center rounded-md bg-panel p-0.5 shadow-xs"
+      className="absolute top-4 right-4 z-35 flex flex-col items-center rounded-md bg-panel p-0.5 shadow-xs"
     >
-      <PieceSelector
-        id={CANVAS_TOOLBAR_ADD_STEP_ID}
-        operation={{
-          type: FlowOperationType.ADD_ACTION,
-          actionLocation: {
-            parentStep: parentStepName,
-            stepLocationRelativeToParent: StepLocationRelativeToParent.AFTER,
-          },
-        }}
-      >
-        <span className="inline-flex">
-          <CanvasControlButton
-            tooltip={t('Add step')}
-            icon={Plus}
-            tooltipSide="left"
-            active={openedPieceSelectorId === CANVAS_TOOLBAR_ADD_STEP_ID}
-          />
-        </span>
-      </PieceSelector>
+      <CanvasControlButton
+        tooltip={t('Add step')}
+        icon={Plus}
+        tooltipSide="left"
+        shortcut={CanvasShortcuts.AddStep}
+        onClick={openAddStepPieceSelector}
+      />
       {!hideGlobalSearch && (
         <CanvasControlButton
           tooltip={t('Search')}
@@ -100,5 +75,3 @@ const CanvasToolbar = () => {
 
 CanvasToolbar.displayName = 'CanvasToolbar';
 export { CanvasToolbar };
-
-const CANVAS_TOOLBAR_ADD_STEP_ID = 'canvas-toolbar-add-step';

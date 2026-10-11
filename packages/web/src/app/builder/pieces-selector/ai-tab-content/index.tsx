@@ -1,78 +1,66 @@
 import { isNil } from '@activepieces/core-utils';
-import { FlowOperationType } from '@activepieces/shared';
-import { useTranslation } from 'react-i18next';
+import { t } from 'i18next';
 
-import { CardListItemSkeleton } from '@/components/custom/card-list';
 import {
   piecesHooks,
-  PieceSelectorTabType,
-  usePieceSelectorTabs,
-  PieceSelectorOperation,
+  PieceStepMetadataWithSuggestions,
+  ResolvedPieceSelectorTab,
   stepUtils,
 } from '@/features/pieces';
 import { authenticationSession } from '@/lib/authentication-session';
 
+import { NoResultsFound } from '../no-results-found';
+import { PiecePanelSubViewHeader } from '../piece-panel-header';
+import { PiecePanelViewBaseProps } from '../piece-panel-view';
+
 import { AIPieceActionsList } from './ai-actions-list';
 
-const AITabContent = ({ operation }: { operation: PieceSelectorOperation }) => {
-  const { t } = useTranslation();
-  const { selectedTab } = usePieceSelectorTabs();
+const AITabContent = ({ tab, ...viewProps }: AITabContentProps) => {
   const { pieceModel, isLoading, isError } = piecesHooks.usePiece({
     name: '@activepieces/piece-ai',
     projectId: authenticationSession.getProjectId() ?? undefined,
   });
-
-  if (
-    selectedTab !== PieceSelectorTabType.AI_AND_AGENTS ||
-    ![FlowOperationType.ADD_ACTION, FlowOperationType.UPDATE_ACTION].includes(
-      operation.type,
-    )
-  ) {
-    return null;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-2 w-full">
-        <CardListItemSkeleton numberOfCards={2} withCircle={false} />
-      </div>
-    );
-  }
-
-  if (
+  const isUnavailable =
     isError ||
-    isNil(pieceModel) ||
-    Object.keys(pieceModel.actions).length === 0
-  ) {
-    return (
-      <div className="flex items-center justify-center h-full w-full">
-        <p className="text-sm text-gray-11">
-          {t('AI piece is not available for this platform')}
-        </p>
-      </div>
-    );
-  }
-
-  const metadata = stepUtils.mapPieceToMetadata({
-    piece: pieceModel,
-    type: 'action',
-  });
-
-  const pieceMetadataWithSuggestion = {
-    ...metadata,
-    suggestedActions: Object.values(pieceModel?.actions),
-    suggestedTriggers: Object.values(pieceModel.triggers),
-  };
-
+    (!isLoading &&
+      (isNil(pieceModel) || Object.keys(pieceModel.actions).length === 0));
+  const metadata: PieceStepMetadataWithSuggestions | null =
+    isNil(pieceModel) || isUnavailable
+      ? null
+      : {
+          ...stepUtils.mapPieceToMetadata({
+            piece: pieceModel,
+            type: 'action',
+          }),
+          suggestedActions: Object.values(pieceModel.actions),
+          suggestedTriggers: Object.values(pieceModel.triggers),
+        };
   return (
-    <div className="w-full">
-      <AIPieceActionsList
-        stepMetadataWithSuggestions={pieceMetadataWithSuggestion}
-        hidePieceIconAndDescription={false}
-        operation={operation}
-      />
-    </div>
+    <AIPieceActionsList
+      {...viewProps}
+      header={
+        <PiecePanelSubViewHeader
+          icon={tab.icon}
+          title={tab.name}
+          description={null}
+          onBack={viewProps.onPop}
+        />
+      }
+      metadata={metadata}
+      isLoading={isLoading}
+      emptyState={
+        isUnavailable ? (
+          <NoResultsFound
+            message={t('AI piece is not available for this platform')}
+          />
+        ) : undefined
+      }
+    />
   );
 };
 
 export { AITabContent };
+
+type AITabContentProps = PiecePanelViewBaseProps & {
+  tab: ResolvedPieceSelectorTab;
+};
