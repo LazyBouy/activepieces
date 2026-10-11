@@ -3,7 +3,7 @@ import {
   flowStructureUtil,
   StepLocationRelativeToParent,
 } from '@activepieces/shared';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, useStoreApi } from '@xyflow/react';
 import { useCallback, useEffect } from 'react';
 
 import { isEditableTarget } from '@/lib/dom-utils';
@@ -15,7 +15,13 @@ import {
   CanvasShortcutProps,
   CanvasShortcutsProps,
 } from './flow-canvas/context-menu/canvas-context-menu';
+import { flowCanvasHooks } from './flow-canvas/hooks';
 import { canvasBulkActions } from './flow-canvas/utils/bulk-actions';
+import {
+  CanvasNavigationDirection,
+  canvasNavigationUtils,
+} from './flow-canvas/utils/canvas-navigation-utils';
+import { canvasSelectionUtils } from './flow-canvas/utils/canvas-selection-utils';
 import { flowCanvasConsts } from './flow-canvas/utils/consts';
 import { flowCanvasUtils } from './flow-canvas/utils/flow-canvas-utils';
 import { NoteDragOverlayMode } from './state/notes-state';
@@ -37,6 +43,8 @@ export const useHandleKeyPressOnCanvas = () => {
     isLogsPanelOpen,
     toggleLogsPanel,
     toggleLogsPane,
+    selectStepByName,
+    setSelectedNodes,
   ] = useBuilderStateContext((state) => [
     state.selectedNodes,
     state.flowVersion,
@@ -53,8 +61,12 @@ export const useHandleKeyPressOnCanvas = () => {
     state.isLogsPanelOpen,
     state.toggleLogsPanel,
     state.toggleLogsPane,
+    state.selectStepByName,
+    state.setSelectedNodes,
   ]);
   const { zoomIn, zoomOut, zoomTo } = useReactFlow();
+  const reactFlowStore = useStoreApi();
+  const focusStepIfOffscreen = flowCanvasHooks.useFocusStepIfOffscreen();
   const fitToView = useFitToView();
 
   const handleKeyDown = useCallback(
@@ -90,6 +102,28 @@ export const useHandleKeyPressOnCanvas = () => {
       const selectedActionNames = selectedNodesWithoutTrigger.filter(
         (node) => !isNil(flowStructureUtil.getStep(node, flowVersion.trigger)),
       );
+      const moveSelection = (direction: CanvasNavigationDirection) => {
+        const anchor =
+          getSingleSelectedStep({ selectedNodes, selectedStep }) ??
+          selectedStep;
+        const target = isNil(anchor)
+          ? flowVersion.trigger.name
+          : canvasNavigationUtils.getNeighbourStep({
+              trigger: flowVersion.trigger,
+              stepName: anchor,
+              direction,
+            });
+        e.preventDefault();
+        if (isNil(target)) {
+          return;
+        }
+        selectStepByName(target);
+        canvasSelectionUtils.selectStepOnCanvas({
+          stepName: target,
+          canvas: reactFlowStore.getState(),
+        });
+        focusStepIfOffscreen(target);
+      };
 
       const handlers: Record<CanvasShortcutAction, () => void> = {
         Copy: () => {
@@ -263,6 +297,28 @@ export const useHandleKeyPressOnCanvas = () => {
           e.preventDefault();
           toggleLogsPane('output');
         },
+        SelectAll: () => {
+          if (readonly) {
+            return;
+          }
+          e.preventDefault();
+          const actionNames = flowStructureUtil
+            .getAllSteps(flowVersion.trigger)
+            .map((step) => step.name)
+            .filter((name) => name !== flowVersion.trigger.name);
+          if (actionNames.length === 0) {
+            return;
+          }
+          setSelectedNodes(actionNames);
+          reactFlowStore.getState().addSelectedNodes(actionNames);
+          reactFlowStore.setState({
+            nodesSelectionActive: actionNames.length > 1,
+          });
+        },
+        SelectPrevious: () => moveSelection('left'),
+        SelectNext: () => moveSelection('right'),
+        SelectAbove: () => moveSelection('up'),
+        SelectBelow: () => moveSelection('down'),
       };
       handlers[match.action]();
     },
@@ -286,6 +342,10 @@ export const useHandleKeyPressOnCanvas = () => {
       isLogsPanelOpen,
       toggleLogsPanel,
       toggleLogsPane,
+      selectStepByName,
+      setSelectedNodes,
+      reactFlowStore,
+      focusStepIfOffscreen,
     ],
   );
 
@@ -390,6 +450,11 @@ const CANVAS_SHORTCUT_ACTIONS: CanvasShortcutAction[] = [
   'ToggleLogs',
   'ToggleLogsInput',
   'ToggleLogsOutput',
+  'SelectAll',
+  'SelectPrevious',
+  'SelectNext',
+  'SelectAbove',
+  'SelectBelow',
 ];
 
 export const CanvasShortcuts: CanvasShortcutsProps = {
@@ -475,6 +540,27 @@ export const CanvasShortcuts: CanvasShortcutsProps = {
     shortcutKey: 'o',
     requiresCanvasFocus: true,
     allowInLogsPanel: true,
+  },
+  SelectAll: {
+    shortcutKey: 'a',
+    withCtrl: true,
+    requiresCanvasFocus: true,
+  },
+  SelectPrevious: {
+    shortcutKey: 'ArrowLeft',
+    requiresCanvasFocus: true,
+  },
+  SelectNext: {
+    shortcutKey: 'ArrowRight',
+    requiresCanvasFocus: true,
+  },
+  SelectAbove: {
+    shortcutKey: 'ArrowUp',
+    requiresCanvasFocus: true,
+  },
+  SelectBelow: {
+    shortcutKey: 'ArrowDown',
+    requiresCanvasFocus: true,
   },
 };
 

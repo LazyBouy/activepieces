@@ -130,15 +130,12 @@ export const TemplatesBrowseDialog = ({
           </DialogHeader>
 
           <div className="px-6 pb-3 flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-11" />
-              <Input
-                placeholder={t('Search templates by name or description')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-            </div>
+            <Input
+              leadingIcon={<Search />}
+              placeholder={t('Search templates by name or description')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
 
           {isShowingOfficialTemplates && allCategories.length > 1 && (

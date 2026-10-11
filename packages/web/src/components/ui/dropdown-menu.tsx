@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+import { MenuScrollFade } from './menu-scroll-fade';
+
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -35,6 +37,7 @@ function DropdownMenuContent({
   className,
   sideOffset = 4,
   noAnimationOnOut = false,
+  children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
   noAnimationOnOut?: boolean;
@@ -50,7 +53,10 @@ function DropdownMenuContent({
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+        <MenuScrollFade />
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   );
 }

@@ -14,9 +14,9 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
 import { DataFetchErrorState } from '@/components/custom/data-fetch-error-state';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { SkeletonList } from '@/components/ui/skeleton';
 import {
   embedSubdomainQueries,
@@ -131,32 +131,33 @@ const EmbedPage = () => {
     (displayedStep?.kind === 'hostname' || displayedStep?.kind === 'dns');
 
   return (
-    <div className="w-full max-w-4/5 2xl:max-w-6xl mx-auto py-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-medium">{t('Embed Onboarding')}</h1>
-        <div className="text-sm text-gray-11">
-          {description}
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 mt-0.5 ml-1"
-            asChild
-          >
-            <a
-              {...adminControl(AdminControl.EMBEDDING_DOCS_LINK)}
-              href="https://www.activepieces.com/docs/embedding/overview"
-              target="_blank"
-              rel="noopener noreferrer"
+    <div className="w-full pb-6">
+      <DashboardPageHeader
+        title={t('Embed Onboarding')}
+        description={
+          <>
+            {description}
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 mt-0.5 ml-1"
+              asChild
             >
-              {t('Read more')}
-              <ExternalLink className="size-3" />
-            </a>
-          </Button>
-        </div>
-      </div>
-      <Separator className="mt-4 mb-12" />
+              <a
+                {...adminControl(AdminControl.EMBEDDING_DOCS_LINK)}
+                href="https://www.activepieces.com/docs/embedding/overview"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('Read more')}
+                <ExternalLink className="size-3" />
+              </a>
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-[16rem_1fr] gap-16">
+      <div className="grid grid-cols-[16rem_1fr] gap-16 pt-6">
         <Stepper
           steps={steps}
           completion={stepCompletion}

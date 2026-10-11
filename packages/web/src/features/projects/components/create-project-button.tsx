@@ -78,6 +78,7 @@ function triggerFor({ variant, className, crown, locked }: TriggerForParams) {
         <Button
           variant="ghost"
           size="icon"
+          aria-label={t('New Project')}
           className={cn('h-6 w-6 hover:bg-gray-4', className)}
           {...control}
         >

@@ -69,6 +69,7 @@ const PlatformTemplatesPage = () => {
       maxSize: 40,
       header: ({ table }) => (
         <Checkbox
+          aria-label={t('Select all')}
           checked={
             table.getRowModel().rows.length > 0 &&
             table.getRowModel().rows.every((row) => row.getIsSelected())
@@ -87,6 +88,7 @@ const PlatformTemplatesPage = () => {
 
         return (
           <Checkbox
+            aria-label={t('Select row')}
             checked={isChecked}
             onCheckedChange={(value) => {
               let newSelectedRows = [...selectedRows];

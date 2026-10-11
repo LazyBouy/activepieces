@@ -62,6 +62,25 @@ describe('edgePathUtils.buildBackEdgePath', () => {
     expect(backEdge.secondHalf.endsWith('H 392')).toBe(true);
   });
 
+  it('stops the hover area below the target so the edge entering the loop keeps its own hover', () => {
+    const backEdge = edgePathUtils.buildBackEdgePath(endpoints);
+
+    expect(backEdge.hoverPath).toBe(
+      [
+        'M 728 432',
+        'H 752',
+        'A 16 16 0 0 1 768 448',
+        'V 546',
+        'A 16 16 0 0 1 752 562',
+        'H 560',
+        'H 368',
+        'A 16 16 0 0 1 352 546',
+        'V 328',
+      ].join(' '),
+    );
+    expect(328 - endpoints.targetY).toBe(edgePathUtils.HOVER_WIDTH);
+  });
+
   it('uses the higher of the two endpoints when the target sits lower', () => {
     const backEdge = edgePathUtils.buildBackEdgePath({
       sourceX: 600,
@@ -87,6 +106,7 @@ describe('edgePathUtils.buildEdgeGeometry', () => {
     expect(geometry.isBackEdge).toBe(false);
     expect(geometry.isStraight).toBe(false);
     expect(geometry.segments).toEqual([geometry.path]);
+    expect(geometry.hoverPath).toBe(geometry.path);
     expect(geometry.path.startsWith('M280,288 C')).toBe(true);
     expect(geometry.path.endsWith('392,192')).toBe(true);
     expect(geometry.labelX).toBe(336);
@@ -116,6 +136,7 @@ describe('edgePathUtils.buildEdgeGeometry', () => {
 
     expect(geometry.isBackEdge).toBe(true);
     expect(geometry.segments).toHaveLength(2);
+    expect(geometry.hoverPath).not.toContain('H 392');
     expect(geometry.labelX).toBe(560);
     expect(geometry.labelY).toBe(562);
   });

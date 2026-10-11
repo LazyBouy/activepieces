@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { t } from 'i18next';
 import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDeepCompareEffect } from 'react-use';
@@ -147,6 +148,7 @@ export function DataTable<
     header: ({ table }) => (
       <div className="flex items-center h-full">
         <Checkbox
+          aria-label={t('Select all')}
           checked={table.getIsAllPageRowsSelected()}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         />
@@ -155,6 +157,7 @@ export function DataTable<
     cell: ({ row }) => (
       <div className="flex items-center h-full">
         <Checkbox
+          aria-label={t('Select row')}
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}

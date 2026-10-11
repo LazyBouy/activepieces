@@ -3,7 +3,7 @@
 // Used form here https://github.com/shadcn-ui/ui/pull/2773/files
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { t } from 'i18next'; // Use t function from react-i18next
-import { Check, ChevronsUpDown, RefreshCcw, X } from 'lucide-react';
+import { Check, ChevronDown, RefreshCcw, X } from 'lucide-react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import React, { ComponentPropsWithoutRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -23,6 +23,7 @@ import {
   CommandSeparator,
 } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
+import { selectTriggerClassName } from '../ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -216,14 +217,15 @@ const MultiSelectTrigger = React.forwardRef<
     return (
       <PopoverPrimitive.Trigger ref={forwardedRef as any} asChild>
         <Button
-          variant="outline"
+          variant={null}
           aria-disabled={disabled}
           disabled={disabled}
           role="combobox"
           type="button"
           loading={loading}
           className={cn(
-            'flex min-h-9 h-auto w-full items-center justify-between cursor-pointer gap-2 whitespace-nowrap rounded-sm border border-gray-8 bg-transparent px-4 py-1 text-sm ring-offset-gray-1 focus:outline-hidden focus:ring-1 focus:ring-gray-8 [&>span]:line-clamp-1',
+            selectTriggerClassName,
+            'min-h-9 h-auto cursor-pointer py-1 font-normal leading-normal focus-visible:outline-hidden data-[size=default]:h-auto [&>span]:line-clamp-1',
             {
               'cursor-not-allowed opacity-80': disabled,
               'cursor-pointer': !disabled,
@@ -253,10 +255,7 @@ const MultiSelectTrigger = React.forwardRef<
                 Icon={RefreshCcw}
               ></SelectUtilButton>
             )}
-            <ChevronsUpDown
-              aria-hidden
-              className="h-4 w-4 opacity-50 shrink-0"
-            />
+            <ChevronDown aria-hidden className="size-4 shrink-0 text-gray-11" />
           </div>
         </Button>
       </PopoverPrimitive.Trigger>

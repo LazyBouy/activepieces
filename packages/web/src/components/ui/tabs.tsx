@@ -73,15 +73,27 @@ function TabsTrigger({
   className,
   variant,
   size,
+  unread = false,
+  children,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Trigger> &
-  VariantProps<typeof tabsTriggerVariants>) {
+  VariantProps<typeof tabsTriggerVariants> & { unread?: boolean }) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
+      data-unread={unread || undefined}
       className={cn(tabsTriggerVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {children}
+      {unread && (
+        <span
+          data-slot="tabs-unread-dot"
+          aria-hidden="true"
+          className="size-1.25 shrink-0 rounded-full bg-accent-9"
+        />
+      )}
+    </TabsPrimitive.Trigger>
   );
 }
 
@@ -92,7 +104,10 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn('mt-5 outline-hidden', className)}
+      className={cn(
+        'mt-5 outline-hidden focus-visible:outline-1 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus',
+        className,
+      )}
       {...props}
     />
   );

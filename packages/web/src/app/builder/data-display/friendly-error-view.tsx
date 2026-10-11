@@ -67,7 +67,7 @@ const FriendlyErrorView = ({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-gray-11 leading-relaxed">{hint}</p>
+          <p className="text-xs text-gray-12/87 leading-relaxed">{hint}</p>
         </div>
       </div>
       {showMessage && (

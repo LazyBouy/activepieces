@@ -70,6 +70,7 @@ function Badge({
   variant = 'default',
   size = 'default',
   asChild = false,
+  children,
   ...props
 }: React.ComponentProps<'span'> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
@@ -84,8 +85,46 @@ function Badge({
       }
       className={cn(badgeVariants({ variant, size }), className)}
       {...props}
-    />
+    >
+      {asChild ? children : wrapTextRuns(children)}
+    </Comp>
   );
+}
+
+function wrapTextRuns(children: React.ReactNode): React.ReactNode[] {
+  const runs = React.Children.toArray(children).reduce<BadgeContentRun[]>(
+    (acc, child) => {
+      if (typeof child !== 'string' && typeof child !== 'number') {
+        return [...acc, { kind: 'node', node: child }];
+      }
+      const last = acc.at(-1);
+      if (last?.kind === 'text') {
+        return [
+          ...acc.slice(0, -1),
+          { kind: 'text', text: `${last.text}${child}` },
+        ];
+      }
+      return [...acc, { kind: 'text', text: String(child) }];
+    },
+    [],
+  );
+  return runs.map((run, index) => {
+    if (run.kind === 'node') {
+      return run.node;
+    }
+    if (run.text.trim() === '') {
+      return run.text;
+    }
+    return (
+      <span
+        key={`badge-label-${index}`}
+        data-slot="badge-label"
+        className="min-w-0 truncate leading-tight"
+      >
+        {run.text}
+      </span>
+    );
+  });
 }
 
 const LIGHT_ISLAND_VARIANTS = new Set<string>([
@@ -96,3 +135,7 @@ const LIGHT_ISLAND_VARIANTS = new Set<string>([
 ]);
 
 export { Badge, badgeVariants };
+
+type BadgeContentRun =
+  | { kind: 'text'; text: string }
+  | { kind: 'node'; node: React.ReactNode };

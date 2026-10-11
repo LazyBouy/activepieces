@@ -10,6 +10,7 @@ import {
   Handle,
   NodeProps,
   Position,
+  useStoreApi,
   useUpdateNodeInternals,
 } from '@xyflow/react';
 import { t } from 'i18next';
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils';
 
 import { useIsCanvasContextMenuOpen } from '../../context-menu/canvas-context-menu';
 import { canvasRunUtils } from '../../utils/canvas-run-utils';
+import { canvasSelectionUtils } from '../../utils/canvas-selection-utils';
 import { flowCanvasConsts } from '../../utils/consts';
 import { flowCanvasUtils } from '../../utils/flow-canvas-utils';
 import { ApStepNode, ApStepOutput } from '../../utils/types';
@@ -123,7 +125,14 @@ const StepBoxNode = ({
             e.target.matches(':focus-visible'),
         )
       }
-      onBlur={() => setHasVisibleFocus(false)}
+      onBlur={(e) => {
+        if (
+          !(e.relatedTarget instanceof Node) ||
+          !e.currentTarget.contains(e.relatedTarget)
+        ) {
+          setHasVisibleFocus(false);
+        }
+      }}
     >
       {visual.ring && (
         <div
@@ -362,11 +371,16 @@ function useStepInteractions({
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
     state.openStepModal,
   ]);
+  const reactFlowStore = useStoreApi();
   const handleStepClick = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
     stopPropagation = true,
   ) => {
     selectStepByName(stepName);
+    canvasSelectionUtils.selectStepOnCanvas({
+      stepName,
+      canvas: reactFlowStore.getState(),
+    });
     setSelectedBranchIndex(null);
     if (stopPropagation) {
       e.stopPropagation();

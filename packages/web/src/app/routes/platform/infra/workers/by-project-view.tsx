@@ -63,9 +63,9 @@ export function ByProjectView({
 
   const searchBar = (
     <div className="relative">
-      <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-11" />
       <Input
-        className="pl-8 w-[240px]"
+        leadingIcon={<Search />}
+        className="w-[240px]"
         placeholder={t('Search projects')}
         defaultValue={displayName ?? ''}
         onChange={(e) => {

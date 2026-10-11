@@ -26,7 +26,7 @@ const TriggerWidget = ({
       <Zap
         data-trigger-bolt
         className={cn(
-          'pointer-events-none absolute top-1/2 right-full mr-4 size-4 -translate-y-1/2 fill-accent-9 text-accent-9 transition-[opacity,translate] duration-100 ease-cubic-in',
+          'pointer-events-none absolute top-1/2 right-full mr-4 size-4 -translate-y-1/2 fill-accent-9 text-accent-9 transition-[opacity,translate] duration-100 ease-[ease-in]',
           { '-translate-x-3 opacity-0': showButton },
         )}
       />

@@ -50,7 +50,12 @@ export type CanvasShortcutAction =
   | 'ReplaceStep'
   | 'ToggleLogs'
   | 'ToggleLogsInput'
-  | 'ToggleLogsOutput';
+  | 'ToggleLogsOutput'
+  | 'SelectAll'
+  | 'SelectPrevious'
+  | 'SelectNext'
+  | 'SelectAbove'
+  | 'SelectBelow';
 
 export type CanvasShortcutProps = ShortcutProps & {
   shortcutCode?: string;

@@ -45,6 +45,7 @@ import {
 import { FlowConnectionLine } from './edges/flow-connection-line';
 import { FlowDragLayer } from './flow-drag-layer';
 import { flowCanvasHooks } from './hooks';
+import { canvasSelectionUtils } from './utils/canvas-selection-utils';
 import { flowCanvasConsts } from './utils/consts';
 import { flowCanvasUtils } from './utils/flow-canvas-utils';
 import { stepPositionUtils } from './utils/step-position-utils';
@@ -60,7 +61,6 @@ export const FlowCanvas = React.memo(() => {
     selectedNodes,
     selectedStep,
     selectStepByName,
-    rightSidebar,
     notes,
     readonly,
     startStepDrag,
@@ -76,7 +76,6 @@ export const FlowCanvas = React.memo(() => {
       state.selectedNodes,
       state.selectedStep,
       state.selectStepByName,
-      state.rightSidebar,
       state.flowVersion.notes,
       state.readonly,
       state.startStepDrag,
@@ -93,6 +92,7 @@ export const FlowCanvas = React.memo(() => {
   flowCanvasHooks.useFocusOnStep();
   useHandleKeyPressOnCanvas();
   flowCanvasHooks.useResizeCanvas(containerRef);
+  flowCanvasHooks.useZoomContrast(containerRef);
   const reactFlowStore = useStoreApi();
   const { screenToFlowPosition } = useReactFlow();
   const minimap = useMinimapVisibility();
@@ -116,13 +116,14 @@ export const FlowCanvas = React.memo(() => {
   }, [isCanvasMeasured, flowVersion.id, fittedVersionId, fitToView]);
   const onSelectionChange = useCallback(
     (ev: OnSelectionChangeParams) => {
-      const selectedNodes = ev.nodes.map((n) => n.id);
-      if (selectedNodes.length === 0 && selectedStep) {
-        selectedNodes.push(selectedStep);
-      }
-      setSelectedNodes(selectedNodes);
+      setSelectedNodes(
+        canvasSelectionUtils.resolveSelectedNodes({
+          canvasSelection: ev.nodes.map((n) => n.id),
+          selectedStep: builderStore.getState().selectedStep,
+        }),
+      );
     },
-    [setSelectedNodes, selectedStep],
+    [setSelectedNodes, builderStore],
   );
   const graphKey = createGraphKey({
     flowVersion,
@@ -307,7 +308,10 @@ export const FlowCanvas = React.memo(() => {
 
         if (stepElement && stepName) {
           selectStepByName(stepName);
-          reactFlowStore.getState().addSelectedNodes([stepName]);
+          canvasSelectionUtils.selectStepOnCanvas({
+            stepName,
+            canvas: reactFlowStore.getState(),
+          });
         }
         const targetIsSelectionChevron = ev.target.closest(
           `[data-${flowCanvasConsts.SELECTION_RECT_CHEVRON_ATTRIBUTE}]`,
@@ -333,7 +337,7 @@ export const FlowCanvas = React.memo(() => {
         }
       }
     },
-    [setSelectedNodes, selectedNodes, rightSidebar],
+    [selectStepByName, reactFlowStore],
   );
 
   const onSelectionEnd = useCallback(() => {
@@ -345,36 +349,25 @@ export const FlowCanvas = React.memo(() => {
       reactFlowStore.getState().addSelectedNodes([]);
       return;
     }
-    const selectedSteps = selectedNodes
-      .map((node) => flowStructureUtil.getStep(node, flowVersion.trigger))
-      .filter((step) => !isNil(step));
-    selectedSteps.forEach((step) => {
-      if (
-        step.type === FlowActionType.LOOP_ON_ITEMS ||
-        flowStructureUtil.isBranchedAction(step) ||
-        flowStructureUtil.hasContinueOnFailureBranches(step)
-      ) {
-        const childrenNotSelected = flowStructureUtil
-          .getAllChildSteps(step)
-          .filter((c) => isNil(selectedNodes.find((n) => n === c.name)));
-        selectedSteps.push(...childrenNotSelected);
-      }
-    });
-    const step = selectedStep
-      ? flowStructureUtil.getStep(selectedStep, flowVersion.trigger)
-      : null;
-    if (selectedNodes.length === 0 && step) {
-      selectedSteps.push(step);
+    const canvasSelection = canvasSelectionUtils.getCanvasSelection(
+      reactFlowStore.getState().nodeLookup,
+    );
+    if (canvasSelection.length === 0) {
+      return;
     }
-    reactFlowStore
-      .getState()
-      .addSelectedNodes(selectedSteps.map((step) => step.name));
-  }, [selectedNodes, reactFlowStore, selectedStep]);
+    reactFlowStore.getState().addSelectedNodes(
+      canvasSelectionUtils.expandSelectionWithChildren({
+        stepNames: canvasSelection,
+        trigger: flowVersion.trigger,
+      }),
+    );
+  }, [reactFlowStore, flowVersion.trigger]);
 
   const { setCursorPosition } = useCursorPosition();
   return (
     <div
       ref={containerRef}
+      data-canvas-contrast
       data-single-selection={selectedNodes.length <= 1}
       className="@container size-full relative overflow-hidden z-30 bg-gray-2"
       onMouseMove={(event) => {

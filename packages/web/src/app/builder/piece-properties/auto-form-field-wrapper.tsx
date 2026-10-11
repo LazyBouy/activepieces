@@ -70,7 +70,7 @@ function AutoFormFieldWrapper({
             <span className="grow"></span>
             <span
               data-field-controls
-              className="flex items-center gap-1 opacity-0 transition-opacity duration-250 ease-[cubic-bezier(0.98,-0.06,0.49,-0.2)] group-focus-within/field:opacity-100 group-focus-within/field:duration-100 group-focus-within/field:ease-cubic-in group-hover/field:opacity-100 group-hover/field:duration-100 group-hover/field:ease-cubic-in"
+              className="flex items-center gap-1 opacity-0 transition-opacity duration-250 ease-[cubic-bezier(0.98,-0.06,0.49,-0.2)] group-focus-within/field:opacity-100 group-focus-within/field:duration-100 group-focus-within/field:ease-[ease-in] group-hover/field:opacity-100 group-hover/field:duration-100 group-hover/field:ease-[ease-in]"
             >
               {property && !isAuthProperty && (
                 <PropertyTypeTooltip property={property} />

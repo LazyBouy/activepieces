@@ -12,8 +12,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Toggle } from '@/components/ui/toggle';
 import { chatApi } from '@/features/chat/lib/chat-api';
-import { cn } from '@/lib/utils';
 
 const REASON_LABELS: Record<AgentFeedbackReason, string> = {
   incorrect_or_incomplete: 'Incorrect or incomplete',
@@ -72,17 +72,16 @@ export function FeedbackDialog({
           {AgentFeedbackReason.options.map((reason) => {
             const selected = reasons.has(reason);
             return (
-              <Button
+              <Toggle
                 key={reason}
-                type="button"
                 size="sm"
-                variant={selected ? 'secondary' : 'outline'}
-                aria-pressed={selected}
-                onClick={() => toggleReason(reason)}
-                className={cn('rounded-full', selected && 'border-gray-12')}
+                variant="outline"
+                pressed={selected}
+                onPressedChange={() => toggleReason(reason)}
+                className="rounded-full px-3"
               >
                 {t(REASON_LABELS[reason])}
-              </Button>
+              </Toggle>
             );
           })}
         </div>

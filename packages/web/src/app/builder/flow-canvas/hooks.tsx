@@ -6,7 +6,7 @@ import {
   isFlowRunStateTerminal,
 } from '@activepieces/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, useStoreApi } from '@xyflow/react';
 import { t } from 'i18next';
 import { useEffect, useRef } from 'react';
 import { useLocation, usePrevious } from 'react-use';
@@ -194,6 +194,60 @@ export const useFocusOnStep = () => {
   }, [currentStep, selectStep, fitView, userManuallySelectedStepDuringRun]);
 };
 
+const useFocusStepIfOffscreen = () => {
+  const { getInternalNode, getViewport, setCenter } = useReactFlow();
+  return (stepName: string) => {
+    const element = document.querySelector(
+      `[data-testid="rf__node-${CSS.escape(stepName)}"]`,
+    );
+    const pane = document.querySelector('.react-flow');
+    const node = getInternalNode(stepName);
+    if (isNil(element) || isNil(pane) || isNil(node)) {
+      return;
+    }
+    const nodeRect = element.getBoundingClientRect();
+    const paneRect = pane.getBoundingClientRect();
+    const isVisible =
+      nodeRect.left >= paneRect.left &&
+      nodeRect.right <= paneRect.right &&
+      nodeRect.top >= paneRect.top &&
+      nodeRect.bottom <= paneRect.bottom;
+    if (isVisible) {
+      return;
+    }
+    const width = node.measured.width ?? 0;
+    const height = node.measured.height ?? 0;
+    const params = flowCanvasUtils.createFocusStepInGraphParams(stepName);
+    setCenter(
+      node.internals.positionAbsolute.x + width / 2,
+      node.internals.positionAbsolute.y + height / 2,
+      { zoom: getViewport().zoom, duration: params.duration },
+    );
+  };
+};
+
+const useZoomContrast = (
+  containerRef: React.RefObject<HTMLDivElement | null>,
+) => {
+  const reactFlowStore = useStoreApi();
+  useEffect(() => {
+    const appliedWeight = { current: Number.NaN };
+    const apply = (zoom: number) => {
+      const weight = flowCanvasUtils.getZoomContrastWeight(zoom);
+      if (weight === appliedWeight.current || isNil(containerRef.current)) {
+        return;
+      }
+      appliedWeight.current = weight;
+      containerRef.current.style.setProperty(
+        CANVAS_CONTRAST_PROPERTY,
+        String(weight),
+      );
+    };
+    apply(reactFlowStore.getState().transform[2]);
+    return reactFlowStore.subscribe((state) => apply(state.transform[2]));
+  }, [reactFlowStore, containerRef]);
+};
+
 export const useResizeCanvas = (
   containerRef: React.RefObject<HTMLDivElement | null>,
 ) => {
@@ -227,11 +281,15 @@ export const useResizeCanvas = (
   }, [setViewport, getViewport]);
 };
 
+const CANVAS_CONTRAST_PROPERTY = '--canvas-contrast';
+
 export const flowCanvasHooks = {
   useSetSocketListener,
   useShowBuilderIsSavingWarningBeforeLeaving,
   useIsFocusInsideListMapperModeInput,
   useFocusOnStep,
+  useFocusStepIfOffscreen,
+  useZoomContrast,
   useResizeCanvas,
   useSwitchToDraft,
   useListenToExistingRun,

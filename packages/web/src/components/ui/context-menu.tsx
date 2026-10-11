@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+import { MenuScrollFade } from './menu-scroll-fade';
+
 function ContextMenu({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
@@ -95,6 +97,7 @@ function ContextMenuSubContent({
 
 function ContextMenuContent({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
   return (
@@ -106,7 +109,10 @@ function ContextMenuContent({
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+        <MenuScrollFade />
+      </ContextMenuPrimitive.Content>
     </ContextMenuPrimitive.Portal>
   );
 }

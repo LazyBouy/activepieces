@@ -34,8 +34,15 @@ function buildBackEdgePath({
   ];
   const start = `M ${sourceX} ${sourceY}`;
   const middle = `M ${middleX} ${bottomY}`;
+  const hoverEndY = Math.min(targetY + HOVER_WIDTH, bottomY - RADIUS);
+  const toHoverEnd = [
+    `H ${leftX + RADIUS}`,
+    arc({ x: leftX, y: bottomY - RADIUS }),
+    `V ${hoverEndY}`,
+  ];
   return {
     path: [start, ...toMiddle, ...toTarget].join(' '),
+    hoverPath: [start, ...toMiddle, ...toHoverEnd].join(' '),
     firstHalf: [start, ...toMiddle].join(' '),
     secondHalf: [middle, ...toTarget].join(' '),
     labelX: middleX,
@@ -50,6 +57,7 @@ function buildEdgeGeometry(endpoints: EdgeEndpoints): EdgeGeometry {
       isBackEdge: true,
       isStraight: false,
       path: backEdge.path,
+      hoverPath: backEdge.hoverPath,
       segments: [backEdge.firstHalf, backEdge.secondHalf],
       labelX: backEdge.labelX,
       labelY: backEdge.labelY,
@@ -67,6 +75,7 @@ function buildEdgeGeometry(endpoints: EdgeEndpoints): EdgeGeometry {
     isBackEdge: false,
     isStraight: endpoints.sourceY === endpoints.targetY,
     path,
+    hoverPath: path,
     segments: [path],
     labelX,
     labelY,
@@ -79,11 +88,13 @@ function arc({ x, y }: { x: number; y: number }): string {
 
 const { BACK_EDGE_DROP, BACK_EDGE_THRESHOLD, CLEARANCE, RADIUS } =
   flowLayoutUtil.constants;
+const HOVER_WIDTH = 40;
 
 export const edgePathUtils = {
   isBackEdge,
   buildBackEdgePath,
   buildEdgeGeometry,
+  HOVER_WIDTH,
 };
 
 export type EdgeEndpoints = {
@@ -95,6 +106,7 @@ export type EdgeEndpoints = {
 
 export type BackEdgePath = {
   path: string;
+  hoverPath: string;
   firstHalf: string;
   secondHalf: string;
   labelX: number;
@@ -105,6 +117,7 @@ export type EdgeGeometry = {
   isBackEdge: boolean;
   isStraight: boolean;
   path: string;
+  hoverPath: string;
   segments: string[];
   labelX: number;
   labelY: number;

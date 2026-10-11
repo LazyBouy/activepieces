@@ -36,6 +36,7 @@ const PieceActions = ({ pieceName, isEnabled }: PieceActionsProps) => {
             {...adminControl(AdminControl.PIECES_PIN_RUN)}
             variant="ghost"
             size={'sm'}
+            aria-label={pinned ? t('Unpin this piece') : t('Pin this piece')}
             loading={isPinPending}
             disabled={!isEnabled}
             onClick={(e) => {

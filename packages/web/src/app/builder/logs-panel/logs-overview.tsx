@@ -1,4 +1,3 @@
-import { isNil } from '@activepieces/core-utils';
 import { FlowRun, StepOutputStatus } from '@activepieces/shared';
 import { useReactFlow } from '@xyflow/react';
 import { t } from 'i18next';
@@ -51,7 +50,7 @@ const LogsOverview = ({
     state.openStepModal,
     state.isRunOpenedFromList,
   ]);
-  const focusStepIfOffscreen = useFocusStepIfOffscreen();
+  const focusStepIfOffscreen = flowCanvasHooks.useFocusStepIfOffscreen();
   const tree = useMemo(
     () => logsTreeUtils.buildLogTree({ trigger, steps: run.steps ?? {} }),
     [trigger, run.steps],
@@ -265,38 +264,6 @@ const JumpToFailedStepButton = ({
     </Button>
   );
 };
-
-function useFocusStepIfOffscreen() {
-  const { getInternalNode, getViewport, setCenter } = useReactFlow();
-  return (stepName: string) => {
-    const element = document.querySelector(
-      `[data-testid="rf__node-${CSS.escape(stepName)}"]`,
-    );
-    const pane = document.querySelector('.react-flow');
-    const node = getInternalNode(stepName);
-    if (isNil(element) || isNil(pane) || isNil(node)) {
-      return;
-    }
-    const nodeRect = element.getBoundingClientRect();
-    const paneRect = pane.getBoundingClientRect();
-    const isVisible =
-      nodeRect.left >= paneRect.left &&
-      nodeRect.right <= paneRect.right &&
-      nodeRect.top >= paneRect.top &&
-      nodeRect.bottom <= paneRect.bottom;
-    if (isVisible) {
-      return;
-    }
-    const width = node.measured.width ?? 0;
-    const height = node.measured.height ?? 0;
-    const params = flowCanvasUtils.createFocusStepInGraphParams(stepName);
-    setCenter(
-      node.internals.positionAbsolute.x + width / 2,
-      node.internals.positionAbsolute.y + height / 2,
-      { zoom: getViewport().zoom, duration: params.duration },
-    );
-  };
-}
 
 function focusRowElement({
   container,

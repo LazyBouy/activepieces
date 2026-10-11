@@ -599,7 +599,14 @@ function doesSelectionRectangleExist() {
   return document.querySelector(`.${NODE_SELECTION_RECT_CLASS_NAME}`) !== null;
 }
 
+function getZoomContrastWeight(zoom: number): number {
+  const progress = Math.min(1, Math.max(0, (1 - zoom) / ZOOM_CONTRAST_RANGE));
+  return Math.round(progress ** ZOOM_CONTRAST_EXPONENT * 1000) / 1000;
+}
+
 const FOCUS_STEP_DURATION = 200;
+const ZOOM_CONTRAST_RANGE = 0.8;
+const ZOOM_CONTRAST_EXPONENT = 2.2;
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const NODE_SELECTION_RECT_CLASS_NAME = 'react-flow__nodesselection-rect';
 const NOTE_DEFAULT_SIZE = { width: 240, height: 160 };
@@ -625,6 +632,7 @@ export const flowCanvasUtils = {
   getStepStatus,
   determineInitiallySelectedStep,
   doesSelectionRectangleExist,
+  getZoomContrastWeight,
   getJoinNodeId,
   getOutputEdgeId,
   getOutputStubId,

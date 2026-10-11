@@ -1109,7 +1109,7 @@ const RAIL_ICON_BUTTON_CLASS =
   'text-gray-11 hover:bg-gray-3 hover:text-gray-12 pressed:bg-gray-4 [&_svg]:size-4';
 
 const RAIL_SECTION_ACTION_CLASS =
-  'size-5 rounded-sm text-gray-10 hover:bg-gray-4 hover:text-gray-12 [&_svg]:size-3.5!';
+  'size-5 rounded-sm text-gray-10 outline-hidden hover:bg-gray-4 hover:text-gray-12 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus-halo [&_svg]:size-3.5!';
 
 const PINNED_SORTS = ['added', 'recency', 'alphabetical'] as const;
 

@@ -1,7 +1,18 @@
-import { githubDark, githubLight } from '@uiw/codemirror-theme-github';
+import { githubDarkInit, githubLightInit } from '@uiw/codemirror-theme-github';
+
+const neutralSurface = {
+  settings: {
+    background: 'transparent',
+    gutterBackground: 'transparent',
+    lineHighlight: 'var(--gray-2)',
+  },
+};
+
+const codeMirrorDark = githubDarkInit(neutralSurface);
+const codeMirrorLight = githubLightInit(neutralSurface);
 
 const codeMirror = (resolvedTheme: string) =>
-  resolvedTheme === 'dark' ? githubDark : githubLight;
+  resolvedTheme === 'dark' ? codeMirrorDark : codeMirrorLight;
 
 const jsonView = (resolvedTheme: string) =>
   resolvedTheme === 'dark' ? 'bright' : 'rjv-default';

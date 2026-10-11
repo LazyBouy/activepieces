@@ -101,15 +101,13 @@ export const MultiSelectFilter = ({
       >
         {searchable && (
           <div className="border-b px-2 pt-2 pb-1">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-11" />
-              <Input
-                placeholder={t('Search...')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-8 border-none pl-7 text-sm shadow-none focus-visible:ring-0"
-              />
-            </div>
+            <Input
+              leadingIcon={<Search className="size-3.5" />}
+              placeholder={t('Search...')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 border-none px-0 text-sm focus-within:ring-0"
+            />
           </div>
         )}
         <ScrollArea className="max-h-[300px]">

@@ -71,7 +71,12 @@ const LogsStepRow = React.memo(
           {step?.displayName ?? row.displayName}
         </span>
         {showDuration && row.duration !== undefined && (
-          <span className="ml-2 shrink-0 text-xs text-gray-11">
+          <span
+            className={cn(
+              'ml-2 shrink-0 text-xs text-gray-11 group-hover/log-row:text-gray-12/87',
+              { 'text-gray-12/87': selected },
+            )}
+          >
             {formatUtils.formatDuration(row.duration, true)}
           </span>
         )}
@@ -95,7 +100,7 @@ const LogsIterationRow = React.memo(
     >
       <RowGuides row={row} />
       <RowChevron expanded={row.expanded} disabled={!row.hasChildren} />
-      <span className="min-w-0 flex-1 truncate text-left text-xs text-gray-11">
+      <span className="min-w-0 flex-1 truncate text-left text-xs text-gray-11 group-hover/log-row:text-gray-12/87">
         {t('Iteration {index}', { index: row.index + 1 })}
       </span>
     </button>
@@ -198,7 +203,7 @@ function rowClassName({
   failed: boolean;
 }): string {
   return cn(
-    'relative mx-2 flex h-8 w-[calc(100%-16px)] shrink-0 items-center rounded-sm pr-2 outline-hidden focus-visible:inset-ring-1 focus-visible:inset-ring-focus hover:bg-canvas-logs-row-hover',
+    'group/log-row relative mx-2 flex h-8 w-[calc(100%-16px)] shrink-0 items-center rounded-sm pr-2 outline-hidden focus-visible:inset-ring-1 focus-visible:inset-ring-focus hover:bg-canvas-logs-row-hover',
     {
       'bg-canvas-logs-row-selected hover:bg-canvas-logs-row-selected':
         selected && !failed,

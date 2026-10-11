@@ -216,10 +216,10 @@ export function AIModelSelector({
         <Popover open={providerOpen} onOpenChange={setProviderOpen}>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               role="combobox"
               aria-expanded={providerOpen}
-              className="flex-1 justify-between border-0 rounded-none focus-visible:ring-1 focus-visible:ring-offset-0 max-w-72 h-auto"
+              className="flex-1 justify-between rounded-none focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-focus max-w-72 h-auto"
               disabled={disabled || providersLoading || providers.length === 0}
             >
               {providersLoading ? (
@@ -297,10 +297,10 @@ export function AIModelSelector({
         <Popover open={modelOpen} onOpenChange={setModelOpen}>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               role="combobox"
               aria-expanded={modelOpen}
-              className="flex-1 justify-between border-0 rounded-none focus-visible:ring-1 focus-visible:ring-offset-0 min-w-32 h-auto"
+              className="flex-1 justify-between rounded-none focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-focus min-w-32 h-auto"
               disabled={
                 disabled ||
                 !selectedProvider ||

@@ -266,6 +266,7 @@ function HealthRowItem({ row, loading }: { row: HealthRow; loading: boolean }) {
               href={row.link}
               target="_blank"
               rel="noreferrer"
+              aria-label={t('Learn more')}
               className="text-gray-11 hover:text-gray-12"
             >
               <ExternalLink className="size-3.5" />

@@ -61,7 +61,7 @@ export default function SettingsHealthPage({
   };
 
   return (
-    <div className="flex flex-col w-full max-w-[40rem] mx-auto gap-4">
+    <div className="flex w-full flex-col">
       <DashboardPageHeader
         title={t('Health')}
         description={t('Check the status of your platform and its components')}
@@ -83,29 +83,31 @@ export default function SettingsHealthPage({
         )}
       </DashboardPageHeader>
 
-      {section === 'system' && (
-        <SystemHealthTab
-          onSeeRuns={() =>
-            navigate({
-              pathname: '/platform/health/runs',
-              search: searchParams.toString(),
-            })
-          }
-        />
-      )}
+      <div className="flex w-full max-w-[40rem] flex-col gap-4 pb-6">
+        {section === 'system' && (
+          <SystemHealthTab
+            onSeeRuns={() =>
+              navigate({
+                pathname: '/platform/health/runs',
+                search: searchParams.toString(),
+              })
+            }
+          />
+        )}
 
-      {section === 'runs' && (
-        <RunsTab
-          report={report}
-          isLoading={isReportLoading}
-          isError={isReportError}
-          onRetry={refetchReport}
-        />
-      )}
+        {section === 'runs' && (
+          <RunsTab
+            report={report}
+            isLoading={isReportLoading}
+            isError={isReportError}
+            onRetry={refetchReport}
+          />
+        )}
 
-      {section === 'queue' && (
-        <QueueTab live={live} isLoading={isLiveLoading} />
-      )}
+        {section === 'queue' && (
+          <QueueTab live={live} isLoading={isLiveLoading} />
+        )}
+      </div>
     </div>
   );
 }

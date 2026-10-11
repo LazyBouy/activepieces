@@ -15,7 +15,6 @@ export default function PlatformMcpPage({ section }: PlatformMcpPageProps) {
   return (
     <CenteredPage
       widthClassName={section === 'activity' ? 'max-w-[1198px]' : undefined}
-      showHeaderSeparator={false}
       title={section === 'access' ? t('MCP Tools') : t('MCP Activity')}
       description={
         section === 'access' ? (

@@ -34,11 +34,27 @@ const reactFlow = vi.hoisted(() => ({
   zoomIn: vi.fn(),
   zoomOut: vi.fn(),
   zoomTo: vi.fn(),
+  getInternalNode: vi.fn(),
+  getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
+  setCenter: vi.fn(),
 }));
+
+const reactFlowStore = vi.hoisted(() => {
+  const state = {
+    nodeLookup: new Map([
+      ['trigger', { selectable: false }],
+      ['step_1', { selectable: true }],
+    ]),
+    addSelectedNodes: vi.fn(),
+    unselectNodesAndEdges: vi.fn(),
+  };
+  return { getState: () => state, setState: vi.fn() };
+});
 
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@xyflow/react')>()),
   useReactFlow: () => reactFlow,
+  useStoreApi: () => reactFlowStore,
 }));
 
 declare global {
@@ -47,6 +63,11 @@ declare global {
 }
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+if (typeof globalThis.CSS?.escape !== 'function') {
+  Object.defineProperty(globalThis, 'CSS', {
+    value: { escape: (value: string) => value },
+  });
+}
 
 function buildFlow(): PopulatedFlow {
   const now = new Date().toISOString();
@@ -467,6 +488,54 @@ describe('canvas keyboard map', () => {
     expect(
       store.getState().openedPieceSelectorStepNameOrAddButtonId,
     ).toBeNull();
+  });
+
+  it('selects every step except the trigger with Ctrl+A', async () => {
+    const { store } = await setup();
+    const event = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'a',
+      ctrlKey: true,
+    });
+    act(() => {
+      document.body.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(store.getState().selectedNodes).toEqual(['step_1']);
+    expect(reactFlowStore.getState().addSelectedNodes).toHaveBeenCalledWith([
+      'step_1',
+    ]);
+  });
+
+  it('does not select all on a read-only canvas or inside an input', async () => {
+    const { container } = await setup({ readonly: true });
+    dispatchKeyFrom(document.body, { key: 'a', metaKey: true });
+    const field = document.createElement('input');
+    container.appendChild(field);
+    dispatchKeyFrom(field, { key: 'a', ctrlKey: true });
+    expect(reactFlowStore.getState().addSelectedNodes).not.toHaveBeenCalled();
+  });
+
+  it('moves the selection along the chain with the arrow keys', async () => {
+    const { store } = await setup();
+    dispatchKeyFrom(document.body, { key: 'ArrowLeft' });
+    expect(store.getState().selectedStep).toBe('trigger');
+    expect(reactFlowStore.getState().unselectNodesAndEdges).toHaveBeenCalled();
+    dispatchKeyFrom(document.body, { key: 'ArrowRight' });
+    expect(store.getState().selectedStep).toBe('step_1');
+    expect(store.getState().selectedNodes).toEqual(['step_1']);
+    expect(reactFlowStore.getState().addSelectedNodes).toHaveBeenCalledWith([
+      'step_1',
+    ]);
+  });
+
+  it('keeps arrows working on a read-only canvas and leaves Shift+arrows unmapped', async () => {
+    const { store } = await setup({ readonly: true });
+    dispatchKeyFrom(document.body, { key: 'ArrowLeft', shiftKey: true });
+    expect(store.getState().selectedStep).toBe('step_1');
+    dispatchKeyFrom(document.body, { key: 'ArrowLeft' });
+    expect(store.getState().selectedStep).toBe('trigger');
   });
 
   it('keeps editing keys off on a read-only canvas but still zooms', async () => {

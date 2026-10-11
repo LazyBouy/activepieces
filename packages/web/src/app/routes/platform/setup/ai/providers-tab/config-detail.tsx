@@ -198,7 +198,7 @@ export function ConfigDetail({
         <div className="flex items-start gap-3">
           <ProviderLogo info={info} />
           <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="truncate text-lg font-semibold leading-none tracking-tight">
+            <h1 className="truncate text-xl font-semibold leading-tight text-gray-12">
               {draft.name}
             </h1>
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-11">
@@ -385,9 +385,9 @@ export function ConfigDetail({
             </p>
           </div>
           <Button
-            variant="outline"
+            variant="destructive"
             size="sm"
-            className="shrink-0 gap-2 border-danger-7 text-danger-11 enabled:hover:bg-danger-3 enabled:hover:text-danger-11"
+            className="shrink-0"
             onClick={() => setDeleteOpen(true)}
             {...adminControl(AdminControl.AI_PROVIDER_KEY_DELETE_OPEN)}
           >

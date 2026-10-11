@@ -150,6 +150,7 @@ export default function ProjectsPage() {
 
         return (
           <Checkbox
+            aria-label={t('Select all')}
             checked={allSelectableSelected || someSelectableSelected}
             onCheckedChange={(value) => {
               const isChecked = !!value;
@@ -189,9 +190,10 @@ export default function ProjectsPage() {
 
         return (
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <div className={isDisabled ? 'cursor-not-allowed' : ''}>
                 <Checkbox
+                  aria-label={t('Select row')}
                   checked={isChecked}
                   disabled={isDisabled}
                   onCheckedChange={(value) => {
@@ -382,6 +384,7 @@ export default function ProjectsPage() {
           </ItemContent>
           <ItemActions>
             <Switch
+              aria-label={t('Automatic personal project creation')}
               checked={platform.autoCreatePersonalProjects}
               onCheckedChange={(checked) =>
                 toggleAutoCreatePersonalProjects(checked)

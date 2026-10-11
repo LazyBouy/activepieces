@@ -555,6 +555,23 @@ describe('flowCanvasUtils.createNoteDraft', () => {
   });
 });
 
+describe('flowCanvasUtils.getZoomContrastWeight', () => {
+  it('keeps the 100% look at and above 100% zoom', () => {
+    expect(flowCanvasUtils.getZoomContrastWeight(1)).toBe(0);
+    expect(flowCanvasUtils.getZoomContrastWeight(2.5)).toBe(0);
+  });
+
+  it('reaches the full 20% look at and below 20% zoom', () => {
+    expect(flowCanvasUtils.getZoomContrastWeight(0.2)).toBe(1);
+    expect(flowCanvasUtils.getZoomContrastWeight(0.05)).toBe(1);
+  });
+
+  it('eases in with the 2.2 power between the two', () => {
+    expect(flowCanvasUtils.getZoomContrastWeight(0.6)).toBe(0.218);
+    expect(flowCanvasUtils.getZoomContrastWeight(0.9)).toBe(0.01);
+  });
+});
+
 describe('flowCanvasUtils.createFocusStepInGraphParams', () => {
   it('pans to the step at 100% with a 200ms tween', () => {
     expect(flowCanvasUtils.createFocusStepInGraphParams('step_1')).toEqual({

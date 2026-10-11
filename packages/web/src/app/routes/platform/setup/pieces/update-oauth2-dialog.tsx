@@ -75,6 +75,11 @@ export const ConfigurePieceOAuth2Dialog = forwardRef<
               ref={ref}
               size={'sm'}
               variant={'ghost'}
+              aria-label={
+                isNil(oauth2App)
+                  ? t('Configure OAuth2 App')
+                  : t('Delete OAuth2 App')
+              }
               loading={isUpserting || isDeleting}
               disabled={!isEnabled}
               onClick={(e) => {

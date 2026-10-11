@@ -1,10 +1,8 @@
 import React from 'react';
 
+import { PageHeader } from '@/components/custom/page-header';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-
-const GUTTER = 'w-full px-4 sm:px-6';
 
 export const CenteredPage = ({
   title,
@@ -14,7 +12,6 @@ export const CenteredPage = ({
   breadcrumb,
   children,
   widthClassName = 'max-w-[40rem]',
-  showHeaderSeparator = true,
   className,
 }: {
   title?: string;
@@ -24,64 +21,43 @@ export const CenteredPage = ({
   breadcrumb?: React.ReactNode;
   children: React.ReactNode;
   widthClassName?: string;
-  showHeaderSeparator?: boolean;
   className?: string;
 }) => {
-  const header =
-    title === undefined && !description && !actions && !breadcrumb ? null : (
-      <>
-        {breadcrumb && <div className="pb-3">{breadcrumb}</div>}
-        <div
-          className={cn(
-            'flex items-start justify-between gap-4',
-            !showHeaderSeparator && 'mb-6',
-          )}
-        >
-          <div className="flex flex-col gap-1">
-            {title !== undefined && (
-              <h1 className="text-xl font-medium">{title}</h1>
-            )}
-            {description && (
-              <div className="text-sm text-gray-11">{description}</div>
-            )}
-          </div>
-          {actions && <div className="shrink-0">{actions}</div>}
-        </div>
-        {showHeaderSeparator && <Separator className="my-4" />}
-      </>
-    );
+  const hasHeader = title !== undefined || !!description || !!actions;
+  const header = (
+    <>
+      {breadcrumb && <div className="pt-4 md:pt-6">{breadcrumb}</div>}
+      {hasHeader && (
+        <PageHeader
+          title={title}
+          description={description}
+          rightContent={actions}
+          className={cn({
+            'min-h-0 pt-3 pb-4 md:min-h-0 md:pt-3': !!breadcrumb,
+          })}
+        />
+      )}
+    </>
+  );
 
   if (!footer) {
     return (
-      <div className={cn(GUTTER, 'py-6', className)}>
-        <div className={cn('w-full mx-auto', widthClassName)}>
-          {header}
-          {children}
-        </div>
+      <div className={cn('w-full pb-6', className)}>
+        {header}
+        <div className={cn('w-full', widthClassName)}>{children}</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className={cn(GUTTER, 'pt-6 shrink-0')}>
-        <div className={cn('w-full mx-auto', widthClassName)}>{header}</div>
-      </div>
-      <ScrollArea className="flex-1 min-h-0">
-        <div className={cn(GUTTER, 'pb-6')}>
-          <div className={cn('w-full mx-auto', widthClassName)}>{children}</div>
-        </div>
+    <div className={cn('flex h-full min-h-0 flex-col', className)}>
+      <div className="shrink-0">{header}</div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className={cn('w-full pb-6', widthClassName)}>{children}</div>
       </ScrollArea>
-      <div className="shrink-0 border-t bg-gray-1">
-        <div className={cn(GUTTER, 'py-3')}>
-          <div
-            className={cn(
-              'w-full mx-auto flex justify-end gap-2',
-              widthClassName,
-            )}
-          >
-            {footer}
-          </div>
+      <div className="shrink-0 border-t bg-gray-1 py-3">
+        <div className={cn('flex w-full justify-end gap-2', widthClassName)}>
+          {footer}
         </div>
       </div>
     </div>

@@ -116,15 +116,12 @@ function AssignProjectsContent({
       </DialogHeader>
 
       <div className="flex flex-col gap-3">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-11" />
-          <Input
-            className="pl-8"
-            placeholder={t('Search projects')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <Input
+          leadingIcon={<Search />}
+          placeholder={t('Search projects')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
         <ScrollArea className="h-64 rounded-md border">
           <div className="p-1">

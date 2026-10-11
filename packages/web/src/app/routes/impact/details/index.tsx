@@ -8,7 +8,6 @@ import { ColumnDef } from '@tanstack/react-table';
 import { t } from 'i18next';
 import {
   AlertCircle,
-  ChevronDown,
   Clock,
   Download,
   Filter,
@@ -24,7 +23,9 @@ import { useMemo } from 'react';
 import { ApAvatar } from '@/components/custom/ap-avatar';
 import { DataTable, RowDataWithActions } from '@/components/custom/data-table';
 import { DataTableColumnHeader } from '@/components/custom/data-table/data-table-column-header';
+import { DataTableFilterTrigger } from '@/components/custom/data-table/data-table-filter-trigger';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -257,23 +258,25 @@ export function FlowsDetails({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-11" />
-          <Input
-            placeholder={t('Search flows')}
-            value={filters.searchQuery}
-            onChange={(e) => filters.setSearchQuery(e.target.value)}
-            className="pl-9 pr-8"
-          />
-          {filters.searchQuery && (
-            <button
-              onClick={() => filters.setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-11 hover:text-gray-12"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        <Input
+          leadingIcon={<Search />}
+          trailingIcon={
+            filters.searchQuery ? (
+              <button
+                type="button"
+                aria-label={t('Clear search')}
+                onClick={() => filters.setSearchQuery('')}
+                className="rounded-xs hover:opacity-100"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : undefined
+          }
+          placeholder={t('Search flows')}
+          value={filters.searchQuery}
+          onChange={(e) => filters.setSearchQuery(e.target.value)}
+          className="w-[200px]"
+        />
 
         <TimeSavedFilter filters={filters} />
         <OwnerFilter filters={filters} />
@@ -349,16 +352,11 @@ function TimeSavedFilter({ filters }: { filters: FiltersReturn }) {
       onOpenChange={filters.handleTimeSavedPopoverOpen}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" className="gap-2 font-normal border-dashed">
-          <Clock className="h-4 w-4" />
-          <span>{t('Total Time Saved')}</span>
-          {filters.timeSavedLabel && (
-            <span className="rounded bg-gray-5 px-1.5 py-0.5 text-xs font-medium">
-              {filters.timeSavedLabel}
-            </span>
-          )}
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
+        <DataTableFilterTrigger
+          icon={Clock}
+          label={t('Total Time Saved')}
+          value={filters.timeSavedLabel}
+        />
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-4" align="start">
         <TimeSavedFilterContent
@@ -384,43 +382,39 @@ function OwnerFilter({ filters }: { filters: FiltersReturn }) {
       onOpenChange={(open) => filters.updateOwnerFilter({ popoverOpen: open })}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" className="gap-2 font-normal border-dashed">
-          <Filter className="h-4 w-4" />
-          <span>{t('Owner')}</span>
+        <DataTableFilterTrigger
+          icon={Filter}
+          label={t('Owner')}
+          data-active={filters.selectedOwners.length > 0 || undefined}
+        >
           {filters.selectedOwners.length > 0 && (
             <span className="flex items-center gap-1">
               {filters.selectedOwners.slice(0, 2).map((owner) => (
-                <span
-                  key={owner.id}
-                  className="flex items-center gap-1 rounded bg-gray-5 px-1.5 py-0.5 text-xs font-medium"
-                >
+                <Badge key={owner.id} variant="tag" size="sm">
                   <ApAvatar id={owner.id} size="xsmall" hideHover={true} />
                   <OwnerFullName id={owner.id} maxWidth="max-w-[80px]" />
-                </span>
+                </Badge>
               ))}
               {filters.selectedOwners.length > 2 && (
-                <span className="rounded bg-gray-5 px-1.5 py-0.5 text-xs font-medium">
+                <Badge variant="tag" size="sm">
                   +{filters.selectedOwners.length - 2}
-                </span>
+                </Badge>
               )}
             </span>
           )}
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
+        </DataTableFilterTrigger>
       </PopoverTrigger>
       <PopoverContent className="w-[240px] p-0" align="start">
         <div className="p-2 border-b">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-11" />
-            <Input
-              placeholder={t('Search owners...')}
-              value={filters.ownerFilter.searchQuery}
-              onChange={(e) =>
-                filters.updateOwnerFilter({ searchQuery: e.target.value })
-              }
-              className="pl-8 h-8"
-            />
-          </div>
+          <Input
+            leadingIcon={<Search />}
+            placeholder={t('Search owners...')}
+            value={filters.ownerFilter.searchQuery}
+            onChange={(e) =>
+              filters.updateOwnerFilter({ searchQuery: e.target.value })
+            }
+            className="h-8 rounded-sm"
+          />
         </div>
         <div className="max-h-[220px] overflow-auto">
           {filters.filteredOwners.map((owner) => (

@@ -78,8 +78,10 @@ export function AccountSettingsDialog({
         <ScrollArea className="flex-1" viewPortClassName="px-1">
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <div
-                className="relative group cursor-pointer"
+              <button
+                type="button"
+                aria-label={t('Change profile picture')}
+                className="relative group cursor-pointer rounded-full"
                 onClick={handleAvatarClick}
               >
                 <UserAvatar
@@ -91,19 +93,19 @@ export function AccountSettingsDialog({
                 />
                 <div
                   data-theme="dark"
-                  className="absolute inset-0 flex items-center justify-center bg-scrim rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute inset-0 flex items-center justify-center bg-scrim rounded-full opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity"
                 >
                   <Camera className="h-5 w-5 text-gray-12" />
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  className="hidden"
-                  onChange={handleFileChange}
-                  disabled={uploadMutation.isPending}
-                />
-              </div>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={uploadMutation.isPending}
+              />
               <div className="flex-1">
                 <div className="text-sm font-semibold">
                   {user?.firstName} {user?.lastName}

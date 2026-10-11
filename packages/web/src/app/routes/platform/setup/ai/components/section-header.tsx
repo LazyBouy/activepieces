@@ -16,9 +16,9 @@ export function SectionHeader({
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline gap-2">
         <Heading
-          className={cn('font-semibold tracking-tight', {
-            'text-lg': isPageTitle,
-            'text-base': !isPageTitle,
+          className={cn('font-semibold', {
+            'text-xl leading-tight text-gray-12': isPageTitle,
+            'text-base tracking-tight': !isPageTitle,
           })}
         >
           {title}
@@ -27,14 +27,7 @@ export function SectionHeader({
           <span className="text-sm text-gray-11 tabular-nums">{count}</span>
         )}
       </div>
-      <p
-        className={cn('text-gray-11', {
-          'text-xs': isPageTitle,
-          'text-sm': !isPageTitle,
-        })}
-      >
-        {description}
-      </p>
+      <p className="text-sm text-gray-11">{description}</p>
     </div>
   );
 }

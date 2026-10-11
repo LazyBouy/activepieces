@@ -193,7 +193,7 @@ const DestinationForm = ({
 
   return (
     <CenteredPage
-      widthClassName="max-w-full px-6"
+      widthClassName="max-w-full"
       breadcrumb={
         <Breadcrumb>
           <BreadcrumbList>

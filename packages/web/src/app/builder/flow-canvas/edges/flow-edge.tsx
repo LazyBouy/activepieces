@@ -127,10 +127,10 @@ const ApFlowCanvasEdge = React.memo(
         ))}
         <path
           data-edge-hover-area={id}
-          d={geometry.path}
+          d={geometry.hoverPath}
           fill="none"
           stroke="transparent"
-          strokeWidth={EDGE_HOVER_WIDTH}
+          strokeWidth={edgePathUtils.HOVER_WIDTH}
           style={{ pointerEvents: readonly ? 'none' : 'stroke' }}
           onPointerEnter={hover.enter}
           onPointerLeave={hover.leave}
@@ -344,7 +344,6 @@ function useDelayedHover(delay: number) {
   };
 }
 
-const EDGE_HOVER_WIDTH = 40;
 const LABEL_Z_INDEX = 1001;
 const ITEM_LABEL_LINE_GAP = 7;
 const ITEM_LABEL_CURVE_OFFSET = 12;

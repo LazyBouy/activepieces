@@ -1,3 +1,4 @@
+import { isNil } from '@activepieces/core-utils';
 import { t } from 'i18next';
 import { Paperclip } from 'lucide-react';
 import * as React from 'react';
@@ -14,6 +15,10 @@ function Input({
   type,
   thin = false,
   defaultFileName,
+  leadingIcon,
+  trailingIcon,
+  startAddon,
+  endAddon,
   ref,
   ...props
 }: InputProps) {
@@ -21,6 +26,75 @@ function Input({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useImperativeHandle(ref, () => inputRef.current!);
+
+  const hasAffixes =
+    !isNil(leadingIcon) ||
+    !isNil(trailingIcon) ||
+    !isNil(startAddon) ||
+    !isNil(endAddon);
+
+  if (type !== 'file' && hasAffixes) {
+    return (
+      <div
+        data-slot="input-group"
+        className={cn(
+          inputClass,
+          'items-center overflow-hidden px-0 py-0 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus-halo has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input[aria-invalid=true]]:border-danger-9',
+          { 'h-7 text-xsm md:text-xsm': thin },
+          className,
+        )}
+        onPointerDown={(event) => {
+          if (event.target !== inputRef.current && !isInteractive(event)) {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }
+        }}
+      >
+        {!isNil(startAddon) && (
+          <span
+            data-slot="input-addon"
+            className={cn(ADDON_CLASS_NAME, 'border-r', { 'px-2': thin })}
+          >
+            {startAddon}
+          </span>
+        )}
+        <span
+          className={cn(
+            'flex h-full min-w-0 flex-1 items-center gap-1.5 px-3',
+            {
+              'px-2': thin,
+            },
+          )}
+        >
+          {!isNil(leadingIcon) && (
+            <span data-slot="input-icon" className={ICON_CLASS_NAME}>
+              {leadingIcon}
+            </span>
+          )}
+          <input
+            type={type}
+            data-slot="input"
+            className="h-full w-full min-w-0 bg-transparent outline-hidden selection:bg-accent-9 selection:text-on-accent placeholder:text-gray-11 disabled:cursor-not-allowed"
+            ref={inputRef}
+            {...props}
+          />
+          {!isNil(trailingIcon) && (
+            <span data-slot="input-icon" className={ICON_CLASS_NAME}>
+              {trailingIcon}
+            </span>
+          )}
+        </span>
+        {!isNil(endAddon) && (
+          <span
+            data-slot="input-addon"
+            className={cn(ADDON_CLASS_NAME, 'border-l', { 'px-2': thin })}
+          >
+            {endAddon}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return type === 'file' ? (
     <>
@@ -43,11 +117,18 @@ function Input({
       >
         <input
           data-slot="input"
+          aria-label={t('Select a file')}
           className={cn('grow cursor-pointer outline-hidden bg-transparent', {
             'text-gray-11': !fileName,
           })}
           value={fileName || defaultFileName || t('Select a file')}
           readOnly
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
         />
         <div className="basis-1">
           <SelectUtilButton
@@ -71,6 +152,13 @@ function Input({
   );
 }
 
+function isInteractive(event: React.PointerEvent<HTMLDivElement>): boolean {
+  return (
+    event.target instanceof Element &&
+    event.target.closest('button, a, input, [role="button"]') !== null
+  );
+}
+
 // Helper functions
 
 function handleFileChange(
@@ -85,9 +173,18 @@ function handleFileChange(
 
 // Type definitions
 
+const ADDON_CLASS_NAME =
+  'flex h-full shrink-0 items-center border-gray-6 bg-gray-4 px-3 whitespace-nowrap text-gray-12/87';
+const ICON_CLASS_NAME =
+  "flex shrink-0 items-center text-gray-12 opacity-70 [&_svg:not([class*='size-'])]:size-4";
+
 type InputProps = React.ComponentProps<'input'> & {
   thin?: boolean;
   defaultFileName?: string;
+  leadingIcon?: React.ReactNode;
+  trailingIcon?: React.ReactNode;
+  startAddon?: React.ReactNode;
+  endAddon?: React.ReactNode;
 };
 
 export { Input };

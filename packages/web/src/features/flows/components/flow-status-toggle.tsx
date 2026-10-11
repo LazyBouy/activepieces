@@ -48,6 +48,7 @@ const FlowStatusToggle = ({ flow }: FlowStatusToggleProps) => {
         <TooltipTrigger asChild>
           <div className="flex items-center justify-center">
             <Switch
+              aria-label={t('Flow status')}
               checked={isFlowPublished}
               onCheckedChange={() => changeStatus()}
               disabled={

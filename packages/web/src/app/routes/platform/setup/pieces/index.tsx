@@ -164,6 +164,7 @@ export const PiecesListTab = () => {
                       {...adminControl(AdminControl.PIECES_DELETE_OPEN)}
                       variant="ghost"
                       size={'sm'}
+                      aria-label={t('Delete')}
                       disabled={!isEnabled}
                     >
                       <Trash className="size-4 text-danger-11" />

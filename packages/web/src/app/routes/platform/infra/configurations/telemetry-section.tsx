@@ -50,6 +50,7 @@ export const TelemetrySection = ({
             render={({ field }) => (
               <FormItem>
                 <Switch
+                  aria-label={t('Product analytics')}
                   checked={field.value}
                   onCheckedChange={field.onChange}
                   disabled={disabled}
@@ -79,6 +80,7 @@ export const TelemetrySection = ({
             render={({ field }) => (
               <FormItem>
                 <Switch
+                  aria-label={t('Deployment setup')}
                   checked={field.value}
                   onCheckedChange={field.onChange}
                   disabled={disabled}

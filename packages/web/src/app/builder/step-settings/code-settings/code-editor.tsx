@@ -16,6 +16,9 @@ import { cn } from '@/lib/utils';
 
 import { AddNpmDialog } from './add-npm-dialog';
 
+const EDITOR_TAB_CLASS_NAME =
+  'cursor-pointer rounded-xs text-sm outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus-halo';
+
 const styleTheme = EditorView.baseTheme({
   '&.cm-editor.cm-focused': {
     outline: 'none',
@@ -95,23 +98,27 @@ const CodeEditor = ({
     >
       <div className="flex flex-row justify-center items-center h-full">
         <div className="flex justify-start gap-4 items-center">
-          <div
-            className={cn('text-sm cursor-pointer', {
+          <button
+            type="button"
+            aria-pressed={activeTab === 'code'}
+            className={cn(EDITOR_TAB_CLASS_NAME, {
               'font-bold': activeTab === 'code',
             })}
             onClick={() => handleCodeClick()}
           >
             {t('Code')}
-          </div>
+          </button>
           {allowNpmPackagesInCodeStep && (
-            <div
-              className={cn('text-sm cursor-pointer', {
+            <button
+              type="button"
+              aria-pressed={activeTab === 'packageJson'}
+              className={cn(EDITOR_TAB_CLASS_NAME, {
                 'font-bold': activeTab === 'packageJson',
               })}
               onClick={() => handlePackageClick()}
             >
               {t('Dependencies')}
-            </div>
+            </button>
           )}
         </div>
         <div className="flex grow"></div>

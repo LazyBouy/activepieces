@@ -88,7 +88,7 @@ export const GeneralSettings = ({ form }: GeneralSettingsProps) => {
                           <Button
                             type="button"
                             variant="outline"
-                            className="h-10 px-3 rounded-r-none border-r flex items-center gap-1"
+                            className="h-10 px-3 rounded-r-none flex items-center gap-1"
                             disabled={form.formState.disabled}
                           >
                             <div

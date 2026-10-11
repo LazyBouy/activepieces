@@ -71,15 +71,15 @@ function SettingsHubContent() {
       <aside className="flex w-[200px] shrink-0 flex-col border-r border-gray-6">
         <div className="p-3">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-11" />
             <Input
+              leadingIcon={<Search />}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('Search')}
-              className="h-8 pl-7 text-sm"
+              className="h-8 rounded-sm"
             />
             {query.trim().length > 0 && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-[300px] max-w-[calc(100vw-3rem)] rounded-lg border bg-panel p-1.5 shadow-md">
+              <div className="absolute left-0 top-full z-20 mt-1 w-[300px] max-w-[calc(100vw-3rem)] rounded-lg bg-panel p-1 shadow-float">
                 {results.length === 0 ? (
                   <div className="px-3 py-2 text-sm text-gray-11">
                     {t('No results')}
@@ -92,16 +92,16 @@ function SettingsHubContent() {
                         key={`${tab.id}-${section.id}`}
                         type="button"
                         onClick={() => goToSection(tab.id, section.id)}
-                        className="flex w-full rounded-md px-2 py-1.5 text-left hover:bg-gray-4"
+                        className="flex w-full rounded-md p-2 text-left outline-hidden hover:bg-gray-4 focus-visible:bg-gray-4"
                       >
                         <span className="flex min-w-0 flex-1 flex-col">
                           <span className="flex items-center gap-2">
-                            <Icon className="h-5 w-5 shrink-0 text-gray-11" />
+                            <Icon className="size-4 shrink-0 text-gray-11" />
                             <span className="min-w-0 flex-1 truncate text-sm">
                               {t(tab.label)}
                             </span>
                           </span>
-                          <span className="truncate pl-7 text-xs text-gray-11">
+                          <span className="truncate pl-6 text-xs text-gray-11">
                             {highlightMatch(t(section.label), query)}
                           </span>
                         </span>

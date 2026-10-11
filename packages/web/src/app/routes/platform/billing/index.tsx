@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 
 import { BillingPageShell } from '@/app/components/billing-page-shell';
+import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -43,21 +44,15 @@ export function BillingPlanTab() {
       errorMessage={t('Failed to load billing information')}
     >
       {({ platform, info }) => (
-        <div className="flex w-full flex-col gap-4 py-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-xl font-medium">
-                {t('Billing & subscription')}
-              </h1>
-              <div className="text-sm text-gray-11">
-                {t(
-                  'For questions about billing contact us at support@activepieces.com',
-                )}
-              </div>
-            </div>
+        <div className="flex w-full flex-col pb-6">
+          <DashboardPageHeader
+            title={t('Billing & subscription')}
+            description={t(
+              'For questions about billing contact us at support@activepieces.com',
+            )}
+          >
             <BillingRefreshButton />
-          </div>
-          <Separator />
+          </DashboardPageHeader>
           <PlanTab platform={platform} info={info} />
         </div>
       )}
