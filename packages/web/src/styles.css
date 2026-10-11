@@ -29,10 +29,35 @@
 
 @font-face {
   font-display: swap;
-  font-family: 'JetBrains Mono';
+  font-family: 'Commit Mono';
   font-style: normal;
-  font-weight: 100 800;
-  src: url('assets/fonts/JetBrainsMono.woff2') format('woff2-variations');
+  font-weight: 400;
+  src: url('assets/fonts/commit-mono/CommitMono-400-Regular.otf')
+    format('opentype');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Commit Mono';
+  font-style: italic;
+  font-weight: 400;
+  src: url('assets/fonts/commit-mono/CommitMono-400-Italic.otf')
+    format('opentype');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Commit Mono';
+  font-style: normal;
+  font-weight: 700;
+  src: url('assets/fonts/commit-mono/CommitMono-700-Regular.otf')
+    format('opentype');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Commit Mono';
+  font-style: italic;
+  font-weight: 700;
+  src: url('assets/fonts/commit-mono/CommitMono-700-Italic.otf')
+    format('opentype');
 }
 
 @font-face {
@@ -338,8 +363,8 @@
     cubic-bezier(0.215, 0.61, 0.355, 1) alternate;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', Segoe UI Symbol, 'Noto Color Emoji';
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
-    'Liberation Mono', monospace;
+  --font-mono: 'Commit Mono', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono',
+    monospace;
   --font-mono--font-feature-settings: 'calt' 0;
   --font-serif: 'Sentient', ui-serif, Georgia, serif;
   --shadow-step-container: 0px 0px 22px
