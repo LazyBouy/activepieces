@@ -12,27 +12,41 @@ import { useBuilderStateContext } from '../../builder-hooks';
 import { flowCanvasHooks } from '../../flow-canvas/hooks';
 import { AboveTriggerButton } from '../../flow-canvas/widgets/above-trigger-button';
 
-const EditFlowOrViewDraftButton = ({ onCanvas }: { onCanvas: boolean }) => {
+export function useLeaveRun() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { checkAccess } = useAuthorization();
   const { switchToDraft, isSwitchingToDraftPending } =
     flowCanvasHooks.useSwitchToDraft();
-  const [flowVersion, flowId, readonly, run] = useBuilderStateContext(
-    (state) => [state.flowVersion, state.flow.id, state.readonly, state.run],
-  );
-  const isViewingDraft = flowVersion.state === FlowVersionState.DRAFT;
-  const permissionToEditFlow = checkAccess(Permission.WRITE_FLOW);
-  if (!readonly || (isViewingDraft && !run)) {
-    return null;
-  }
-  const handleClick = () => {
+  const flowId = useBuilderStateContext((state) => state.flow.id);
+  const leaveRun = () => {
     if (location.pathname?.includes('/runs')) {
       navigate(`/flows/${flowId}`);
     } else {
       switchToDraft();
     }
   };
+  return {
+    leaveRun,
+    isLeavingRun: isSwitchingToDraftPending,
+  };
+}
+
+const EditFlowOrViewDraftButton = ({ onCanvas }: { onCanvas: boolean }) => {
+  const { checkAccess } = useAuthorization();
+  const { leaveRun, isLeavingRun } = useLeaveRun();
+  const [flowVersion, readonly, run, isStepModalOpen] = useBuilderStateContext(
+    (state) => [
+      state.flowVersion,
+      state.readonly,
+      state.run,
+      state.isStepModalOpen,
+    ],
+  );
+  const isViewingDraft = flowVersion.state === FlowVersionState.DRAFT;
+  const permissionToEditFlow = checkAccess(Permission.WRITE_FLOW);
+  if (!readonly || (isViewingDraft && !run)) {
+    return null;
+  }
   const { text, icon } = getButtonTextAndIcon({
     hasPermissionToEditFlow: permissionToEditFlow,
   });
@@ -42,11 +56,12 @@ const EditFlowOrViewDraftButton = ({ onCanvas }: { onCanvas: boolean }) => {
       {onCanvas && (
         <AboveTriggerButton
           shortCutIsEscape={true}
+          listenToShortcut={!isStepModalOpen}
           showPrimaryBg={false}
-          onClick={handleClick}
+          onClick={leaveRun}
           text={text}
           icon={icon}
-          loading={isSwitchingToDraftPending}
+          loading={isLeavingRun}
         ></AboveTriggerButton>
       )}
 
@@ -54,15 +69,9 @@ const EditFlowOrViewDraftButton = ({ onCanvas }: { onCanvas: boolean }) => {
         <Button
           size={'xs'}
           variant={'basic'}
-          loading={isSwitchingToDraftPending}
+          loading={isLeavingRun}
           className="gap-2"
-          onClick={() => {
-            if (location.pathname?.includes('/runs')) {
-              navigate(`/flows/${flowId}`);
-            } else {
-              switchToDraft();
-            }
-          }}
+          onClick={leaveRun}
         >
           {icon}
           {text}

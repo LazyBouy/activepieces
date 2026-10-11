@@ -29,6 +29,7 @@ export function useTestFlowAction() {
     setRun,
     publishedVersionId,
     run,
+    setLogsPanelOpen,
   ] = useBuilderStateContext((state) => [
     state.setChatDrawerOpenSource,
     state.flowVersion,
@@ -37,6 +38,7 @@ export function useTestFlowAction() {
     state.setRun,
     state.flow.publishedVersionId,
     state.run,
+    state.setLogsPanelOpen,
   ]);
   const builderStore = useBuilderStore();
   const { checkAccess } = useAuthorization();
@@ -120,9 +122,13 @@ export function useTestFlowAction() {
         setChatDrawerOpenSource(ChatDrawerSource.TEST_FLOW);
         return;
       }
+      setLogsPanelOpen(true);
       runFlow();
     },
-    rerun: () => runFlow(),
+    rerun: () => {
+      setLogsPanelOpen(true);
+      runFlow();
+    },
     cancel: () => cancelRun(),
   };
 }

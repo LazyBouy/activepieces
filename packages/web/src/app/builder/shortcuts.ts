@@ -34,6 +34,9 @@ export const useHandleKeyPressOnCanvas = () => {
     openStepModal,
     openAddStepPieceSelector,
     setOpenedPieceSelectorStepNameOrAddButtonId,
+    isLogsPanelOpen,
+    toggleLogsPanel,
+    toggleLogsPane,
   ] = useBuilderStateContext((state) => [
     state.selectedNodes,
     state.flowVersion,
@@ -47,6 +50,9 @@ export const useHandleKeyPressOnCanvas = () => {
     state.openStepModal,
     state.openAddStepPieceSelector,
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
+    state.isLogsPanelOpen,
+    state.toggleLogsPanel,
+    state.toggleLogsPane,
   ]);
   const { zoomIn, zoomOut, zoomTo } = useReactFlow();
   const fitToView = useFitToView();
@@ -60,7 +66,11 @@ export const useHandleKeyPressOnCanvas = () => {
       if (!match) {
         return;
       }
-      if (match.shortcut.requiresCanvasFocus && !isCanvasTarget(e.target)) {
+      if (
+        match.shortcut.requiresCanvasFocus &&
+        !isCanvasTarget(e.target) &&
+        !(match.shortcut.allowInLogsPanel && isLogsPanelTarget(e.target))
+      ) {
         return;
       }
       const insideSelectionRect =
@@ -235,6 +245,24 @@ export const useHandleKeyPressOnCanvas = () => {
           e.preventDefault();
           setOpenedPieceSelectorStepNameOrAddButtonId(stepToReplace);
         },
+        ToggleLogs: () => {
+          e.preventDefault();
+          toggleLogsPanel();
+        },
+        ToggleLogsInput: () => {
+          if (!isLogsPanelOpen) {
+            return;
+          }
+          e.preventDefault();
+          toggleLogsPane('input');
+        },
+        ToggleLogsOutput: () => {
+          if (!isLogsPanelOpen) {
+            return;
+          }
+          e.preventDefault();
+          toggleLogsPane('output');
+        },
       };
       handlers[match.action]();
     },
@@ -255,6 +283,9 @@ export const useHandleKeyPressOnCanvas = () => {
       openStepModal,
       openAddStepPieceSelector,
       setOpenedPieceSelectorStepNameOrAddButtonId,
+      isLogsPanelOpen,
+      toggleLogsPanel,
+      toggleLogsPane,
     ],
   );
 
@@ -321,6 +352,13 @@ function findShortcutMatch(
   );
 }
 
+function isLogsPanelTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(`[data-${flowCanvasConsts.LOGS_PANEL_ATTRIBUTE}]`) !== null
+  );
+}
+
 function isCanvasTarget(target: EventTarget | null): boolean {
   if (target === document.body || target === document.documentElement) {
     return true;
@@ -349,6 +387,9 @@ const CANVAS_SHORTCUT_ACTIONS: CanvasShortcutAction[] = [
   'RenameStep',
   'AddStep',
   'ReplaceStep',
+  'ToggleLogs',
+  'ToggleLogsInput',
+  'ToggleLogsOutput',
 ];
 
 export const CanvasShortcuts: CanvasShortcutsProps = {
@@ -420,6 +461,21 @@ export const CanvasShortcuts: CanvasShortcutsProps = {
     shortcutKey: 'r',
     requiresCanvasFocus: true,
   },
+  ToggleLogs: {
+    shortcutKey: 'l',
+    requiresCanvasFocus: true,
+    allowInLogsPanel: true,
+  },
+  ToggleLogsInput: {
+    shortcutKey: 'i',
+    requiresCanvasFocus: true,
+    allowInLogsPanel: true,
+  },
+  ToggleLogsOutput: {
+    shortcutKey: 'o',
+    requiresCanvasFocus: true,
+    allowInLogsPanel: true,
+  },
 };
 
 export const CanvasShortcutAliases: Partial<
@@ -439,6 +495,7 @@ export const canvasShortcutUtils = {
   matchesShortcut,
   findShortcutMatch,
   isCanvasTarget,
+  isLogsPanelTarget,
 };
 
 type ShortcutMatch = {

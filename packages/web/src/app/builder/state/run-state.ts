@@ -79,10 +79,10 @@ export const createRunState = (
       initialState.run && initialState.run.steps
         ? flowRunUtils.pinLoopsToIterationsWithFailedStep(initialState.run, {})
         : {},
-    setRun: async (run: FlowRun, flowVersion: FlowVersion) =>
+    setRun: (run: FlowRun, flowVersion: FlowVersion) => {
+      const isNewRun = get().run?.id !== run.id;
       set((state) => {
         get().removeAllStepTestsListeners();
-        const isNewRun = state.run?.id !== run.id;
         const loopsIndexes = flowRunUtils.pinLoopsToIterationsWithFailedStep(
           run,
           state.loopsIndexes,
@@ -100,7 +100,11 @@ export const createRunState = (
             ? false
             : state.userManuallySelectedStepDuringRun,
         };
-      }),
+      });
+      if (isNewRun) {
+        get().setLogsPanelOpen(true);
+      }
+    },
     selectFailedStep: () => {
       const { run, selectStepByName } = get();
       if (isNil(run) || isNil(run.failedStep)) {

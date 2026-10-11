@@ -52,7 +52,9 @@ import { AiRouterRoutes } from './ai-router-routes';
 import { LoopIterationInput } from './loop-iteration-input';
 import { truncatedInputUtils } from './truncated-input-utils';
 
-const RunStepInputPane = () => {
+const RunStepInputPane = ({
+  testId = 'step-modal-input',
+}: RunStepPaneProps = {}) => {
   const { run, selectedStep, stepOutput, retentionDays } =
     useSelectedStepRunOutput();
   const [viewMode, setViewMode] = useViewMode('input');
@@ -70,7 +72,7 @@ const RunStepInputPane = () => {
   return (
     <DataPane
       title={t('Input')}
-      testId="step-modal-input"
+      testId={testId}
       titleAddon={<LoopIterationInput stepName={selectedStep.name} />}
       actions={
         isNil(blocker) && (
@@ -107,7 +109,9 @@ const RunStepInputPane = () => {
   );
 };
 
-const RunStepOutputPane = () => {
+const RunStepOutputPane = ({
+  testId = 'step-modal-output',
+}: RunStepPaneProps = {}) => {
   const { run, selectedStep, stepOutput, retentionDays, pieceModel } =
     useSelectedStepRunOutput();
   const [viewMode, setViewMode] = useViewMode('output');
@@ -130,7 +134,7 @@ const RunStepOutputPane = () => {
     return (
       <DataPane
         title={t('Output')}
-        testId="step-modal-output"
+        testId={testId}
         titleAddon={<LoopIterationInput stepName={selectedStep.name} />}
       >
         {blocker}
@@ -148,7 +152,7 @@ const RunStepOutputPane = () => {
   return (
     <DataPane
       title={t('Output')}
-      testId="step-modal-output"
+      testId={testId}
       titleAddon={
         <>
           {!isRunning && (
@@ -574,6 +578,10 @@ function handleRunFailureOrEmptyLog(
 }
 
 export { RunStepInputPane, RunStepOutputPane };
+
+type RunStepPaneProps = {
+  testId?: string;
+};
 
 type SelectedStepRunOutput = {
   run: FlowRun | null;

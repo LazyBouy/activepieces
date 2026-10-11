@@ -47,12 +47,16 @@ export type CanvasShortcutAction =
   | 'OpenStepModal'
   | 'RenameStep'
   | 'AddStep'
-  | 'ReplaceStep';
+  | 'ReplaceStep'
+  | 'ToggleLogs'
+  | 'ToggleLogsInput'
+  | 'ToggleLogsOutput';
 
 export type CanvasShortcutProps = ShortcutProps & {
   shortcutCode?: string;
   ignoreShift?: boolean;
   requiresCanvasFocus?: boolean;
+  allowInLogsPanel?: boolean;
 };
 
 export type CanvasShortcutsProps = Record<

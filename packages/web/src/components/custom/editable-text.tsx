@@ -6,10 +6,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 type EditableTextProps = {
   value: string | undefined;
   className?: string;
+  viewClassName?: string;
+  editingClassName?: string;
   readonly: boolean;
   onValueChange: (value: string) => void;
   tooltipContent?: string;
@@ -21,6 +24,8 @@ type EditableTextProps = {
 const EditableText = ({
   value: initialValue,
   className = '',
+  viewClassName,
+  editingClassName,
   readonly = false,
   onValueChange,
   tooltipContent,
@@ -90,7 +95,7 @@ const EditableText = ({
           }}
           ref={editableTextRef}
           key={'viewed'}
-          className={`${className} truncate `}
+          className={cn(className, viewClassName, 'truncate')}
           title={
             editableTextRef.current &&
             editableTextRef.current.scrollWidth >
@@ -115,7 +120,11 @@ const EditableText = ({
       ref={editableTextRef}
       contentEditable
       suppressContentEditableWarning={true}
-      className={`${className}  focus:outline-hidden break-all`}
+      className={cn(
+        className,
+        'focus:outline-hidden break-all',
+        editingClassName,
+      )}
       onBlur={() => {
         emitChangedValue();
         setIsEditing(false);

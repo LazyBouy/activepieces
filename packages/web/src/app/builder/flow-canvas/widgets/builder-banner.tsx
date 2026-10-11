@@ -5,13 +5,9 @@ import { ResourceLockWidget } from '@/components/custom/resource-lock-widget';
 import { useBuilderStateContext } from '../../builder-hooks';
 
 import { FlowApprovalBanner } from './flow-approval-banner';
-import { PublishFlowReminderWidget } from './publish-flow-reminder-widget';
-import { RunInfoWidget } from './run-info-widget';
-import { useFlowLock } from './use-flow-lock';
 import { ViewingOldVersionWidget } from './viewing-old-version-widget';
 
-const BuilderBanner = () => {
-  const { lockedBy, takeOver } = useFlowLock();
+const BuilderBanner = ({ lockedBy, takeOver }: BuilderBannerProps) => {
   const run = useBuilderStateContext((state) => state.run);
 
   if (lockedBy) {
@@ -24,16 +20,20 @@ const BuilderBanner = () => {
     );
   }
   if (!isNil(run)) {
-    return <RunInfoWidget />;
+    return null;
   }
   return (
     <>
       <FlowApprovalBanner />
       <ViewingOldVersionWidget />
-      <PublishFlowReminderWidget />
     </>
   );
 };
 
 BuilderBanner.displayName = 'BuilderBanner';
 export { BuilderBanner };
+
+type BuilderBannerProps = {
+  lockedBy: React.ComponentProps<typeof ResourceLockWidget>['lockedBy'] | null;
+  takeOver: () => void;
+};

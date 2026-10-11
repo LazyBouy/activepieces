@@ -1,6 +1,7 @@
 import { t } from 'i18next';
 
 import { usePresence } from '@/hooks/use-presence';
+import { cn } from '@/lib/utils';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
@@ -27,7 +28,10 @@ function getBorderColor(userId: string): string {
   return BORDER_COLORS[Math.abs(hash) % BORDER_COLORS.length];
 }
 
-export function ActiveUsersWidget({ resourceId }: ActiveUsersWidgetProps) {
+export function ActiveUsersWidget({
+  resourceId,
+  appearance = 'default',
+}: ActiveUsersWidgetProps) {
   const activeUsers = usePresence({ resourceId });
 
   if (activeUsers.length === 0) {
@@ -36,6 +40,48 @@ export function ActiveUsersWidget({ resourceId }: ActiveUsersWidgetProps) {
 
   const visibleUsers = activeUsers.slice(0, MAX_VISIBLE_AVATARS);
   const overflowCount = activeUsers.length - MAX_VISIBLE_AVATARS;
+  const overflow = overflowCount > 0 && (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {appearance === 'stacked' ? (
+          <div className="relative flex size-6 shrink-0 items-center justify-center rounded-full border border-gray-6 bg-panel text-xss font-semibold text-gray-11">
+            +{overflowCount}
+          </div>
+        ) : (
+          <div
+            className="flex items-center justify-center rounded-full bg-gray-3 text-xs font-medium text-gray-11 border"
+            style={{ width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px` }}
+          >
+            +{overflowCount}
+          </div>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        {t('+{count} more', { count: overflowCount })}
+      </TooltipContent>
+    </Tooltip>
+  );
+
+  if (appearance === 'stacked') {
+    return (
+      <div data-active-users className="flex items-center">
+        {visibleUsers.map((user, index) => (
+          <div
+            key={user.userId}
+            className={cn('relative h-6 shrink-0', {
+              'w-4.5': index < visibleUsers.length - 1 || overflowCount > 0,
+              'w-6': index === visibleUsers.length - 1 && overflowCount <= 0,
+            })}
+          >
+            <div className="absolute top-0 left-0 size-6 rounded-full ring-2 ring-panel">
+              <ApAvatar id={user.userId} size="small" />
+            </div>
+          </div>
+        ))}
+        {overflow}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-1">
@@ -48,25 +94,12 @@ export function ActiveUsersWidget({ resourceId }: ActiveUsersWidgetProps) {
           <ApAvatar id={user.userId} size="small" />
         </div>
       ))}
-      {overflowCount > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className="flex items-center justify-center rounded-full bg-gray-3 text-xs font-medium text-gray-11 border"
-              style={{ width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px` }}
-            >
-              +{overflowCount}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {t('+{count} more', { count: overflowCount })}
-          </TooltipContent>
-        </Tooltip>
-      )}
+      {overflow}
     </div>
   );
 }
 
 type ActiveUsersWidgetProps = {
   resourceId: string;
+  appearance?: 'default' | 'stacked';
 };

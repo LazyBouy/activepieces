@@ -61,6 +61,7 @@ type FlowActionMenuProps = {
   onDuplicate: () => void;
   onDelete: () => void;
   onOwnerChange?: () => void;
+  contentAlign?: 'start' | 'center' | 'end';
 } & (
   | { insideBuilder: true; onVersionsListClick: () => void }
   | { insideBuilder: false; onVersionsListClick: null }
@@ -78,6 +79,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
   onOwnerChange,
   onVersionsListClick,
   insideBuilder,
+  contentAlign,
 }) => {
   const isRunsPage = useLocation().pathname.includes('/runs');
   const { platform } = platformHooks.useCurrentPlatform();
@@ -172,6 +174,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
         <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
         <DropdownMenuContent
           noAnimationOnOut={true}
+          align={contentAlign}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {!readonly && (

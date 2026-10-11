@@ -163,6 +163,9 @@ the wrapper clips) and `imageClassName` the image. On failure it renders a monog
   so the piece-logo tint (`lib/logo-tint.ts`) is the only place colour is sampled from an image.
   The step modal reads from the same palette: its data panes (`--canvas-data-pane`), schema pills, table lines,
   the JSON token colours (`--canvas-json-*`) and the violet drag-to-map outlines (`--canvas-mapping-*`).
+  The bottom logs panel uses `--canvas-logs` for its header rows and step list (white in light, `gray-1` in dark),
+  `--canvas-logs-row-hover` / `--canvas-logs-row-selected` for its rows and `--canvas-logs-toggle-on` for a
+  pressed Input / Output toggle (accent at 25% in dark).
 - **Older effects** — the `.recurring-chip`, gradient-border and note-scrollbar colours in `styles.css`, and
   the sheen, shimmer and ripple glows in `tag-with-bright.tsx`, `automatic-trial-activation.tsx`,
   `automations-empty-state.tsx` and `theme-provider.tsx`. They predate the scales and read the same in both

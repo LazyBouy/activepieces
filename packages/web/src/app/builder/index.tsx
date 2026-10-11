@@ -1,3 +1,4 @@
+import { isNil } from '@activepieces/core-utils';
 import {
   FlowActionType,
   FlowTriggerType,
@@ -26,7 +27,9 @@ import { flowCanvasHooks } from './flow-canvas/hooks';
 import { flowCanvasConsts } from './flow-canvas/utils/consts';
 import { BuilderBanner } from './flow-canvas/widgets/builder-banner';
 import { CanvasToolbar } from './flow-canvas/widgets/canvas-toolbar';
+import { useFlowLock } from './flow-canvas/widgets/use-flow-lock';
 import { FlowVersionsList } from './flow-versions';
+import { CanvasWithLogsPanel } from './logs-panel';
 import { PiecePanel } from './pieces-selector';
 import { RunsList } from './run-list';
 import { CursorPositionProvider } from './state/cursor-position-context';
@@ -81,21 +84,20 @@ const BuilderPage = () => {
   });
   flowCanvasHooks.useSetSocketListener(refetchPiece);
   flowCanvasHooks.useListenToExistingRun();
+  const { lockedBy, takeOver } = useFlowLock();
 
   return (
     <div className="flex h-full w-full flex-col relative max-h-[100vh]">
-      <div className="z-40">
-        <BuilderHeader />
-      </div>
+      <BuilderHeader isLockedByAnotherEditor={!isNil(lockedBy)} />
       <div className="@container/builder-body relative flex min-h-0 flex-1">
         <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize="100%" id="flow-canvas">
-            <div className="relative h-full w-full">
+            <CanvasWithLogsPanel>
               <CursorPositionProvider>
                 <FlowCanvas></FlowCanvas>
               </CursorPositionProvider>
 
-              <BuilderBanner />
+              <BuilderBanner lockedBy={lockedBy} takeOver={takeOver} />
               <CanvasControls />
               <CanvasToolbar />
 
@@ -103,7 +105,7 @@ const BuilderPage = () => {
                 position="absolute"
                 show={platform?.plan.showPoweredBy}
               />
-            </div>
+            </CanvasWithLogsPanel>
           </ResizablePanel>
 
           <ResizableHandle

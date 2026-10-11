@@ -3,28 +3,21 @@ import { FlowVersionState } from '@activepieces/shared';
 import React from 'react';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
-import { FlowStatusToggle, FlowVersionStateDot } from '@/features/flows';
+import { FlowStatusToggle } from '@/features/flows';
 
 const BuilderFlowStatusSection = React.memo(() => {
   const [flowVersion, flow] = useBuilderStateContext((state) => [
     state.flowVersion,
     state.flow,
   ]);
-
-  return (
-    <div className="flex items-center space-x-2">
-      <FlowVersionStateDot
-        state={flowVersion.state}
-        versionId={flowVersion.id}
-        publishedVersionId={flow.publishedVersionId}
-      ></FlowVersionStateDot>
-      {(flow.publishedVersionId === flowVersion.id ||
-        (flowVersion.state === FlowVersionState.DRAFT &&
-          !isNil(flow.publishedVersionId))) && (
-        <FlowStatusToggle flow={flow}></FlowStatusToggle>
-      )}
-    </div>
-  );
+  const isPublishedVersionOpen = flow.publishedVersionId === flowVersion.id;
+  const isDraftOfPublishedFlow =
+    flowVersion.state === FlowVersionState.DRAFT &&
+    !isNil(flow.publishedVersionId);
+  if (!isPublishedVersionOpen && !isDraftOfPublishedFlow) {
+    return null;
+  }
+  return <FlowStatusToggle flow={flow} />;
 });
 
 BuilderFlowStatusSection.displayName = 'BuilderFlowStatusSection';

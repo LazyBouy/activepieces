@@ -43,7 +43,7 @@ const FlowStatusToggle = ({ flow }: FlowStatusToggleProps) => {
     });
 
   return (
-    <div className="flex items-center justify-start">
+    <div className="flex items-center justify-start gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center justify-center">
@@ -69,12 +69,14 @@ const FlowStatusToggle = ({ flow }: FlowStatusToggleProps) => {
         </TooltipContent>
       </Tooltip>
       {isLoading ? (
-        <LoadingSpinner />
+        <div className="flex size-6 items-center justify-center">
+          <LoadingSpinner className="size-4" />
+        </div>
       ) : (
         isFlowPublished && (
           <Tooltip>
             <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <div className="p-2 rounded-full ">
+              <div className="flex size-6 items-center justify-center rounded-full">
                 {flowsUtils.flowStatusIconRenderer(flow)}
               </div>
             </TooltipTrigger>

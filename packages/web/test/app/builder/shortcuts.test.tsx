@@ -533,3 +533,131 @@ describe('canvasShortcutUtils.matchesShortcut', () => {
     ).toBeNull();
   });
 });
+
+describe('logs panel keyboard', () => {
+  afterEach(async () => {
+    const mountedRoot = root;
+    if (mountedRoot) {
+      await act(async () => {
+        mountedRoot.unmount();
+      });
+    }
+    container?.remove();
+    root = null;
+    container = null;
+    vi.clearAllMocks();
+  });
+
+  function logsPanelElement(parent: HTMLElement): HTMLButtonElement {
+    const panel = document.createElement('section');
+    panel.setAttribute('data-logs-panel', 'true');
+    const row = document.createElement('button');
+    panel.appendChild(row);
+    parent.appendChild(panel);
+    return row;
+  }
+
+  it('opens and closes the logs panel with L, also on a read-only canvas', async () => {
+    const { store } = await setup({ readonly: true });
+    await act(async () => {
+      store.getState().setLogsPanelOpen(false);
+    });
+    dispatchKeyFrom(document.body, { key: 'l' });
+    expect(store.getState().isLogsPanelOpen).toBe(true);
+    dispatchKeyFrom(document.body, { key: 'L' });
+    expect(store.getState().isLogsPanelOpen).toBe(false);
+  });
+
+  it('toggles the input and output panes with I and O only while the panel is open', async () => {
+    const { store } = await setup();
+    await act(async () => {
+      store.getState().setLogsPanelOpen(false);
+    });
+    dispatchKeyFrom(document.body, { key: 'i' });
+    expect(store.getState().logsPanes).toEqual({ input: false, output: true });
+    await act(async () => {
+      store.getState().setLogsPanelOpen(true);
+    });
+    dispatchKeyFrom(document.body, { key: 'i' });
+    expect(store.getState().logsPanes).toEqual({ input: true, output: true });
+    dispatchKeyFrom(document.body, { key: 'o' });
+    expect(store.getState().logsPanes).toEqual({ input: true, output: false });
+    dispatchKeyFrom(document.body, { key: 'i' });
+    expect(store.getState().logsPanes).toEqual({ input: true, output: false });
+  });
+
+  it('works while focus is inside the logs panel, but other single keys do not', async () => {
+    const { container, store, applyOperation } = await setup();
+    await act(async () => {
+      store.getState().setLogsPanelOpen(true);
+    });
+    const row = logsPanelElement(container);
+    dispatchKeyFrom(row, { key: 'o' });
+    expect(store.getState().logsPanes).toEqual({ input: false, output: true });
+    dispatchKeyFrom(row, { key: 'i' });
+    expect(store.getState().logsPanes).toEqual({ input: true, output: true });
+    dispatchKeyFrom(row, { key: 'l' });
+    expect(store.getState().isLogsPanelOpen).toBe(false);
+    dispatchKeyFrom(row, { key: 'd' });
+    dispatchKeyFrom(row, { key: 'Delete' });
+    expect(applyOperation).not.toHaveBeenCalled();
+  });
+
+  it('ignores L, I and O while typing, with modifiers, outside the canvas or with the step modal open', async () => {
+    const { container, store } = await setup();
+    await act(async () => {
+      store.getState().setLogsPanelOpen(false);
+    });
+    const field = document.createElement('input');
+    container.appendChild(field);
+    dispatchKeyFrom(field, { key: 'l' });
+    dispatchKeyFrom(document.body, { key: 'l', ctrlKey: true });
+    dispatchKeyFrom(document.body, { key: 'l', altKey: true });
+    const outside = document.createElement('button');
+    container.appendChild(outside);
+    dispatchKeyFrom(outside, { key: 'l' });
+    expect(store.getState().isLogsPanelOpen).toBe(false);
+    await act(async () => {
+      store.getState().openStepModal({ stepName: 'step_1' });
+    });
+    dispatchKeyFrom(document.body, { key: 'l' });
+    expect(store.getState().isLogsPanelOpen).toBe(false);
+  });
+
+  it('binds L, I and O without clashing with existing canvas keys', () => {
+    const noModifiers = {
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+    };
+    expect(
+      canvasShortcutUtils.findShortcutMatch({
+        ...noModifiers,
+        key: 'l',
+        code: 'KeyL',
+      })?.action,
+    ).toBe('ToggleLogs');
+    expect(
+      canvasShortcutUtils.findShortcutMatch({
+        ...noModifiers,
+        key: 'i',
+        code: 'KeyI',
+      })?.action,
+    ).toBe('ToggleLogsInput');
+    expect(
+      canvasShortcutUtils.findShortcutMatch({
+        ...noModifiers,
+        key: 'o',
+        code: 'KeyO',
+      })?.action,
+    ).toBe('ToggleLogsOutput');
+    expect(
+      canvasShortcutUtils.findShortcutMatch({
+        ...noModifiers,
+        key: 'd',
+        code: 'KeyD',
+      })?.action,
+    ).toBe('Skip');
+  });
+});

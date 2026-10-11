@@ -24,10 +24,14 @@ const AboveTriggerButton = ({
   shortCutIsEscape = false,
   showPrimaryBg = true,
   icon,
+  listenToShortcut = true,
 }: AboveTriggerButtonProps) => {
   const isMacSystem = isMac();
 
   useEffect(() => {
+    if (!listenToShortcut) {
+      return;
+    }
     const keydownHandler = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) {
         return;
@@ -53,7 +57,14 @@ const AboveTriggerButton = ({
     return () => {
       window.removeEventListener('keydown', keydownHandler, { capture: true });
     };
-  }, [isMacSystem, loading, disable, onClick, shortCutIsEscape]);
+  }, [
+    isMacSystem,
+    loading,
+    disable,
+    onClick,
+    shortCutIsEscape,
+    listenToShortcut,
+  ]);
 
   const shortcut: ShortcutProps = shortCutIsEscape
     ? { shortcutKey: 'Esc' }
@@ -125,4 +136,5 @@ type AboveTriggerButtonProps = {
   shortCutIsEscape?: boolean;
   showPrimaryBg?: boolean;
   icon?: React.ReactNode;
+  listenToShortcut?: boolean;
 };

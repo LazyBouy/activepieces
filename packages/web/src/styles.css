@@ -186,6 +186,10 @@
   --color-canvas-divider: var(--canvas-divider);
   --color-canvas-panel-header: var(--canvas-panel-header);
   --color-canvas-data-pane: var(--canvas-data-pane);
+  --color-canvas-logs: var(--canvas-logs);
+  --color-canvas-logs-row-hover: var(--canvas-logs-row-hover);
+  --color-canvas-logs-row-selected: var(--canvas-logs-row-selected);
+  --color-canvas-logs-toggle-on: var(--canvas-logs-toggle-on);
   --color-canvas-pill-border: var(--canvas-pill-border);
   --color-canvas-table-line: var(--canvas-table-line);
   --color-canvas-table-header-hover: var(--canvas-table-header-hover);
@@ -1024,6 +1028,10 @@
     --canvas-divider: var(--gray-6);
     --canvas-panel-header: var(--gray-3);
     --canvas-data-pane: var(--gray-3);
+    --canvas-logs: oklch(100% 0 0);
+    --canvas-logs-row-hover: var(--gray-3);
+    --canvas-logs-row-selected: var(--gray-5);
+    --canvas-logs-toggle-on: var(--gray-5);
     --canvas-pill-border: var(--gray-4);
     --canvas-table-line: oklch(0% 0 0 / 10%);
     --canvas-table-header-hover: var(--gray-5);
@@ -1259,6 +1267,14 @@
     --canvas-divider: var(--gray-4);
     --canvas-panel-header: var(--gray-7);
     --canvas-data-pane: var(--panel);
+    --canvas-logs: var(--gray-1);
+    --canvas-logs-row-hover: var(--panel);
+    --canvas-logs-row-selected: var(--gray-4);
+    --canvas-logs-toggle-on: color-mix(
+      in oklab,
+      var(--accent-9) 25%,
+      transparent
+    );
     --canvas-pill-border: oklch(37.15% 0 0);
     --canvas-table-line: oklch(100% 0 0 / 10%);
     --canvas-table-header-hover: var(--gray-4);

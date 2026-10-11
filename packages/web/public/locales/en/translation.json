@@ -3460,5 +3460,9 @@
   "Run a test": "Run a test",
   "Iteration {index} of {total}": "Iteration {index} of {total}",
   "Move columns": "Move columns",
-  "Resize columns": "Resize columns"
+  "Resize columns": "Resize columns",
+  "Open step": "Open step",
+  "Select a step to see its data": "Select a step to see its data",
+  "Test the flow to see each step's logs here": "Test the flow to see each step's logs here",
+  "Resize logs panel": "Resize logs panel"
 }
