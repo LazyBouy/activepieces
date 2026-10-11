@@ -184,6 +184,15 @@
   --color-canvas-skipped-line: var(--canvas-skipped-line);
   --color-canvas-muted-icon: var(--canvas-muted-icon);
   --color-canvas-divider: var(--canvas-divider);
+  --color-canvas-data-pane: var(--canvas-data-pane);
+  --color-canvas-pill-border: var(--canvas-pill-border);
+  --color-canvas-table-line: var(--canvas-table-line);
+  --color-canvas-table-header-hover: var(--canvas-table-header-hover);
+  --color-canvas-json-key: var(--canvas-json-key);
+  --color-canvas-json-string: var(--canvas-json-string);
+  --color-canvas-json-number: var(--canvas-json-number);
+  --color-canvas-json-null: var(--canvas-json-null);
+  --color-canvas-json-guide: var(--canvas-json-guide);
   --color-canvas-note-ink: var(--canvas-note-ink);
   --color-canvas-note-ring: var(--canvas-note-ring);
   --color-canvas-note-yellow: var(--canvas-note-yellow);
@@ -1012,6 +1021,22 @@
     --canvas-skipped-line: oklch(90.67% 0 0);
     --canvas-muted-icon: oklch(68.3% 0 0);
     --canvas-divider: var(--gray-6);
+    --canvas-data-pane: var(--gray-3);
+    --canvas-pill-border: var(--gray-4);
+    --canvas-table-line: oklch(0% 0 0 / 10%);
+    --canvas-table-header-hover: var(--gray-5);
+    --canvas-json-key: oklch(38.67% 0 0);
+    --canvas-json-string: oklch(49.1% 0.27 292.581);
+    --canvas-json-number: oklch(62.7% 0.194 149.214);
+    --canvas-json-null: oklch(57.7% 0.245 27.325);
+    --canvas-json-guide: oklch(90.67% 0 0);
+    --canvas-mapping-line: oklch(54.1% 0.281 293.009);
+    --canvas-mapping-fill: oklch(54.1% 0.281 293.009 / 10%);
+    --canvas-mapping-target-fill: color-mix(
+      in oklab,
+      var(--success-9) 10%,
+      transparent
+    );
     --canvas-note-ink: oklch(28.91% 0 0);
     --canvas-note-ring: var(--gray-4);
     --canvas-note-yellow: oklch(97.3% 0.071 103.193);
@@ -1230,6 +1255,22 @@
     --canvas-skipped-line: oklch(38.67% 0 0);
     --canvas-muted-icon: oklch(79.21% 0 0);
     --canvas-divider: var(--gray-4);
+    --canvas-data-pane: var(--panel);
+    --canvas-pill-border: oklch(37.15% 0 0);
+    --canvas-table-line: oklch(100% 0 0 / 10%);
+    --canvas-table-header-hover: var(--gray-4);
+    --canvas-json-key: oklch(100% 0 0);
+    --canvas-json-string: oklch(70.2% 0.183 293.541);
+    --canvas-json-number: oklch(62.7% 0.194 149.214);
+    --canvas-json-null: oklch(70.4% 0.191 22.216);
+    --canvas-json-guide: oklch(37.15% 0 0);
+    --canvas-mapping-line: var(--accent-9);
+    --canvas-mapping-fill: color-mix(in oklab, var(--accent-9) 10%, transparent);
+    --canvas-mapping-target-fill: color-mix(
+      in oklab,
+      var(--success-9) 10%,
+      transparent
+    );
     --canvas-note-ink: oklch(97% 0 0);
     --canvas-note-ring: oklch(100% 0 0 / 40%);
     --canvas-note-yellow: oklch(42.1% 0.095 57.708);
@@ -1568,6 +1609,32 @@
 .react-flow__connectionline {
   pointer-events: none;
 }
+.ap-mapping-droppable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  outline: 1.5px dashed var(--canvas-mapping-line);
+  outline-offset: -2.5px;
+  background-color: var(--canvas-mapping-fill);
+}
+
+.ap-mapping-droppable[data-mapping-over]::after {
+  outline: none;
+  background-color: var(--canvas-mapping-target-fill);
+}
+
+.ap-mapping-droppable[data-mapping-over] .ap-text-with-mentions {
+  border-color: var(--success-9);
+}
+
+[data-mapping-dragging],
+[data-mapping-dragging] * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

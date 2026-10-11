@@ -5,7 +5,7 @@ import {
   flowStructureUtil,
 } from '@activepieces/shared';
 import { t } from 'i18next';
-import { Zap } from 'lucide-react';
+import { PackageOpen } from 'lucide-react';
 import React from 'react';
 
 import { triggerEventHooks } from '@/features/flows';
@@ -13,8 +13,7 @@ import { triggerEventHooks } from '@/features/flows';
 import { useBuilderStateContext } from '../../builder-hooks';
 import { stepPropertiesSnapshotUtils } from '../../data-display/build-step-properties-snapshot';
 import { ErrorExplanationContext } from '../../data-display/explanation-prompt';
-import { StepDataPanelHeader } from '../../step-data/step-data-panel-header';
-import { StepDataPanelViewToggle } from '../../step-data/step-data-panel-view-toggle';
+import { DataPane, DataPaneMessage } from '../../step-modal/data-pane';
 import { JsonTreeSkeleton } from '../json-tree-skeleton';
 import { useTriggerTestRunner } from '../test-runner-context';
 import { TestSampleDataViewer } from '../test-sample-data-viewer';
@@ -87,12 +86,13 @@ const TestTriggerSection = React.memo(
 
     if (isPieceLoading || isNil(testType)) {
       return (
-        <div className="flex flex-col h-full">
-          <StepDataPanelHeader status="idle" />
-          <div className="flex justify-end px-3 py-2 shrink-0">
-            <StepDataPanelViewToggle />
-          </div>
-        </div>
+        <DataPane title={t('Output')} testId="step-modal-output">
+          {isPieceLoading && (
+            <div className="px-3 py-2">
+              <JsonTreeSkeleton />
+            </div>
+          )}
+        </DataPane>
       );
     }
 
@@ -160,41 +160,21 @@ const TestTriggerSection = React.memo(
 
     const isFirstTimeTesting = isPollingTesting || isTestingDialogOpen;
 
-    return (
-      <div className="flex flex-col h-full">
-        {showFirstTimeTestingSection && !errorMessage && isFirstTimeTesting && (
-          <div className="flex flex-col h-full">
-            <StepDataPanelHeader status="testing" />
-            <div className="flex justify-end px-3 py-2 shrink-0">
-              <StepDataPanelViewToggle />
-            </div>
-            <div className="flex-1 min-h-0 px-3 pb-3 overflow-auto">
+    if (showFirstTimeTestingSection && !errorMessage) {
+      return (
+        <DataPane title={t('Output')} testId="step-modal-output">
+          {isFirstTimeTesting ? (
+            <div className="px-3 py-2">
               <JsonTreeSkeleton />
             </div>
-          </div>
-        )}
-        {showFirstTimeTestingSection &&
-          !errorMessage &&
-          !isFirstTimeTesting && (
-            <div className="flex flex-col h-full">
-              <StepDataPanelHeader status="idle" />
-              <div className="flex justify-end px-3 py-2 shrink-0">
-                <StepDataPanelViewToggle />
-              </div>
-              <div className="grow flex flex-col items-center justify-center w-full px-6 py-10 gap-4 text-center">
-                <div className="flex items-center justify-center size-12 rounded-full bg-accent-3 text-accent-11">
-                  <Zap className="size-6" />
-                </div>
-                <div className="flex flex-col gap-1.5 max-w-[280px]">
-                  <span className="text-sm font-medium text-gray-12">
-                    {t('No sample data yet')}
-                  </span>
-                  <span className="text-xs text-gray-11 leading-relaxed">
-                    {t(
-                      'Test the trigger to capture sample data. You can then use the result in the following steps.',
-                    )}
-                  </span>
-                </div>
+          ) : (
+            <DataPaneMessage
+              icon={<PackageOpen className="size-6 text-gray-11" />}
+              title={t('No sample data yet')}
+              description={t(
+                'Test the trigger to capture sample data. You can then use the result in the following steps.',
+              )}
+              action={
                 <FirstTimeTestingSection
                   isValid={isValid}
                   testType={testType}
@@ -208,48 +188,60 @@ const TestTriggerSection = React.memo(
                   onMcpToolTesting={fireTest}
                   onSaveMockAsSampleData={saveMockAsSampleData}
                 />
-              </div>
-            </div>
+              }
+            />
           )}
-        {(!showFirstTimeTestingSection || errorMessage) && (
-          <>
-            {showSampleDataViewer && (
-              <TestSampleDataViewer
-                onRetest={fireTest}
-                hideCancel={true}
-                isValid={isValid}
-                consoleLogs={null}
-                isTesting={isPollingTesting}
-                sampleData={sampleData}
-                sampleDataInput={sampleDataInput ?? null}
-                errorMessage={errorMessage ?? null}
-                lastTestDate={lastTestDate}
-                isSaving={isSaving}
-                pieceSchema={
-                  pieceModel?.triggers[triggerName ?? '']?.outputSchema ?? null
-                }
-                explanationContext={explanationContext}
-                pieceDisplayName={pieceModel?.displayName}
-              >
-                {pollResults?.data && !errorMessage && (
-                  <TriggerEventSelect
-                    pollResults={pollResults}
-                    sampleData={sampleData}
-                  />
-                )}
-              </TestSampleDataViewer>
-            )}
+        </DataPane>
+      );
+    }
 
-            {isSimulating && (
-              <SimulationNote
-                note={getSimulationNote()}
-                resetSimulation={resetSimulation}
-                abortControllerRef={abortControllerRef}
-              />
-            )}
-          </>
+    if (isSimulating) {
+      return (
+        <DataPane title={t('Output')} testId="step-modal-output">
+          <SimulationNote
+            note={getSimulationNote()}
+            resetSimulation={resetSimulation}
+            abortControllerRef={abortControllerRef}
+          />
+        </DataPane>
+      );
+    }
+
+    if (!showSampleDataViewer) {
+      return (
+        <DataPane title={t('Output')} testId="step-modal-output">
+          <div className="px-3 py-2">
+            <JsonTreeSkeleton />
+          </div>
+        </DataPane>
+      );
+    }
+
+    return (
+      <TestSampleDataViewer
+        currentStep={currentStep}
+        hideCancel={true}
+        consoleLogs={null}
+        isTesting={isPollingTesting}
+        sampleData={sampleData}
+        sampleDataInput={sampleDataInput ?? null}
+        errorMessage={errorMessage ?? null}
+        lastTestDate={lastTestDate}
+        pieceSchema={
+          pieceModel?.triggers[triggerName ?? '']?.outputSchema ?? null
+        }
+        explanationContext={explanationContext}
+        pieceDisplayName={pieceModel?.displayName}
+      >
+        {pollResults?.data && !errorMessage && (
+          <div className="px-3 pt-2">
+            <TriggerEventSelect
+              pollResults={pollResults}
+              sampleData={sampleData}
+            />
+          </div>
         )}
-      </div>
+      </TestSampleDataViewer>
     );
   },
 );

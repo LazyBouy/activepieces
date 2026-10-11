@@ -1,7 +1,7 @@
 import { isNil } from '@activepieces/core-utils';
 import { t } from 'i18next';
-import { Copy, Download } from 'lucide-react';
-import React, { useMemo } from 'react';
+import { ChevronRight, Copy, Download } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 import ReactJson from 'react-json-view';
 import { toast } from 'sonner';
 
@@ -22,6 +22,8 @@ type JsonViewerProps = {
   hideDownload?: boolean;
   hideHeader?: boolean;
   className?: string;
+  variant?: 'default' | 'pane';
+  renderKey?: (args: JsonKeyRenderArgs) => React.ReactNode;
 };
 
 const removeUndefined = (obj: any): any => {
@@ -44,11 +46,18 @@ const JsonViewer = React.memo(
     hideDownload = false,
     hideHeader = false,
     className,
+    variant = 'default',
+    renderKey,
   }: JsonViewerProps) => {
     const { resolvedTheme } = useTheme();
     const json = useMemo(() => {
       return removeUndefined(unclearJson);
     }, [unclearJson]);
+    if (variant === 'pane') {
+      return (
+        <JsonPaneTree json={json} renderKey={renderKey} className={className} />
+      );
+    }
 
     const viewerTheme = syntaxTheme.jsonView(resolvedTheme);
     const handleCopy = () => {
@@ -161,5 +170,179 @@ const JsonViewer = React.memo(
   },
 );
 
+const JsonPaneTree = ({
+  json,
+  renderKey,
+  className,
+}: {
+  json: unknown;
+  renderKey?: (args: JsonKeyRenderArgs) => React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    data-json-pane-tree
+    className={cn(
+      'font-mono text-xs leading-normal text-gray-11 [overflow-wrap:anywhere]',
+      className,
+    )}
+  >
+    <JsonPaneNode
+      value={json}
+      path={[]}
+      name={null}
+      depth={0}
+      isLast={true}
+      renderKey={renderKey}
+    />
+  </div>
+);
+
+const JsonPaneNode = ({
+  value,
+  path,
+  name,
+  depth,
+  isLast,
+  renderKey,
+}: JsonPaneNodeProps) => {
+  const entries = getJsonEntries(value);
+  const [expanded, setExpanded] = useState(
+    () =>
+      depth < PANE_DEFAULT_EXPANDED_DEPTH &&
+      (entries?.length ?? 0) <= PANE_COLLAPSE_LARGER_THAN,
+  );
+  const keyLabel =
+    name === null ? null : (
+      <>
+        {renderKey ? (
+          renderKey({ keyLabel: String(name), path })
+        ) : (
+          <span className="text-canvas-json-key">{String(name)}</span>
+        )}
+        <span>: </span>
+      </>
+    );
+  const comma = isLast ? '' : ',';
+  if (entries === null) {
+    return (
+      <div className="flex min-h-4.5 items-start pl-4">
+        <span>
+          {keyLabel}
+          <JsonPaneValue value={value} />
+          {comma}
+        </span>
+      </div>
+    );
+  }
+  const isArray = Array.isArray(value);
+  const open = isArray ? '[' : '{';
+  const close = isArray ? ']' : '}';
+  if (entries.length === 0) {
+    return (
+      <div className="flex min-h-4.5 items-start pl-4">
+        <span>
+          {keyLabel}
+          {open}
+          {close}
+          {comma}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="flex min-h-4.5 items-start">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={expanded ? t('Collapse') : t('Expand')}
+          onClick={() => setExpanded(!expanded)}
+          className="flex h-4.5 w-4 shrink-0 items-center justify-center text-gray-11 hover:text-gray-12"
+        >
+          <ChevronRight
+            className={cn('size-3 transition-transform', {
+              'rotate-90': expanded,
+            })}
+          />
+        </button>
+        <span>
+          {keyLabel}
+          {open}
+          {!expanded && (
+            <>
+              <span className="text-gray-11">…</span>
+              {close}
+              {comma}
+            </>
+          )}
+        </span>
+      </div>
+      {expanded && (
+        <>
+          <div className="ml-1.5 border-l border-canvas-json-guide pl-2.5">
+            {entries.map(([childName, childValue], index) => (
+              <JsonPaneNode
+                key={String(childName)}
+                value={childValue}
+                path={[...path, childName]}
+                name={childName}
+                depth={depth + 1}
+                isLast={index === entries.length - 1}
+                renderKey={renderKey}
+              />
+            ))}
+          </div>
+          <div className="pl-4">
+            {close}
+            {comma}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const JsonPaneValue = ({ value }: { value: unknown }) => {
+  if (value === null || value === undefined) {
+    return <span className="text-canvas-json-null">null</span>;
+  }
+  if (typeof value === 'string') {
+    return (
+      <span className="text-canvas-json-string">{JSON.stringify(value)}</span>
+    );
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return <span className="text-canvas-json-number">{String(value)}</span>;
+  }
+  return <span>{JSON.stringify(value)}</span>;
+};
+
+function getJsonEntries(value: unknown): [string | number, unknown][] | null {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => [index, item]);
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.entries(value);
+  }
+  return null;
+}
+
+const PANE_DEFAULT_EXPANDED_DEPTH = 3;
+const PANE_COLLAPSE_LARGER_THAN = 50;
+
 JsonViewer.displayName = 'JsonViewer';
 export { JsonViewer };
+
+export type JsonKeyRenderArgs = {
+  keyLabel: string;
+  path: (string | number)[];
+};
+
+type JsonPaneNodeProps = {
+  value: unknown;
+  path: (string | number)[];
+  name: string | number | null;
+  depth: number;
+  isLast: boolean;
+  renderKey?: (args: JsonKeyRenderArgs) => React.ReactNode;
+};

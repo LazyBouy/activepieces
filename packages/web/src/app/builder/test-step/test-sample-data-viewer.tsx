@@ -4,33 +4,208 @@ import {
   AgentTaskStatus,
   FlowAction,
   FlowActionType,
+  FlowTrigger,
 } from '@activepieces/shared';
 import { t } from 'i18next';
-import { Loader2, Play } from 'lucide-react';
-import React, { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import React, { useMemo } from 'react';
 
-import { SmartOutputViewer } from '@/components/custom/smart-output-viewer';
 import type { OutputSchema } from '@/components/custom/smart-output-viewer/types';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { formatUtils } from '@/lib/format-utils';
 
-import { DataDisplayTabs } from '../data-display/data-display-tabs';
 import { ErrorExplanationContext } from '../data-display/explanation-prompt';
 import { FriendlyErrorView } from '../data-display/friendly-error-view';
+import { friendlyTreeUtils } from '../data-selector/friendly-tree';
 import { AiRouterRoutes } from '../run-details/ai-router-routes';
-import { ClosePanelButton } from '../step-data/close-panel-button';
-import { StepDataPanelHeader } from '../step-data/step-data-panel-header';
-import { StepDataPanelViewToggle } from '../step-data/step-data-panel-view-toggle';
+import {
+  DataPane,
+  DataPaneCountLine,
+  DataPaneDataActions,
+  DataPaneStatus,
+  useIsPaneCompact,
+} from '../step-modal/data-pane';
+import { DataView } from '../step-modal/data-view';
+import { schemaViewUtils } from '../step-modal/schema-view-utils';
+import { useViewMode, ViewModeControl } from '../step-modal/view-mode-control';
+import { viewModeUtils } from '../step-modal/view-mode-utils';
 
 import { AgentTestStep, isRunAgent } from './agent-test-step';
 import { JsonTreeSkeleton } from './json-tree-skeleton';
-import { TestButtonTooltip } from './test-step-tooltip';
+
+export const TestSampleDataViewer = React.memo(
+  (props: TestSampleDataViewerProps) => {
+    const {
+      isTesting,
+      sampleData,
+      errorMessage,
+      lastTestDate,
+      currentStep,
+      children,
+      onCancelTesting,
+      hideCancel,
+      sampleDataInput,
+      consoleLogs,
+      explanationContext,
+      pieceDisplayName,
+      pieceSchema,
+    } = props;
+    const [viewMode, setViewMode] = useViewMode('output');
+    const compact = useIsPaneCompact('output');
+    const isFailed =
+      !isNil(errorMessage) ||
+      (isRunAgent(currentStep) &&
+        getAgentResult(sampleData)?.status === AgentTaskStatus.FAILED);
+    const outputData = errorMessage ?? sampleData;
+    const showAgentView = isRunAgent(currentStep) && !errorMessage;
+    const friendlyError =
+      !isTesting && !showAgentView
+        ? tryParseFriendlyPieceError(errorMessage)
+        : null;
+    const schemaNodes = useMemo(
+      () =>
+        schemaViewUtils.fromDataSelectorNodes({
+          nodes: schemaViewUtils.rootChildren(
+            friendlyTreeUtils.buildDataNode({
+              stepName: currentStep?.name ?? 'output',
+              displayName: t('Output'),
+              data: outputData,
+              schema: errorMessage ? null : pieceSchema ?? null,
+            }),
+          ),
+        }),
+      [outputData, pieceSchema, errorMessage, currentStep?.name],
+    );
+    const showData = !isTesting && !showAgentView;
+
+    return (
+      <DataPane
+        title={t('Output')}
+        testId="step-modal-output"
+        titleAddon={
+          !isTesting && (
+            <DataPaneStatus
+              status={isFailed ? 'failed' : 'success'}
+              mode="test"
+              detail={
+                lastTestDate
+                  ? formatUtils.formatDateWithTime(
+                      new Date(lastTestDate),
+                      false,
+                    )
+                  : null
+              }
+            />
+          )
+        }
+        actions={
+          showData && (
+            <>
+              <ViewModeControl
+                value={viewMode}
+                onChange={setViewMode}
+                compact={compact}
+              />
+              <DataPaneDataActions
+                data={outputData}
+                fileName={`${currentStep?.name ?? 'output'}-output`}
+              />
+            </>
+          )
+        }
+        subheader={
+          showData && (
+            <DataPaneCountLine count={viewModeUtils.getItemCount(outputData)} />
+          )
+        }
+      >
+        {isTesting ? (
+          <div className="flex flex-col gap-3 px-3 py-2">
+            <JsonTreeSkeleton />
+            {!hideCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                className="self-start"
+                onClick={onCancelTesting}
+              >
+                <Loader2 className="animate-spin" />
+                {t('Cancel Testing')}
+              </Button>
+            )}
+          </div>
+        ) : showAgentView ? (
+          <div className="px-3 py-2">
+            <AgentTestStep
+              agentResult={getAgentResult(sampleData)}
+              errorMessage={errorMessage}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 pb-3">
+            {children}
+            {friendlyError && (
+              <div className="px-3 pt-2">
+                <FriendlyErrorView
+                  error={friendlyError}
+                  explanationContext={explanationContext}
+                  pieceDisplayName={pieceDisplayName}
+                />
+              </div>
+            )}
+            {!errorMessage &&
+              currentStep?.type === FlowActionType.AI_ROUTER && (
+                <div className="px-3 pt-2">
+                  <AiRouterRoutes output={outputData} input={sampleDataInput} />
+                </div>
+              )}
+            <DataView
+              mode={viewMode}
+              data={outputData}
+              schemaNodes={schemaNodes}
+              basePath={null}
+            />
+            {errorMessage && (
+              <div className="px-3 text-xs text-gray-11">
+                {t('Errors are not saved on refresh')}
+              </div>
+            )}
+            {!isNil(consoleLogs) && consoleLogs !== '' && (
+              <div className="flex flex-col gap-1 px-3 pt-2">
+                <span className="text-xs font-semibold text-gray-11">
+                  {t('Logs')}
+                </span>
+                <pre className="font-mono text-xs whitespace-pre-wrap break-all text-gray-12">
+                  {consoleLogs}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </DataPane>
+    );
+  },
+);
+
+TestSampleDataViewer.displayName = 'TestSampleDataViewer';
+
+function getAgentResult(sampleData: unknown): AgentResult | undefined {
+  return isAgentResult(sampleData) ? sampleData : undefined;
+}
+
+function isAgentResult(value: unknown): value is AgentResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'status' in value &&
+    'steps' in value &&
+    'prompt' in value
+  );
+}
 
 type TestSampleDataViewerProps = {
-  isValid: boolean;
-  currentStep?: FlowAction;
+  currentStep?: FlowAction | FlowTrigger;
   isTesting: boolean;
-  agentResult?: AgentResult;
   sampleData?: unknown;
   sampleDataInput?: unknown | null;
   errorMessage: string | null;
@@ -49,336 +224,4 @@ type TestSampleDataViewerProps = {
       hideCancel?: false;
       onCancelTesting: () => void;
     }
-) &
-  RetestButtonProps;
-
-type RetestButtonProps = {
-  isValid: boolean;
-  isSaving: boolean;
-  isTesting: boolean;
-  onRetest: () => void;
-};
-
-type ActiveTab = 'Input' | 'Output' | 'Logs';
-
-const isConsoleLogsValid = (value: unknown) => {
-  if (isNil(value)) return false;
-  return value !== '';
-};
-
-export const TestSampleDataViewer = React.memo(
-  (props: TestSampleDataViewerProps) => {
-    const {
-      isValid,
-      isTesting,
-      sampleData,
-      errorMessage,
-      lastTestDate,
-      currentStep,
-      children,
-      isSaving,
-      onRetest,
-      onCancelTesting,
-      hideCancel,
-      sampleDataInput,
-      consoleLogs,
-      explanationContext,
-      pieceDisplayName,
-      pieceSchema,
-    } = props;
-    const [requestedTab, setActiveTab] = useState<ActiveTab>('Output');
-    const hasInput = !isNil(sampleDataInput);
-    const hasLogs = isConsoleLogsValid(consoleLogs);
-    const activeTab: ActiveTab =
-      (requestedTab === 'Input' && !hasInput) ||
-      (requestedTab === 'Logs' && !hasLogs)
-        ? 'Output'
-        : requestedTab;
-
-    const isFailed =
-      !isNil(errorMessage) ||
-      (isRunAgent(currentStep) &&
-        (sampleData as AgentResult | undefined)?.status ===
-          AgentTaskStatus.FAILED);
-
-    const status: 'success' | 'failed' | 'testing' | 'idle' = isTesting
-      ? 'testing'
-      : isFailed
-      ? 'failed'
-      : 'success';
-
-    const outputData = errorMessage ?? sampleData;
-    const activeData =
-      activeTab === 'Input'
-        ? sampleDataInput
-        : activeTab === 'Logs'
-        ? consoleLogs
-        : outputData;
-
-    const showAgentView = isRunAgent(currentStep) && !errorMessage;
-    const friendlyError =
-      !isTesting && !showAgentView && activeTab === 'Output'
-        ? tryParseFriendlyPieceError(errorMessage)
-        : null;
-
-    return (
-      <div className="flex flex-col h-full w-full min-h-0">
-        <StepDataPanelHeader status={status} lastTestDate={lastTestDate} />
-        <div className="flex-1 flex flex-col w-full text-start min-h-0">
-          {errorMessage && !isTesting && (
-            <div className="px-3 pt-2 text-xs text-gray-11 shrink-0">
-              {t('Errors are not saved on refresh')}
-            </div>
-          )}
-          {!showAgentView && (
-            <TestPanelToolbar
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              hasInput={hasInput}
-              hasLogs={hasLogs}
-              disabled={isTesting}
-            />
-          )}
-          {!isTesting && !showAgentView && children}
-          <div className="flex-1 min-h-0 px-3 pb-3 overflow-auto">
-            {isTesting && !showAgentView ? (
-              <TestingPreviewContent data={activeData} />
-            ) : showAgentView ? (
-              <AgentTestStep
-                agentResult={getAgentResult(sampleData)}
-                errorMessage={errorMessage}
-              />
-            ) : friendlyError ? (
-              <FriendlyErrorView
-                error={friendlyError}
-                explanationContext={explanationContext}
-                pieceDisplayName={pieceDisplayName}
-              />
-            ) : activeTab === 'Output' && !errorMessage ? (
-              <div className="flex flex-col gap-3">
-                {currentStep?.type === FlowActionType.AI_ROUTER && (
-                  <AiRouterRoutes output={outputData} input={sampleDataInput} />
-                )}
-                <SmartOutputViewer
-                  json={outputData}
-                  title={t('Output')}
-                  pieceSchema={pieceSchema ?? null}
-                />
-              </div>
-            ) : (
-              <DataDisplayTabs
-                data={activeData}
-                title={t(activeTab)}
-                copyableData={activeData}
-                downloadFileName={`${
-                  currentStep?.name ?? 'output'
-                }-${activeTab.toLowerCase()}`}
-              />
-            )}
-          </div>
-        </div>
-        {isTesting ? (
-          <CancelTestingBar
-            onCancel={hideCancel ? undefined : onCancelTesting}
-          />
-        ) : (
-          <RetestActionBar
-            onRetest={onRetest}
-            disabled={!isValid || isSaving}
-            isValid={isValid}
-            isSaving={isSaving}
-          />
-        )}
-      </div>
-    );
-  },
 );
-
-type TestPanelToolbarProps = {
-  activeTab: ActiveTab;
-  setActiveTab: (tab: ActiveTab) => void;
-  hasInput: boolean;
-  hasLogs: boolean;
-  disabled?: boolean;
-};
-
-const TestPanelToolbar = ({
-  activeTab,
-  setActiveTab,
-  hasInput,
-  hasLogs,
-  disabled = false,
-}: TestPanelToolbarProps) => (
-  <div className="flex items-center justify-between px-3 py-2 gap-2 shrink-0">
-    <SegmentedTabs
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      hasInput={hasInput}
-      hasLogs={hasLogs}
-      disabled={disabled}
-    />
-    <div className="flex items-center gap-1 shrink-0">
-      <StepDataPanelViewToggle disabled={disabled} />
-      <ClosePanelButton />
-    </div>
-  </div>
-);
-
-type SegmentedTabsProps = TestPanelToolbarProps;
-
-const SegmentedTabs = ({
-  activeTab,
-  setActiveTab,
-  hasInput,
-  hasLogs,
-  disabled,
-}: SegmentedTabsProps) => (
-  <div
-    className={cn(
-      'inline-flex items-center rounded-md bg-gray-3 p-0.5 gap-0.5',
-      disabled && 'opacity-50',
-    )}
-  >
-    <SegmentedTabsButton
-      label={t('Output')}
-      active={activeTab === 'Output'}
-      onClick={() => setActiveTab('Output')}
-      disabled={disabled}
-    />
-    {hasInput && (
-      <SegmentedTabsButton
-        label={t('Input')}
-        active={activeTab === 'Input'}
-        onClick={() => setActiveTab('Input')}
-        disabled={disabled}
-      />
-    )}
-    {hasLogs && (
-      <SegmentedTabsButton
-        label={t('Logs')}
-        active={activeTab === 'Logs'}
-        onClick={() => setActiveTab('Logs')}
-        disabled={disabled}
-      />
-    )}
-  </div>
-);
-
-type SegmentedTabsButtonProps = {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  disabled?: boolean;
-};
-
-const SegmentedTabsButton = ({
-  label,
-  active,
-  onClick,
-  disabled,
-}: SegmentedTabsButtonProps) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(
-      'px-3 py-1 text-xs font-medium rounded-sm transition-colors disabled:cursor-not-allowed',
-      active
-        ? 'bg-gray-1 text-gray-12 shadow-sm'
-        : 'text-gray-11 hover:text-gray-12',
-    )}
-  >
-    {label}
-  </button>
-);
-
-type RetestActionBarProps = {
-  onRetest: () => void;
-  disabled: boolean;
-  isValid: boolean;
-  isSaving: boolean;
-};
-
-const RetestActionBar = ({
-  onRetest,
-  disabled,
-  isValid,
-  isSaving,
-}: RetestActionBarProps) => (
-  <div
-    data-test-panel-trigger
-    className="relative px-3 py-3 bg-gray-1 z-10 shrink-0"
-  >
-    <div
-      aria-hidden
-      className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-gray-1 to-transparent"
-    />
-    <TestButtonTooltip saving={isSaving} invalid={!isValid}>
-      <Button
-        variant="outline"
-        onClick={onRetest}
-        disabled={disabled}
-        keyboardShortcut="G"
-        onKeyboardShortcut={onRetest}
-        className="w-full justify-center bg-accent-3 enabled:hover:bg-accent-4 enabled:hover:text-accent-11 text-accent-11 border-accent-6"
-        size="sm"
-      >
-        <Play className="size-4 fill-current" />
-        {t('Retest Step')}
-      </Button>
-    </TestButtonTooltip>
-  </div>
-);
-
-type CancelTestingBarProps = {
-  onCancel?: () => void;
-};
-
-const CancelTestingBar = ({ onCancel }: CancelTestingBarProps) => (
-  <div
-    data-test-panel-trigger
-    className="relative px-3 py-3 bg-gray-1 z-10 shrink-0"
-  >
-    <div
-      aria-hidden
-      className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-gray-1 to-transparent"
-    />
-    <Button
-      onClick={onCancel}
-      disabled={!onCancel}
-      variant="outline"
-      className="w-full justify-center bg-accent-3 enabled:hover:bg-accent-4 enabled:hover:text-accent-11 text-accent-11 border-accent-6"
-      size="sm"
-    >
-      <Loader2 className="size-4 animate-spin" />
-      {t('Cancel Testing')}
-    </Button>
-  </div>
-);
-
-type TestingPreviewContentProps = {
-  data: unknown;
-};
-
-const TestingPreviewContent = ({ data }: TestingPreviewContentProps) => {
-  if (!isNil(data)) {
-    return (
-      <div className="opacity-40 animate-pulse pointer-events-none select-none">
-        <DataDisplayTabs data={data} title={t('Output')} />
-      </div>
-    );
-  }
-  return <JsonTreeSkeleton />;
-};
-
-TestSampleDataViewer.displayName = 'TestSampleDataViewer';
-
-//In case the user has mangled sample data
-function getAgentResult(sampleData: unknown) {
-  if (isNil(sampleData)) return undefined;
-  if (typeof sampleData !== 'object' || sampleData === null) return undefined;
-  if (!('status' in sampleData)) return undefined;
-  if (!('steps' in sampleData)) return undefined;
-  if (!('prompt' in sampleData)) return undefined;
-  return sampleData as AgentResult;
-}

@@ -24,10 +24,10 @@ function DynamicValueToggleButton({
           disabled={disabled}
           size="sm"
           aria-label={t('Dynamic value')}
-          className="shrink-0"
+          className="size-6 min-w-6 shrink-0 px-0"
         >
           <SquareFunction
-            className={cn('size-5', {
+            className={cn('size-4', {
               'text-gray-12': pressed,
               'text-gray-11': !pressed,
             })}

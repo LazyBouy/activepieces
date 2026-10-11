@@ -248,27 +248,16 @@ function useRequestedStepTest({
   canFireTest: boolean;
   fireTest: () => void;
 }) {
-  const [stepTestRequest, clearStepTestRequest, setStepDataPanelOpen] =
-    useBuilderStateContext((state) => [
-      state.stepTestRequest,
-      state.clearStepTestRequest,
-      state.setStepDataPanelOpen,
-    ]);
+  const [stepTestRequest, clearStepTestRequest] = useBuilderStateContext(
+    (state) => [state.stepTestRequest, state.clearStepTestRequest],
+  );
   useEffect(() => {
     if (stepTestRequest !== stepName || !canFireTest) {
       return;
     }
     clearStepTestRequest();
-    setStepDataPanelOpen(true);
     fireTest();
-  }, [
-    stepTestRequest,
-    stepName,
-    canFireTest,
-    fireTest,
-    clearStepTestRequest,
-    setStepDataPanelOpen,
-  ]);
+  }, [stepTestRequest, stepName, canFireTest, fireTest, clearStepTestRequest]);
 }
 
 export {

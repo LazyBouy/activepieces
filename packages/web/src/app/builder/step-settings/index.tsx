@@ -10,76 +10,41 @@ import {
 } from '@activepieces/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import deepEqual from 'deep-equal';
-import { useEffect, useRef, useState } from 'react';
-import { useForm, Resolver } from 'react-hook-form';
+import { t } from 'i18next';
+import { useEffect, useRef } from 'react';
+import { useForm, Resolver, useFormContext } from 'react-hook-form';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
 import { Form } from '@/components/ui/form';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   stepsHooks,
-  pieceSelectorUtils,
   formUtils,
-  PieceIcon,
   PieceStepMetadata,
+  StepMetadata,
 } from '@/features/pieces';
-import { projectCollectionUtils } from '@/features/projects';
-import { cn, GAP_SIZE_FOR_STEP_SETTINGS } from '@/lib/utils';
 
 import { ActionErrorHandlingForm } from '../piece-properties/action-error-handling';
 import { DynamicPropertiesProvider } from '../piece-properties/dynamic-properties-context';
-import { SidebarHeader } from '../sidebar-header';
-import { StepDataPanelHost } from '../step-data/step-data-panel-host';
 import {
   ActionTestRunnerProvider,
   TriggerTestRunnerProvider,
 } from '../test-step/test-runner-context';
-import { TestStepCTAButton } from '../test-step/test-step-cta-button';
 
 import { AgentSettings } from './agent-settings';
 import { AiRouterSettings } from './ai-router-settings';
 import { CodeSettings } from './code-settings';
-import EditableStepName from './editable-step-name';
 import { LoopsSettings } from './loops-settings';
 import { PieceSettings } from './piece-settings';
 import { RouterSettings } from './router-settings';
-import { StepNavigationButtons } from './step-navigation-buttons';
 import { useStepSettingsContext } from './step-settings-context';
 import { UpdatePieceVersionDialog } from './update-piece-version-dialog/update-piece-version-dialog';
 
-const StepSettingsContainer = () => {
+const StepSettingsForm = ({ children }: { children: React.ReactNode }) => {
   const { selectedStep, pieceModel, formSchema } = useStepSettingsContext();
-  const { project } = projectCollectionUtils.useCurrentProject();
-  const [
-    readonly,
-    exitStepSettings,
-    applyOperation,
-    saving,
-    flowVersion,
-    selectedBranchIndex,
-    setSelectedBranchIndex,
-    run,
-    stepDataPanelView,
-    isStepDataPanelOpen,
-  ] = useBuilderStateContext((state) => [
+  const [readonly, applyOperation] = useBuilderStateContext((state) => [
     state.readonly,
-    state.exitStepSettings,
     state.applyOperation,
-    state.saving,
-    state.flowVersion,
-    state.selectedBranchIndex,
-    state.setSelectedBranchIndex,
-    state.run,
-    state.stepDataPanelView,
-    state.isStepDataPanelOpen,
   ]);
-
-  const { stepMetadata } = stepsHooks.useStepMetadata({
-    step: selectedStep,
-  });
-
-  const selectedStepRef = useRef(selectedStep);
-  selectedStepRef.current = selectedStep;
 
   const currentValuesRef = useRef<FlowAction | FlowTrigger>(selectedStep);
   const form = useForm<FlowAction | FlowTrigger>({
@@ -118,7 +83,6 @@ const StepSettingsContainer = () => {
       ) {
         return result;
       }
-      //We need to copy the object because the form is using the same object reference
       currentValuesRef.current = JSON.parse(JSON.stringify(cleanedNewValues));
       if (cleanedNewValues.type === FlowTriggerType.PIECE) {
         applyOperation({
@@ -141,313 +105,196 @@ const StepSettingsContainer = () => {
     },
   });
 
-  const sidebarHeaderContainerRef = useRef<HTMLDivElement>(null);
-  const modifiedStep = form.getValues();
-  const isManualTrigger =
-    modifiedStep.type === FlowTriggerType.PIECE &&
-    pieceSelectorUtils.isManualTrigger({
-      pieceName: modifiedStep.settings.pieceName,
-      triggerName: modifiedStep.settings.triggerName ?? '',
-    });
-  const isEmptyTrigger = modifiedStep.type === FlowTriggerType.EMPTY;
-  const showGenerateSampleData =
-    !readonly && !isManualTrigger && !isEmptyTrigger;
-  const showStepInputOutFromRun =
-    !isNil(run) && !isManualTrigger && !isEmptyTrigger;
-
-  const [isEditingStepOrBranchName, setIsEditingStepOrBranchName] =
-    useState(false);
-  const runAgentStep =
-    modifiedStep.settings.pieceName === '@activepieces/piece-ai' &&
-    modifiedStep.settings.actionName === 'run_agent';
-
-  const showActionErrorHandlingForm =
-    !isNil(stepMetadata) &&
-    (modifiedStep.type === FlowActionType.CODE ||
-      (modifiedStep.type === FlowActionType.PIECE && runAgentStep));
-
   useEffect(() => {
-    //RHF doesn't automatically trigger validation when the form is rendered, so we need to trigger it manually
     form.trigger();
   }, []);
-
-  const showTestPanel = showGenerateSampleData || showStepInputOutFromRun;
-
-  const settingsForm = (
-    <ScrollArea className="h-full">
-      <div
-        className={cn(
-          'flex flex-col px-4 pb-6 pt-3',
-          GAP_SIZE_FOR_STEP_SETTINGS,
-        )}
-      >
-        {modifiedStep.type === FlowActionType.LOOP_ON_ITEMS && (
-          <LoopsSettings readonly={readonly}></LoopsSettings>
-        )}
-        {modifiedStep.type === FlowActionType.CODE && (
-          <CodeSettings readonly={readonly}></CodeSettings>
-        )}
-        {modifiedStep.type === FlowActionType.PIECE &&
-          runAgentStep &&
-          modifiedStep && (
-            <AgentSettings
-              step={modifiedStep}
-              flowId={flowVersion.flowId}
-              readonly={readonly}
-            />
-          )}
-        {modifiedStep.type === FlowActionType.PIECE &&
-          !runAgentStep &&
-          modifiedStep && (
-            <PieceSettings
-              step={modifiedStep}
-              flowId={flowVersion.flowId}
-              readonly={readonly}
-            ></PieceSettings>
-          )}
-        {modifiedStep.type === FlowActionType.ROUTER && modifiedStep && (
-          <RouterSettings readonly={readonly}></RouterSettings>
-        )}
-        {modifiedStep.type === FlowActionType.AI_ROUTER && modifiedStep && (
-          <AiRouterSettings readonly={readonly}></AiRouterSettings>
-        )}
-        {modifiedStep.type === FlowTriggerType.PIECE && modifiedStep && (
-          <PieceSettings
-            step={modifiedStep}
-            flowId={flowVersion.flowId}
-            readonly={readonly}
-          ></PieceSettings>
-        )}
-        {showActionErrorHandlingForm && (
-          <ActionErrorHandlingForm
-            hideContinueOnFailure={
-              stepMetadata.type === FlowActionType.PIECE
-                ? stepMetadata.errorHandlingOptions?.continueOnFailure?.hide
-                : false
-            }
-            disabled={readonly}
-            hideRetryOnFailure={
-              stepMetadata.type === FlowActionType.PIECE
-                ? stepMetadata.errorHandlingOptions?.retryOnFailure?.hide
-                : false
-            }
-          ></ActionErrorHandlingForm>
-        )}
-      </div>
-    </ScrollArea>
-  );
 
   return (
     <Form {...form}>
       <form
         onSubmit={(e) => e.preventDefault()}
         onChange={(e) => e.preventDefault()}
-        className="w-full h-full flex flex-col"
+        className="flex size-full min-h-0 flex-col"
       >
-        <div
-          ref={sidebarHeaderContainerRef}
-          className="relative z-10 bg-gray-1"
-        >
-          <SidebarHeader
-            onClose={() => exitStepSettings()}
-            leadingIcon={
-              stepMetadata ? (
-                <PieceIcon
-                  logoUrl={stepMetadata.logoUrl}
-                  displayName={stepMetadata.displayName}
-                  showTooltip={false}
-                  border={false}
-                  size="md"
-                />
-              ) : null
-            }
-            actions={
-              <div className="flex items-center gap-1">
-                {isPieceMetadata(stepMetadata) &&
-                  stepMetadata.pieceVersion &&
-                  (modifiedStep.type === FlowActionType.PIECE ||
-                    modifiedStep.type === FlowTriggerType.PIECE) && (
-                    <PieceVersionInHeader
-                      step={modifiedStep}
-                      pieceVersion={stepMetadata.pieceVersion}
-                      readonly={readonly}
-                    />
-                  )}
-                <StepNavigationButtons />
-              </div>
-            }
-          >
-            <EditableStepName
-              selectedBranchIndex={selectedBranchIndex}
-              stepIndex={flowStructureUtil.getStepNumber(
-                flowVersion.trigger,
-                selectedStep.name,
-              )}
-              setDisplayName={(value) => {
-                form.setValue('displayName', value, {
-                  shouldValidate: true,
-                });
-              }}
-              readonly={readonly}
-              displayName={modifiedStep.displayName}
-              branchName={
-                !isNil(selectedBranchIndex)
-                  ? modifiedStep.settings.branches?.[selectedBranchIndex]
-                      ?.branchName
-                  : undefined
-              }
-              setBranchName={(value) => {
-                if (!isNil(selectedBranchIndex)) {
-                  form.setValue(
-                    `settings.branches[${selectedBranchIndex}].branchName`,
-                    value,
-                    {
-                      shouldValidate: true,
-                    },
-                  );
-                }
-              }}
-              setSelectedBranchIndex={setSelectedBranchIndex}
-              isEditingStepOrBranchName={isEditingStepOrBranchName}
-              setIsEditingStepOrBranchName={setIsEditingStepOrBranchName}
-              tooltipTitle={
-                stepMetadata?.actionOrTriggerOrAgentDisplayName ||
-                stepMetadata?.displayName
-              }
-              tooltipDescription={
-                stepMetadata?.actionOrTriggerOrAgentDescription ||
-                stepMetadata?.description
-              }
-              pieceVersion={
-                isPieceMetadata(stepMetadata)
-                  ? stepMetadata.pieceVersion
-                  : undefined
-              }
-            ></EditableStepName>
-          </SidebarHeader>
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-3 left-0 right-0 h-3 bg-gradient-to-b from-gray-1 to-transparent"
-          />
-        </div>
-
         <DynamicPropertiesProvider
           key={`${selectedStep.name}-${selectedStep.type}`}
         >
           <StepTestRunnerProvider step={selectedStep}>
-            <StepSettingsLayout
-              isSplit={
-                showTestPanel &&
-                isStepDataPanelOpen &&
-                stepDataPanelView === 'split'
-              }
-              showTestPanel={showTestPanel}
-              isStepDataPanelOpen={isStepDataPanelOpen}
-              settingsForm={settingsForm}
-              testPanelHost={
-                showTestPanel ? (
-                  <StepDataPanelHost
-                    mode={stepDataPanelView === 'split' ? 'split' : 'drawer'}
-                    flowId={flowVersion.flowId}
-                    flowVersionId={flowVersion.id}
-                    projectId={project?.id}
-                    stepType={modifiedStep.type}
-                    showGenerateSampleData={showGenerateSampleData}
-                    showStepInputOutFromRun={showStepInputOutFromRun}
-                    saving={saving}
-                  />
-                ) : null
-              }
-            />
+            {children}
           </StepTestRunnerProvider>
         </DynamicPropertiesProvider>
       </form>
     </Form>
   );
 };
-StepSettingsContainer.displayName = 'StepSettingsContainer';
-export { StepSettingsContainer };
+StepSettingsForm.displayName = 'StepSettingsForm';
 
-type StepSettingsLayoutProps = {
-  isSplit: boolean;
-  showTestPanel: boolean;
-  isStepDataPanelOpen: boolean;
-  settingsForm: React.ReactNode;
-  testPanelHost: React.ReactNode;
+const StepParametersTab = () => {
+  const form = useFormContext<FlowAction | FlowTrigger>();
+  const [readonly, flowVersion] = useBuilderStateContext((state) => [
+    state.readonly,
+    state.flowVersion,
+  ]);
+  const modifiedStep = form.getValues();
+  const runAgentStep = isRunAgentStep(modifiedStep);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {modifiedStep.type === FlowActionType.LOOP_ON_ITEMS && (
+        <LoopsSettings readonly={readonly}></LoopsSettings>
+      )}
+      {modifiedStep.type === FlowActionType.CODE && (
+        <CodeSettings readonly={readonly}></CodeSettings>
+      )}
+      {modifiedStep.type === FlowActionType.PIECE && runAgentStep && (
+        <AgentSettings
+          step={modifiedStep}
+          flowId={flowVersion.flowId}
+          readonly={readonly}
+        />
+      )}
+      {modifiedStep.type === FlowActionType.PIECE && !runAgentStep && (
+        <PieceSettings
+          step={modifiedStep}
+          flowId={flowVersion.flowId}
+          readonly={readonly}
+        ></PieceSettings>
+      )}
+      {modifiedStep.type === FlowActionType.ROUTER && (
+        <RouterSettings readonly={readonly}></RouterSettings>
+      )}
+      {modifiedStep.type === FlowActionType.AI_ROUTER && (
+        <AiRouterSettings readonly={readonly}></AiRouterSettings>
+      )}
+      {modifiedStep.type === FlowTriggerType.PIECE && (
+        <PieceSettings
+          step={modifiedStep}
+          flowId={flowVersion.flowId}
+          readonly={readonly}
+        ></PieceSettings>
+      )}
+    </div>
+  );
 };
+StepParametersTab.displayName = 'StepParametersTab';
 
-const StepSettingsLayout = ({
-  isSplit,
-  showTestPanel,
-  isStepDataPanelOpen,
-  settingsForm,
-  testPanelHost,
-}: StepSettingsLayoutProps) => {
-  if (isSplit) {
-    return (
-      <div className="relative flex-1 min-h-0 flex flex-row">
-        <div className="w-1/2 min-w-0 min-h-0 h-full">{settingsForm}</div>
-        {testPanelHost && (
-          <div className="w-1/2 min-w-0 min-h-0 h-full pt-2 pl-1">
-            {testPanelHost}
+const StepSettingsTab = () => {
+  const { selectedStep } = useStepSettingsContext();
+  const readonly = useBuilderStateContext((state) => state.readonly);
+  const { stepMetadata } = stepsHooks.useStepMetadata({
+    step: selectedStep,
+  });
+  const errorHandling = getErrorHandlingVisibility({
+    step: selectedStep,
+    stepMetadata,
+  });
+  const pieceVersion = getPieceVersion({ step: selectedStep, stepMetadata });
+
+  return (
+    <div className="flex flex-col gap-4">
+      {errorHandling.show && (
+        <ActionErrorHandlingForm
+          hideContinueOnFailure={errorHandling.hideContinueOnFailure}
+          hideRetryOnFailure={errorHandling.hideRetryOnFailure}
+          disabled={readonly}
+          className="border-t-0 pt-0"
+        />
+      )}
+      {pieceVersion &&
+        (selectedStep.type === FlowActionType.PIECE ||
+          selectedStep.type === FlowTriggerType.PIECE) && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xsm text-gray-12">{t('Piece Version')}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-11">v{pieceVersion}</span>
+              {!readonly && (
+                <UpdatePieceVersionDialog
+                  step={selectedStep}
+                  currentVersion={pieceVersion}
+                />
+              )}
+            </div>
           </div>
         )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative flex-1 min-h-0 flex flex-col w-full">
-      <div
-        className={cn('min-h-0', isStepDataPanelOpen ? 'h-[40%]' : 'flex-1')}
-      >
-        {settingsForm}
-      </div>
-      {showTestPanel && !isStepDataPanelOpen && (
-        <div className="shrink-0">
-          <TestStepCTAButton />
-        </div>
-      )}
-      {testPanelHost && (
-        <div
-          className={cn(
-            'absolute bottom-0 left-0 right-0 h-0 transition-all z-50',
-            {
-              'h-[60%]': isStepDataPanelOpen,
-            },
-          )}
-        >
-          {testPanelHost}
-        </div>
-      )}
     </div>
   );
 };
+StepSettingsTab.displayName = 'StepSettingsTab';
 
-type PieceVersionInHeaderProps = {
-  step: FlowAction | FlowTrigger;
-  pieceVersion: string;
-  readonly: boolean;
-};
+function useHasStepSettingsTab(): boolean {
+  const { selectedStep } = useStepSettingsContext();
+  const { stepMetadata } = stepsHooks.useStepMetadata({
+    step: selectedStep,
+  });
+  return (
+    getErrorHandlingVisibility({ step: selectedStep, stepMetadata }).show ||
+    !isNil(getPieceVersion({ step: selectedStep, stepMetadata }))
+  );
+}
 
-const PieceVersionInHeader = ({
+function getErrorHandlingVisibility({
   step,
-  pieceVersion,
-  readonly,
-}: PieceVersionInHeaderProps) => {
-  const exactVersion = flowPieceUtil.getExactVersion(pieceVersion);
-  const showSwitcher =
-    !readonly &&
-    (step.type === FlowActionType.PIECE || step.type === FlowTriggerType.PIECE);
+  stepMetadata,
+}: {
+  step: FlowAction | FlowTrigger;
+  stepMetadata: StepMetadata | undefined;
+}): ErrorHandlingVisibility {
+  const hidden: ErrorHandlingVisibility = {
+    show: false,
+    hideContinueOnFailure: true,
+    hideRetryOnFailure: true,
+  };
+  if (isNil(stepMetadata)) {
+    return hidden;
+  }
+  if (step.type === FlowActionType.CODE) {
+    return {
+      show: true,
+      hideContinueOnFailure: false,
+      hideRetryOnFailure: false,
+    };
+  }
+  if (step.type !== FlowActionType.PIECE) {
+    return hidden;
+  }
+  const options =
+    stepMetadata.type === FlowActionType.PIECE
+      ? stepMetadata.errorHandlingOptions
+      : undefined;
+  const hideContinueOnFailure = options?.continueOnFailure?.hide ?? false;
+  const hideRetryOnFailure = options?.retryOnFailure?.hide ?? false;
+  return {
+    show: !hideContinueOnFailure || !hideRetryOnFailure,
+    hideContinueOnFailure,
+    hideRetryOnFailure,
+  };
+}
+
+function getPieceVersion({
+  step,
+  stepMetadata,
+}: {
+  step: FlowAction | FlowTrigger;
+  stepMetadata: StepMetadata | undefined;
+}): string | null {
+  if (
+    step.type !== FlowActionType.PIECE &&
+    step.type !== FlowTriggerType.PIECE
+  ) {
+    return null;
+  }
+  if (!isPieceMetadata(stepMetadata) || !stepMetadata.pieceVersion) {
+    return null;
+  }
+  return flowPieceUtil.getExactVersion(stepMetadata.pieceVersion);
+}
+
+function isRunAgentStep(step: FlowAction | FlowTrigger): boolean {
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      <span className="text-xs text-gray-11">v{exactVersion}</span>
-      {showSwitcher && (
-        <UpdatePieceVersionDialog step={step} currentVersion={exactVersion} />
-      )}
-    </div>
+    step.settings.pieceName === '@activepieces/piece-ai' &&
+    step.settings.actionName === 'run_agent'
   );
-};
+}
 
 const isFlowActionStep = (step: FlowAction | FlowTrigger): step is FlowAction =>
   flowStructureUtil.isAction(step.type);
@@ -485,3 +332,20 @@ const isPieceMetadata = (
 ): metadata is PieceStepMetadata =>
   metadata?.type === FlowActionType.PIECE ||
   metadata?.type === FlowTriggerType.PIECE;
+
+export {
+  StepSettingsForm,
+  StepParametersTab,
+  StepSettingsTab,
+  useHasStepSettingsTab,
+};
+
+export const stepSettingsUtils = {
+  isRunAgentStep,
+};
+
+type ErrorHandlingVisibility = {
+  show: boolean;
+  hideContinueOnFailure: boolean;
+  hideRetryOnFailure: boolean;
+};

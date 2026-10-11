@@ -47,8 +47,10 @@ const StepNavigationButtons = () => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="hover:bg-gray-3"
               disabled={prevDisabled}
               onClick={() =>
                 !prevDisabled && prevStep && selectStepByName(prevStep.name)
@@ -63,8 +65,10 @@ const StepNavigationButtons = () => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="hover:bg-gray-3"
               disabled={nextDisabled}
               onClick={() =>
                 !nextDisabled && nextStep && selectStepByName(nextStep.name)

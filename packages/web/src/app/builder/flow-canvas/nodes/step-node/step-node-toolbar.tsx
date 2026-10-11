@@ -28,16 +28,14 @@ const StepNodeToolbar = ({ step }: { step: Step }) => {
     applyOperation,
     selectedStep,
     exitStepSettings,
-    selectStepByName,
-    requestStepTest,
+    openStepModal,
     isBeingTested,
   ] = useBuilderStateContext((state) => [
     state.flowVersion,
     state.applyOperation,
     state.selectedStep,
     state.exitStepSettings,
-    state.selectStepByName,
-    state.requestStepTest,
+    state.openStepModal,
     state.isStepBeingTested(step.name),
   ]);
   const isAction = flowStructureUtil.isAction(step.type);
@@ -60,10 +58,9 @@ const StepNodeToolbar = ({ step }: { step: Step }) => {
               testDisabled ? t('Fill in the required fields first') : undefined
             }
             disabled={testDisabled}
-            onClick={() => {
-              selectStepByName(step.name);
-              requestStepTest(step.name);
-            }}
+            onClick={() =>
+              openStepModal({ stepName: step.name, runTest: true })
+            }
           />
         )}
         {isAction && (

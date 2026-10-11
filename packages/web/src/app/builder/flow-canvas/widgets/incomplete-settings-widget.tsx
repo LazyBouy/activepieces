@@ -15,12 +15,14 @@ import { flowCanvasUtils } from '../utils/flow-canvas-utils';
 type IncompleteSettingsButtonProps = {
   flowVersion: FlowVersion;
   selectStepByName: BuilderState['selectStepByName'];
+  openStepModal: BuilderState['openStepModal'];
   setOpenedPieceSelectorStepNameOrAddButtonId: BuilderState['setOpenedPieceSelectorStepNameOrAddButtonId'];
 };
 
 const IncompleteSettingsButton: React.FC<IncompleteSettingsButtonProps> = ({
   flowVersion,
   selectStepByName,
+  openStepModal,
   setOpenedPieceSelectorStepNameOrAddButtonId,
 }) => {
   const invalidStepCount = useMemo(
@@ -32,9 +34,11 @@ const IncompleteSettingsButton: React.FC<IncompleteSettingsButtonProps> = ({
     const invalidSteps = getInvalidSteps(flowVersion);
     if (invalidSteps.length > 0) {
       const stepToFocus = invalidSteps[0];
-      selectStepByName(stepToFocus.name);
       if (stepToFocus.type === FlowTriggerType.EMPTY) {
+        selectStepByName(stepToFocus.name);
         setOpenedPieceSelectorStepNameOrAddButtonId(stepToFocus.name);
+      } else {
+        openStepModal({ stepName: stepToFocus.name });
       }
       fitView(flowCanvasUtils.createFocusStepInGraphParams(stepToFocus.name));
     }

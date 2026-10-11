@@ -16,7 +16,6 @@ import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { flagsHooks } from '@/hooks/flags-hooks';
 
-import { ActionErrorHandlingForm } from '../../piece-properties/action-error-handling';
 import { AdvancedSection } from '../../piece-properties/advanced-section';
 import { filterPropertyUtils } from '../../piece-properties/filter-property-utils';
 import { GenericPropertiesForm } from '../../piece-properties/generic-properties-form';
@@ -105,15 +104,6 @@ const PieceSettings = React.memo((props: PieceSettingsProps) => {
     isFilterBuilder: hasFilterBuilderLayout(selectedTrigger?.propertyGroups),
   });
 
-  const hideContinueOnFailure =
-    selectedAction?.errorHandlingOptions?.continueOnFailure?.hide ?? false;
-  const hideRetryOnFailure =
-    selectedAction?.errorHandlingOptions?.retryOnFailure?.hide ?? false;
-  const errorHandlingItemsCount =
-    selectedAction !== undefined
-      ? (hideContinueOnFailure ? 0 : 1) + (hideRetryOnFailure ? 0 : 1)
-      : 0;
-
   const actionAdvancedCount = Object.keys(actionSplit.advanced).length;
   const triggerAdvancedCount = Object.keys(triggerSplit.advanced).length;
 
@@ -191,13 +181,6 @@ const PieceSettings = React.memo((props: PieceSettingsProps) => {
                   }}
                 ></GenericPropertiesForm>
               </AdvancedSection>
-              {errorHandlingItemsCount > 0 && (
-                <ActionErrorHandlingForm
-                  hideContinueOnFailure={hideContinueOnFailure}
-                  hideRetryOnFailure={hideRetryOnFailure}
-                  disabled={props.readonly}
-                />
-              )}
             </>
           )}
           {selectedTrigger && (

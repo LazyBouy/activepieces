@@ -46,8 +46,6 @@ export const FirstTimeTestingSection = ({
             variant="outline"
             size="sm"
             onClick={onSimulateTrigger}
-            keyboardShortcut="G"
-            onKeyboardShortcut={onSimulateTrigger}
             disabled={!isValid || isLoadingDynamicProperties}
             loading={isSaving}
           >
@@ -81,8 +79,6 @@ export const FirstTimeTestingSection = ({
             variant="outline"
             size="sm"
             onClick={onMcpToolTesting}
-            keyboardShortcut="G"
-            onKeyboardShortcut={onMcpToolTesting}
             loading={isTesting}
             disabled={!isValid || isLoadingDynamicProperties}
           >
@@ -100,8 +96,6 @@ export const FirstTimeTestingSection = ({
           variant="outline"
           size="sm"
           onClick={onPollTrigger}
-          keyboardShortcut="G"
-          onKeyboardShortcut={onPollTrigger}
           loading={isTesting}
           disabled={!isValid || isLoadingDynamicProperties}
         >

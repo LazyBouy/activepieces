@@ -1,5 +1,5 @@
 import { isNil } from '@activepieces/core-utils';
-import { FlowTriggerType } from '@activepieces/shared';
+import { FlowTriggerType, flowStructureUtil } from '@activepieces/shared';
 import { StoreApi } from 'zustand';
 
 import { RightSideBarType } from '@/app/builder/types';
@@ -7,47 +7,6 @@ import { flowRunUtils } from '@/features/flow-runs';
 
 import { BuilderState } from '../builder-hooks';
 import { flowCanvasUtils } from '../flow-canvas/utils/flow-canvas-utils';
-
-export type StepDataPanelView = 'drawer' | 'split';
-
-export type CanvasState = {
-  readonly: boolean;
-  hideTestWidget: boolean;
-  rightSidebar: RightSideBarType;
-  selectedStep: string | null;
-  selectedBranchIndex: number | null;
-  userManuallySelectedStepDuringRun: boolean;
-  setSelectedBranchIndex: (index: number | null) => void;
-  exitStepSettings: () => void;
-  renameFlowClientSide: (newName: string) => void;
-  setRightSidebar: (rightSidebar: RightSideBarType) => void;
-  removeStepSelection: () => void;
-  selectStepByName: (
-    stepName: string,
-    options?: { fromAutoFocus?: boolean },
-  ) => void;
-  resumeLiveFollow: () => void;
-  setReadOnly: (readOnly: boolean) => void;
-  selectedNodes: string[];
-  setSelectedNodes: (nodes: string[]) => void;
-  isFocusInsideListMapperModeInput: boolean;
-  setIsFocusInsideListMapperModeInput: (
-    isFocusInsideListMapperModeInput: boolean,
-  ) => void;
-  deselectStep: () => void;
-  stepDataPanelView: StepDataPanelView;
-  setStepDataPanelView: (view: StepDataPanelView) => void;
-  isStepDataPanelOpen: boolean;
-  setStepDataPanelOpen: (open: boolean) => void;
-  stepTestRequest: string | null;
-  requestStepTest: (stepName: string) => void;
-  clearStepTestRequest: () => void;
-};
-
-type CanvasStateInitialState = Pick<
-  BuilderState,
-  'readonly' | 'hideTestWidget' | 'run' | 'flowVersion'
->;
 
 export const createCanvasState = (
   initialState: CanvasStateInitialState,
@@ -63,24 +22,19 @@ export const createCanvasState = (
     failedStepNameInRun,
     initialState.flowVersion,
   );
-  const isEmptyTriggerInitiallySelected =
-    initiallySelectedStep === 'trigger' &&
-    initialState.flowVersion.trigger.type === FlowTriggerType.EMPTY;
   return {
     readonly: initialState.readonly,
     hideTestWidget: initialState.hideTestWidget ?? false,
     selectedStep: initiallySelectedStep,
-    rightSidebar:
-      initiallySelectedStep && !isEmptyTriggerInitiallySelected
-        ? RightSideBarType.PIECE_SETTINGS
-        : RightSideBarType.NONE,
+    rightSidebar: RightSideBarType.NONE,
+    isStepModalOpen: false,
+    stepModalEditNameOnOpen: false,
     removeStepSelection: () =>
       set({
         selectedStep: null,
-        rightSidebar: RightSideBarType.NONE,
         selectedBranchIndex: null,
+        isStepModalOpen: false,
       }),
-
     setSelectedBranchIndex: (branchIndex: number | null) =>
       set({
         selectedBranchIndex: branchIndex,
@@ -101,35 +55,55 @@ export const createCanvasState = (
       options?: { fromAutoFocus?: boolean },
     ) => {
       set((state) => {
-        const selectedNodes = isNil(selectedStep) ? [] : [selectedStep];
-        const rightSidebar =
+        const isEmptyTrigger =
           selectedStep === 'trigger' &&
-          state.flowVersion.trigger.type === FlowTriggerType.EMPTY
-            ? RightSideBarType.NONE
-            : RightSideBarType.PIECE_SETTINGS;
-
-        const userPickedDifferentStepDuringRun =
-          !options?.fromAutoFocus &&
-          !isNil(state.run) &&
-          state.selectedStep !== selectedStep;
-
+          state.flowVersion.trigger.type === FlowTriggerType.EMPTY;
         return {
-          openedPieceSelectorStepNameOrAddButtonId: null,
-          stepTestRequest:
-            state.stepTestRequest === selectedStep
-              ? state.stepTestRequest
-              : null,
-          selectedStep,
-          rightSidebar,
-          selectedBranchIndex: null,
-          selectedNodes,
-          chatDrawerOpenSource: null,
-          userManuallySelectedStepDuringRun:
-            state.userManuallySelectedStepDuringRun ||
-            userPickedDifferentStepDuringRun,
+          ...buildSelectionChanges({
+            state,
+            stepName: selectedStep,
+            fromAutoFocus: options?.fromAutoFocus ?? false,
+          }),
+          isStepModalOpen: state.isStepModalOpen && !isEmptyTrigger,
+          stepModalEditNameOnOpen: false,
         };
       });
     },
+    openStepModal: ({
+      stepName,
+      branchIndex = null,
+      editName = false,
+      runTest = false,
+    }) => {
+      set((state) => {
+        const step = flowStructureUtil.getStep(
+          stepName,
+          state.flowVersion.trigger,
+        );
+        if (isNil(step) || step.type === FlowTriggerType.EMPTY) {
+          return {};
+        }
+        return {
+          ...buildSelectionChanges({
+            state,
+            stepName,
+            fromAutoFocus: false,
+          }),
+          selectedBranchIndex: branchIndex,
+          isStepModalOpen: true,
+          stepModalEditNameOnOpen: editName,
+          stepTestRequest: runTest ? stepName : null,
+          userManuallySelectedStepDuringRun:
+            state.userManuallySelectedStepDuringRun || !isNil(state.run),
+        };
+      });
+    },
+    closeStepModal: () =>
+      set({
+        isStepModalOpen: false,
+        stepModalEditNameOnOpen: false,
+        stepTestRequest: null,
+      }),
     resumeLiveFollow: () =>
       set((state) => {
         if (isNil(state.run) || isNil(state.run.steps)) {
@@ -146,9 +120,9 @@ export const createCanvasState = (
     userManuallySelectedStepDuringRun: false,
     exitStepSettings: () =>
       set(() => ({
-        rightSidebar: RightSideBarType.NONE,
         selectedStep: null,
         selectedBranchIndex: null,
+        isStepModalOpen: false,
       })),
     setRightSidebar: (rightSidebar: RightSideBarType) => set({ rightSidebar }),
     selectedBranchIndex: null,
@@ -160,9 +134,9 @@ export const createCanvasState = (
     },
     deselectStep: () => {
       return set(() => ({
-        rightSidebar: RightSideBarType.NONE,
         selectedBranchIndex: null,
         selectedStep: null,
+        isStepModalOpen: false,
       }));
     },
     isFocusInsideListMapperModeInput: false,
@@ -173,39 +147,77 @@ export const createCanvasState = (
         isFocusInsideListMapperModeInput,
       }));
     },
-    stepDataPanelView: getStepDataPanelViewFromLocalStorage(),
-    setStepDataPanelView: (view: StepDataPanelView) => {
-      localStorage.setItem(STEP_DATA_PANEL_VIEW_KEY_IN_LOCAL_STORAGE, view);
-      return set(() => ({
-        stepDataPanelView: view,
-      }));
-    },
-    isStepDataPanelOpen:
-      getTestPanelOpenFromLocalStorage() || !isNil(initialState.run),
-    setStepDataPanelOpen: (open: boolean) => {
-      localStorage.setItem(
-        TEST_PANEL_OPEN_KEY_IN_LOCAL_STORAGE,
-        open ? 'open' : 'closed',
-      );
-      return set(() => ({
-        isStepDataPanelOpen: open,
-      }));
-    },
     stepTestRequest: null,
-    requestStepTest: (stepName: string) => set({ stepTestRequest: stepName }),
     clearStepTestRequest: () => set({ stepTestRequest: null }),
   };
 };
 
-const STEP_DATA_PANEL_VIEW_KEY_IN_LOCAL_STORAGE = 'ap.builder.testPanelView';
-function getStepDataPanelViewFromLocalStorage(): StepDataPanelView {
-  return localStorage.getItem(STEP_DATA_PANEL_VIEW_KEY_IN_LOCAL_STORAGE) ===
-    'split'
-    ? 'split'
-    : 'drawer';
+function buildSelectionChanges({
+  state,
+  stepName,
+  fromAutoFocus,
+}: {
+  state: BuilderState;
+  stepName: string;
+  fromAutoFocus: boolean;
+}): Partial<BuilderState> {
+  const userPickedDifferentStepDuringRun =
+    !fromAutoFocus && !isNil(state.run) && state.selectedStep !== stepName;
+  return {
+    openedPieceSelectorStepNameOrAddButtonId: null,
+    stepTestRequest:
+      state.stepTestRequest === stepName ? state.stepTestRequest : null,
+    selectedStep: stepName,
+    selectedBranchIndex: null,
+    selectedNodes: [stepName],
+    chatDrawerOpenSource: null,
+    userManuallySelectedStepDuringRun:
+      state.userManuallySelectedStepDuringRun ||
+      userPickedDifferentStepDuringRun,
+  };
 }
 
-const TEST_PANEL_OPEN_KEY_IN_LOCAL_STORAGE = 'ap.builder.testPanelOpen';
-function getTestPanelOpenFromLocalStorage(): boolean {
-  return localStorage.getItem(TEST_PANEL_OPEN_KEY_IN_LOCAL_STORAGE) === 'open';
-}
+export type CanvasState = {
+  readonly: boolean;
+  hideTestWidget: boolean;
+  rightSidebar: RightSideBarType;
+  selectedStep: string | null;
+  selectedBranchIndex: number | null;
+  userManuallySelectedStepDuringRun: boolean;
+  isStepModalOpen: boolean;
+  stepModalEditNameOnOpen: boolean;
+  setSelectedBranchIndex: (index: number | null) => void;
+  exitStepSettings: () => void;
+  renameFlowClientSide: (newName: string) => void;
+  setRightSidebar: (rightSidebar: RightSideBarType) => void;
+  removeStepSelection: () => void;
+  selectStepByName: (
+    stepName: string,
+    options?: { fromAutoFocus?: boolean },
+  ) => void;
+  openStepModal: (params: OpenStepModalParams) => void;
+  closeStepModal: () => void;
+  resumeLiveFollow: () => void;
+  setReadOnly: (readOnly: boolean) => void;
+  selectedNodes: string[];
+  setSelectedNodes: (nodes: string[]) => void;
+  isFocusInsideListMapperModeInput: boolean;
+  setIsFocusInsideListMapperModeInput: (
+    isFocusInsideListMapperModeInput: boolean,
+  ) => void;
+  deselectStep: () => void;
+  stepTestRequest: string | null;
+  clearStepTestRequest: () => void;
+};
+
+export type OpenStepModalParams = {
+  stepName: string;
+  branchIndex?: number | null;
+  editName?: boolean;
+  runTest?: boolean;
+};
+
+type CanvasStateInitialState = Pick<
+  BuilderState,
+  'readonly' | 'hideTestWidget' | 'run' | 'flowVersion'
+>;

@@ -486,6 +486,7 @@ function selectArrayTreeKind(
 
 export const schemaTreeUtils = {
   buildTreeFromSchema,
+  buildSampleValueNode,
   buildTreeFromArray,
   buildTreeFromArrayWithSchema,
   selectArrayTreeKind,

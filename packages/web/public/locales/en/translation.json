@@ -3445,5 +3445,10 @@
   "Updated {time}": "Updated {time}",
   "Created {date}": "Created {date}",
   "Clear selection": "Clear selection",
-  "Sort": "Sort"
+  "Sort": "Sort",
+  "Schema": "Schema",
+  "Run a test": "Run a test",
+  "Iteration {index} of {total}": "Iteration {index} of {total}",
+  "Move columns": "Move columns",
+  "Resize columns": "Resize columns"
 }

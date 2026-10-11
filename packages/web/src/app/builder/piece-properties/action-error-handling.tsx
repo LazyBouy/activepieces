@@ -18,6 +18,7 @@ type ActionErrorHandlingFormProps = {
   hideContinueOnFailure?: boolean;
   hideRetryOnFailure?: boolean;
   disabled: boolean;
+  className?: string;
 };
 
 const ActionErrorHandlingForm = React.memo(
@@ -25,6 +26,7 @@ const ActionErrorHandlingForm = React.memo(
     hideContinueOnFailure,
     hideRetryOnFailure,
     disabled,
+    className,
   }: ActionErrorHandlingFormProps) => {
     const form = useFormContext<FlowAction | FlowTrigger>();
 
@@ -37,11 +39,12 @@ const ActionErrorHandlingForm = React.memo(
         className={cn(
           'flex flex-col border-t border-gray-6 pt-4',
           GAP_SIZE_FOR_STEP_SETTINGS,
+          className,
         )}
       >
         <div className="flex items-center gap-2 text-gray-11">
           <ShieldAlert className="size-4" />
-          <span className="text-[13px] font-semibold tracking-[-0.005em] text-gray-11">
+          <span className="text-xsm font-semibold text-gray-11">
             {t('Error handling')}
           </span>
         </div>

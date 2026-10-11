@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+import { useStepModalPortalContainer } from '../../../step-modal/step-modal-portal';
+
 import { FunctionTooltipCard } from './function-hover-popover';
 
 const SCREEN_MARGIN = 8;
@@ -37,6 +39,7 @@ export function FunctionSearchPopover({
   docsUrl,
 }: FunctionSearchPopoverProps) {
   const { t } = useTranslation();
+  const portalContainer = useStepModalPortalContainer() ?? document.body;
   const [activeIdx, setActiveIdx] = useState(0);
   const [hoveredFn, setHoveredFn] = useState<ApFunction | null>(null);
   const [hoverItemRect, setHoverItemRect] = useState<DOMRect | null>(null);
@@ -153,7 +156,7 @@ export function FunctionSearchPopover({
         </div>
         {footer}
       </div>,
-      document.body,
+      portalContainer,
     );
   }
 
@@ -169,7 +172,7 @@ export function FunctionSearchPopover({
         </div>
         {footer}
       </div>,
-      document.body,
+      portalContainer,
     );
   }
 
@@ -258,7 +261,7 @@ export function FunctionSearchPopover({
         />
       )}
     </>,
-    document.body,
+    portalContainer,
   );
 }
 

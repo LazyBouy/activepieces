@@ -13,7 +13,6 @@ import {
 import { QueryClient } from '@tanstack/react-query';
 import { StoreApi } from 'zustand';
 
-import { RightSideBarType } from '@/app/builder/types';
 import { flowsApi, sampleDataHooks } from '@/features/flows';
 import {
   PieceSelectorItem,
@@ -276,9 +275,6 @@ export const createFlowState = (
     ) => {
       const initiallySelectedStep =
         flowCanvasUtils.determineInitiallySelectedStep(null, flowVersion);
-      const isEmptyTriggerInitiallySelected =
-        initiallySelectedStep === 'trigger' &&
-        flowVersion.trigger.type === FlowTriggerType.EMPTY;
       set((state) => ({
         flowVersion,
         run: null,
@@ -288,10 +284,7 @@ export const createFlowState = (
         readonly:
           state.flow.publishedVersionId !== flowVersion.id &&
           flowVersion.state === FlowVersionState.LOCKED,
-        rightSidebar:
-          initiallySelectedStep && !isEmptyTriggerInitiallySelected
-            ? RightSideBarType.PIECE_SETTINGS
-            : RightSideBarType.NONE,
+        isStepModalOpen: false,
         selectedBranchIndex: null,
       }));
     },
@@ -325,7 +318,7 @@ export const createFlowState = (
     }): string => {
       const {
         applyOperation,
-        selectStepByName,
+        openStepModal,
         flowVersion,
         setOpenedPieceSelectorStepNameOrAddButtonId,
         removeStepTestListener,
@@ -347,18 +340,11 @@ export const createFlowState = (
           if (!isTrigger) {
             break;
           }
-          if (flowVersion.trigger.type === FlowTriggerType.EMPTY) {
-            set(() => {
-              return {
-                rightSidebar: RightSideBarType.PIECE_SETTINGS,
-              };
-            });
-          }
           applyOperation({
             type: FlowOperationType.UPDATE_TRIGGER,
             request: defaultValues,
           });
-          selectStepByName('trigger');
+          openStepModal({ stepName: 'trigger' });
           applyOperation({
             type: FlowOperationType.UPDATE_SAMPLE_DATA_INFO,
             request: {
@@ -382,7 +368,7 @@ export const createFlowState = (
             },
           });
           if (selectStepAfter) {
-            selectStepByName(defaultValues.name);
+            openStepModal({ stepName: defaultValues.name });
           }
           break;
         }
@@ -424,6 +410,9 @@ export const createFlowState = (
             },
           });
           removeStepTestListener(operation.stepName);
+          if (selectStepAfter) {
+            openStepModal({ stepName: operation.stepName });
+          }
           break;
         }
       }

@@ -74,14 +74,21 @@ const RouterBranchLabel = ({
   style: React.CSSProperties;
   outputId: string;
 }) => {
-  const [step, applyOperation, readonly, selectStepByName, setBranchIndex] =
-    useBuilderStateContext((state) => [
-      flowStructureUtil.getStep(stepName, state.flowVersion.trigger),
-      state.applyOperation,
-      state.readonly,
-      state.selectStepByName,
-      state.setSelectedBranchIndex,
-    ]);
+  const [
+    step,
+    applyOperation,
+    readonly,
+    selectStepByName,
+    setBranchIndex,
+    openStepModal,
+  ] = useBuilderStateContext((state) => [
+    flowStructureUtil.getStep(stepName, state.flowVersion.trigger),
+    state.applyOperation,
+    state.readonly,
+    state.selectStepByName,
+    state.setSelectedBranchIndex,
+    state.openStepModal,
+  ]);
   const { fitView } = useReactFlow();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const branchCount =
@@ -91,8 +98,7 @@ const RouterBranchLabel = ({
   const hasMenu = !isFallback && !readonly;
   const selectBranch = () => {
     setIsMenuOpen(false);
-    selectStepByName(stepName);
-    setBranchIndex(branchIndex);
+    openStepModal({ stepName, branchIndex });
     fitView(flowCanvasUtils.createFocusStepInGraphParams(stepName));
   };
   const label = (

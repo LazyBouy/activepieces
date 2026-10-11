@@ -2,6 +2,11 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import * as React from 'react';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const segmentedControlVariants = cva(
@@ -59,24 +64,42 @@ function SegmentedControl({
       className={cn(segmentedControlVariants({ size }), className)}
       {...props}
     >
-      {items.map((item) => (
-        <RadioGroupPrimitive.Item
-          key={item.value}
-          data-slot="segmented-control-item"
-          value={item.value}
-          disabled={item.disabled}
-          className={cn(
-            segmentVariants({ size, iconOnly: item.iconOnly ?? false }),
-          )}
-        >
-          {item.icon}
-          {item.iconOnly ? (
-            <span className="sr-only">{item.label}</span>
-          ) : (
-            item.label
-          )}
-        </RadioGroupPrimitive.Item>
-      ))}
+      {items.map((item) => {
+        const segment = (
+          <RadioGroupPrimitive.Item
+            key={item.value}
+            data-slot="segmented-control-item"
+            value={item.value}
+            disabled={item.disabled}
+            className={cn(
+              segmentVariants({ size, iconOnly: item.iconOnly ?? false }),
+            )}
+          >
+            {item.icon}
+            {item.iconOnly ? (
+              <span className="sr-only">{item.label}</span>
+            ) : (
+              item.label
+            )}
+          </RadioGroupPrimitive.Item>
+        );
+        if (!item.tooltip) {
+          return segment;
+        }
+        return (
+          <Tooltip key={item.value}>
+            <TooltipTrigger asChild>
+              <span
+                data-slot="segmented-control-tooltip"
+                className={cn('flex', { 'flex-1': !item.iconOnly })}
+              >
+                {segment}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{item.tooltip}</TooltipContent>
+          </Tooltip>
+        );
+      })}
     </RadioGroupPrimitive.Root>
   );
 }
@@ -90,6 +113,7 @@ type SegmentedControlItem = {
   icon?: React.ReactNode;
   disabled?: boolean;
   iconOnly?: boolean;
+  tooltip?: React.ReactNode;
 };
 
 type SegmentedControlProps = Omit<

@@ -10,11 +10,13 @@ const CanvasTestBar = React.memo(() => {
   const [
     flowVersion,
     selectStepByName,
+    openStepModal,
     readonly,
     setOpenedPieceSelectorStepNameOrAddButtonId,
   ] = useBuilderStateContext((state) => [
     state.flowVersion,
     state.selectStepByName,
+    state.openStepModal,
     state.readonly,
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
   ]);
@@ -28,6 +30,7 @@ const CanvasTestBar = React.memo(() => {
         <IncompleteSettingsButton
           flowVersion={flowVersion}
           selectStepByName={selectStepByName}
+          openStepModal={openStepModal}
           setOpenedPieceSelectorStepNameOrAddButtonId={
             setOpenedPieceSelectorStepNameOrAddButtonId
           }

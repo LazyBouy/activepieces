@@ -25,7 +25,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { formUtils } from '@/features/pieces';
-import { cn } from '@/lib/utils';
 
 import { ArrayPiecePropertyInInlineItemMode } from './array-property-in-inline-item-mode';
 import { DynamicValueToggleButton } from './dynamic-value-toggle-button';
@@ -55,32 +54,37 @@ function AutoFormFieldWrapper({
       property={property ?? null}
       dynamicInputModeToggled={dynamicInputModeToggled}
     >
-      <FormItem className="flex flex-col">
+      <FormItem className="group/field flex flex-col">
         {(!hideLabel || placeBeforeLabelText) && (
-          <FormLabel className="flex items-center gap-1 h-7.5 max-h-7.5">
+          <FormLabel className="flex h-6 max-h-6 items-center gap-1 text-xsm font-normal text-gray-12">
             {placeBeforeLabelText && !dynamicInputModeToggled && children}
-            <div className={cn(!placeBeforeLabelText && 'pt-1')}>
+            <div>
               <span>
                 {isAuthProperty ? t('Connection') : property.displayName}
               </span>{' '}
               {(isAuthProperty || property.required) && (
-                <RequiredFieldAsterisk />
+                <RequiredFieldAsterisk className="text-accent-9" />
               )}
             </div>
-            {property && !isAuthProperty && (
-              <PropertyTypeTooltip property={property} />
-            )}
 
             <span className="grow"></span>
-            {allowDynamicValues && (
-              <DynamicValueToggle
-                propertyName={propertyName}
-                inputName={inputName}
-                property={property}
-                disabled={disabled}
-                isToggled={dynamicInputModeToggled ?? false}
-              />
-            )}
+            <span
+              data-field-controls
+              className="flex items-center gap-1 opacity-0 transition-opacity duration-250 ease-[cubic-bezier(0.98,-0.06,0.49,-0.2)] group-focus-within/field:opacity-100 group-focus-within/field:duration-100 group-focus-within/field:ease-cubic-in group-hover/field:opacity-100 group-hover/field:duration-100 group-hover/field:ease-cubic-in"
+            >
+              {property && !isAuthProperty && (
+                <PropertyTypeTooltip property={property} />
+              )}
+              {allowDynamicValues && (
+                <DynamicValueToggle
+                  propertyName={propertyName}
+                  inputName={inputName}
+                  property={property}
+                  disabled={disabled}
+                  isToggled={dynamicInputModeToggled ?? false}
+                />
+              )}
+            </span>
           </FormLabel>
         )}
         {dynamicInputModeToggled && !isArrayProperty && (
@@ -265,10 +269,10 @@ function PropertyTypeTooltip({ property }: { property: PieceProperty }) {
     <Tooltip>
       <TooltipTrigger asChild>
         {property.type === PropertyType.FILE ? (
-          <File className="w-4 h-4 stroke-gray-12/55"></File>
+          <File className="size-3.5 text-gray-11"></File>
         ) : (
           property.type === PropertyType.DATE_TIME && (
-            <Calendar className="w-4 h-4 stroke-gray-12/55"></Calendar>
+            <Calendar className="size-3.5 text-gray-11"></Calendar>
           )
         )}
       </TooltipTrigger>

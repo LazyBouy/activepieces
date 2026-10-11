@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 
+import { useStepModalPortalContainer } from '../../../step-modal/step-modal-portal';
+
 const TOOLTIP_WIDTH = 320;
 const TOOLTIP_GAP = 6;
 const SCREEN_MARGIN = 8;
@@ -226,6 +228,7 @@ export function FunctionTooltipCard({
   onMouseLeave,
 }: FunctionTooltipCardProps) {
   const { t } = useTranslation();
+  const portalContainer = useStepModalPortalContainer() ?? document.body;
   const argNames = parseSyntaxArgs(fnDef.syntax);
 
   const showAbove = !centered && anchorTop > TOOLTIP_MIN_HEIGHT + SCREEN_MARGIN;
@@ -320,7 +323,7 @@ export function FunctionTooltipCard({
         </code>
       </div>
     </div>,
-    document.body,
+    portalContainer,
   );
 }
 

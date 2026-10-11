@@ -33,7 +33,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const GAP_SIZE_FOR_STEP_SETTINGS = 'gap-3';
+export const GAP_SIZE_FOR_STEP_SETTINGS = 'gap-4';
 export const DASHBOARD_CONTENT_PADDING_X =
   'px-[var(--dashboard-gutter-x,1rem)]';
 export const DASHBOARD_PAGE_CONTAINER_CLASS =

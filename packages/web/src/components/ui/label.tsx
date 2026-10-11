@@ -7,8 +7,8 @@ type LabelProps = React.ComponentProps<typeof LabelPrimitive.Root> & {
   showRequiredIndicator?: boolean;
 };
 
-function RequiredFieldAsterisk() {
-  return <span className="text-danger-11">*</span>;
+function RequiredFieldAsterisk({ className }: { className?: string }) {
+  return <span className={cn('text-danger-11', className)}>*</span>;
 }
 
 function Label({

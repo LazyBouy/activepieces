@@ -18,8 +18,6 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
 import { PieceSelector } from '@/app/builder/pieces-selector';
-import { LoopIterationInput } from '@/app/builder/run-details/loop-iteration-input';
-import { RightSideBarType } from '@/app/builder/types';
 import { stepsHooks } from '@/features/pieces';
 import { cn } from '@/lib/utils';
 
@@ -74,6 +72,7 @@ const StepBoxNode = ({
     run,
     loopsIndexes,
     handleStepClick,
+    handleStepDoubleClick,
     handleContextMenu,
   } = useStepInteractions({ stepName, fallbackStep: data.step });
   const { stepMetadata, isLoading } = stepsHooks.useStepMetadata({ step });
@@ -115,6 +114,7 @@ const StepBoxNode = ({
       style={{ width: flowCanvasConsts.NODE_SIZE, height: data.height }}
       className="relative"
       onClick={(e) => handleStepClick(e)}
+      onDoubleClick={(e) => handleStepDoubleClick(e)}
       onContextMenu={handleContextMenu}
       onPointerMove={(e) => setIsHovered(isOverBoxOrToolbar(e.target))}
       onPointerLeave={() => setIsHovered(false)}
@@ -176,7 +176,6 @@ const StepBoxNode = ({
       {visual.corner && <StepNodeCornerIcon corner={visual.corner} />}
       {!isSkipped && <StepNodeSettingsBadges step={step} />}
       {isTrigger && <TriggerWidget boxRef={boxRef} />}
-      <LoopIterationInput stepName={stepName} />
       {data.hasInput && (
         <Handle
           type="target"
@@ -357,7 +356,7 @@ function useStepInteractions({
     selectStepByName,
     setSelectedBranchIndex,
     setOpenedPieceSelectorStepNameOrAddButtonId,
-    isRightSidebarOpen,
+    openStepModal,
   ] = useBuilderStateContext((state) => [
     flowStructureUtil.getStep(stepName, state.flowVersion.trigger) ??
       fallbackStep,
@@ -369,7 +368,7 @@ function useStepInteractions({
     state.selectStepByName,
     state.setSelectedBranchIndex,
     state.setOpenedPieceSelectorStepNameOrAddButtonId,
-    state.rightSidebar !== RightSideBarType.NONE,
+    state.openStepModal,
   ]);
   const handleStepClick = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -381,33 +380,17 @@ function useStepInteractions({
       e.stopPropagation();
     }
   };
+  const handleStepDoubleClick = (
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+  ) => {
+    e.stopPropagation();
+    openStepModal({ stepName });
+  };
   const handleContextMenu = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
   ) => {
     handleStepClick(e, false);
     setOpenedPieceSelectorStepNameOrAddButtonId(null);
-    if (isRightSidebarOpen || !e.nativeEvent.isTrusted) {
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    const target = e.currentTarget;
-    const rect = target.getBoundingClientRect();
-    const relativeX = e.clientX - rect.left;
-    const relativeY = e.clientY - rect.top;
-    setTimeout(() => {
-      const currentRect = target.getBoundingClientRect();
-      target.dispatchEvent(
-        new MouseEvent('contextmenu', {
-          bubbles: true,
-          cancelable: true,
-          clientX: currentRect.left + relativeX,
-          clientY: currentRect.top + relativeY,
-          button: 2,
-          buttons: 2,
-        }),
-      );
-    }, flowCanvasConsts.SIDEBAR_ANIMATION_DURATION + 50);
   };
   return {
     step,
@@ -417,6 +400,7 @@ function useStepInteractions({
     run,
     loopsIndexes,
     handleStepClick,
+    handleStepDoubleClick,
     handleContextMenu,
   };
 }

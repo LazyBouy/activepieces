@@ -30,6 +30,8 @@ export const useHandleKeyPressOnCanvas = () => {
     readonly,
     setDraggedNote,
     tidyUp,
+    isStepModalOpen,
+    openStepModal,
   ] = useBuilderStateContext((state) => [
     state.selectedNodes,
     state.flowVersion,
@@ -39,13 +41,15 @@ export const useHandleKeyPressOnCanvas = () => {
     state.readonly,
     state.setDraggedNote,
     state.tidyUp,
+    state.isStepModalOpen,
+    state.openStepModal,
   ]);
   const { zoomIn, zoomOut, zoomTo } = useReactFlow();
   const fitToView = useFitToView();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (isEditableTarget(e.target)) {
+      if (isStepModalOpen || isEditableTarget(e.target)) {
         return;
       }
       const match = findShortcutMatch(e);
@@ -183,6 +187,28 @@ export const useHandleKeyPressOnCanvas = () => {
           e.preventDefault();
           tidyUp();
         },
+        OpenStepModal: () => {
+          const stepToOpen = getSingleSelectedStep({
+            selectedNodes,
+            selectedStep,
+          });
+          if (isNil(stepToOpen) || isInteractiveTarget(e.target)) {
+            return;
+          }
+          e.preventDefault();
+          openStepModal({ stepName: stepToOpen });
+        },
+        RenameStep: () => {
+          const stepToOpen = getSingleSelectedStep({
+            selectedNodes,
+            selectedStep,
+          });
+          if (isNil(stepToOpen) || isInteractiveTarget(e.target)) {
+            return;
+          }
+          e.preventDefault();
+          openStepModal({ stepName: stepToOpen, editName: !readonly });
+        },
       };
       handlers[match.action]();
     },
@@ -199,6 +225,8 @@ export const useHandleKeyPressOnCanvas = () => {
       zoomIn,
       zoomOut,
       zoomTo,
+      isStepModalOpen,
+      openStepModal,
     ],
   );
 
@@ -207,6 +235,26 @@ export const useHandleKeyPressOnCanvas = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 };
+
+function getSingleSelectedStep({
+  selectedNodes,
+  selectedStep,
+}: {
+  selectedNodes: string[];
+  selectedStep: string | null;
+}): string | null {
+  if (selectedNodes.length > 1) {
+    return null;
+  }
+  return selectedNodes[0] ?? selectedStep;
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('button, a, [role="button"], [role="menuitem"]') !== null
+  );
+}
 
 function matchesShortcut({
   event,
@@ -269,6 +317,8 @@ const CANVAS_SHORTCUT_ACTIONS: CanvasShortcutAction[] = [
   'ZoomOut',
   'AddNote',
   'TidyUp',
+  'OpenStepModal',
+  'RenameStep',
 ];
 
 export const CanvasShortcuts: CanvasShortcutsProps = {
@@ -322,6 +372,14 @@ export const CanvasShortcuts: CanvasShortcutsProps = {
     shortcutCode: 'KeyT',
     withShift: true,
     withAlt: true,
+    requiresCanvasFocus: true,
+  },
+  OpenStepModal: {
+    shortcutKey: 'Enter',
+    requiresCanvasFocus: true,
+  },
+  RenameStep: {
+    shortcutKey: 'F2',
     requiresCanvasFocus: true,
   },
 };

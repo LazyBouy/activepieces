@@ -8,17 +8,29 @@ function propertyPathStarter(stepName: string): string {
   return `${stepName}['output']`;
 }
 
-function appendValuePathToPropertyPath(
-  basePath: string,
-  valuePath: string,
-): string {
-  const segments = pathUtils.parsePath(valuePath);
+function appendSegmentsToPropertyPath({
+  basePath,
+  segments,
+}: {
+  basePath: string;
+  segments: (string | number)[];
+}): string {
   return segments.reduce<string>((acc, segment) => {
     if (typeof segment === 'number') {
       return `${acc}[${segment}]`;
     }
     return `${acc}['${escapeMentionKey(segment)}']`;
   }, basePath);
+}
+
+function appendValuePathToPropertyPath(
+  basePath: string,
+  valuePath: string,
+): string {
+  return appendSegmentsToPropertyPath({
+    basePath,
+    segments: pathUtils.parsePath(valuePath),
+  });
 }
 
 function convertValuePathToPropertyPath(
@@ -33,6 +45,7 @@ function convertValuePathToPropertyPath(
 
 export const pathHelpers = {
   escapeMentionKey,
+  appendSegmentsToPropertyPath,
   appendValuePathToPropertyPath,
   convertValuePathToPropertyPath,
   propertyPathStarter,

@@ -43,7 +43,9 @@ export type CanvasShortcutAction =
   | 'ZoomIn'
   | 'ZoomOut'
   | 'AddNote'
-  | 'TidyUp';
+  | 'TidyUp'
+  | 'OpenStepModal'
+  | 'RenameStep';
 
 export type CanvasShortcutProps = ShortcutProps & {
   shortcutCode?: string;

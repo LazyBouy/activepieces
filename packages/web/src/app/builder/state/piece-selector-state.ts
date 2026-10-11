@@ -1,7 +1,5 @@
-import { FlowTriggerType } from '@activepieces/shared';
 import { StoreApi } from 'zustand';
 
-import { RightSideBarType } from '@/app/builder/types';
 import { StepMetadataWithSuggestions } from '@/features/pieces';
 
 import { BuilderState } from '../builder-hooks';
@@ -27,14 +25,8 @@ export const createPieceSelectorState = (
       stepNameOrAddButtonId: string | null,
     ) => {
       return set((state) => {
-        const isReplacingEmptyTrigger =
-          state.flowVersion.trigger.type === FlowTriggerType.EMPTY &&
-          stepNameOrAddButtonId === 'trigger';
         return {
           openedPieceSelectorStepNameOrAddButtonId: stepNameOrAddButtonId,
-          rightSidebar: isReplacingEmptyTrigger
-            ? RightSideBarType.NONE
-            : state.rightSidebar,
           pendingStepPosition:
             state.pendingStepPosition?.selectorId === stepNameOrAddButtonId
               ? state.pendingStepPosition

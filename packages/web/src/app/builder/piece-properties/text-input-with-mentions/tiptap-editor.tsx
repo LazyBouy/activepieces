@@ -38,6 +38,7 @@ import { authenticationSession } from '@/lib/authentication-session';
 import { cn } from '@/lib/utils';
 
 import { useBuilderStateContext } from '../../builder-hooks';
+import { mappingDropEvent } from '../../step-modal/mapping-drop-event';
 
 import {
   ActiveFunctionInfo,
@@ -259,6 +260,9 @@ export const TiptapEditor = ({
   const setInsertMentionHandler = useBuilderStateContext(
     (state) => state.setInsertMentionHandler,
   );
+  const isMappingDragActive = useBuilderStateContext(
+    (state) => state.mappingDragSource !== null,
+  );
 
   const projectId = authenticationSession.getProjectId();
   const { data: variablesPage } = variablesQueries.useVariables({
@@ -309,15 +313,38 @@ export const TiptapEditor = ({
     setSlashState(INITIAL_SLASH_STATE);
   }, []);
 
-  const insertMention = (propertyPath: string) => {
+  const insertMentionAt = ({
+    propertyPath,
+    position,
+  }: {
+    propertyPath: string;
+    position: MentionInsertPosition;
+  }) => {
     const mentionNode = textMentionUtils.createMentionNodeFromText(
       `{{${propertyPath}}}`,
       steps,
       stepsMetadata,
       variableByName,
     );
-    editorRef.current?.chain().focus().insertContent(mentionNode).run();
+    const chain = editorRef.current?.chain();
+    if (isNil(chain)) {
+      return;
+    }
+    const positioned =
+      position === 'selection'
+        ? chain.focus()
+        : position === 'end'
+        ? chain.focus('end')
+        : chain.focus().setTextSelection(position);
+    positioned.insertContent(mentionNode).run();
   };
+
+  const insertMention = (propertyPath: string) => {
+    insertMentionAt({ propertyPath, position: 'selection' });
+  };
+
+  const insertMentionAtRef = useRef(insertMentionAt);
+  insertMentionAtRef.current = insertMentionAt;
 
   const editor = useEditor({
     editable: !disabled,
@@ -472,8 +499,8 @@ export const TiptapEditor = ({
             : className ??
                 cn(
                   inputClass,
-                  'py-2 h-[unset] block',
-                  minHeightClassName ?? 'min-h-9',
+                  'py-1.5 h-[unset] block rounded-sm',
+                  minHeightClassName ?? 'min-h-8',
                 ),
           textMentionUtils.inputWithMentionsCssClass,
           { 'cursor-not-allowed opacity-50': disabled },
@@ -545,6 +572,31 @@ export const TiptapEditor = ({
   }, [editor]);
 
   useEffect(() => {
+    const wrapper = editorWrapperRef.current;
+    if (!wrapper || !editor || disabled) {
+      return;
+    }
+    const handleMappingDrop = (event: Event) => {
+      const detail = mappingDropEvent.read(event);
+      if (isNil(detail)) {
+        return;
+      }
+      const coordinates = editor.view.posAtCoords({
+        left: detail.clientX,
+        top: detail.clientY,
+      });
+      insertMentionAtRef.current({
+        propertyPath: detail.propertyPath,
+        position: isNil(coordinates) ? 'end' : coordinates.pos,
+      });
+    };
+    wrapper.addEventListener(mappingDropEvent.NAME, handleMappingDrop);
+    return () => {
+      wrapper.removeEventListener(mappingDropEvent.NAME, handleMappingDrop);
+    };
+  }, [editor, disabled]);
+
+  useEffect(() => {
     if (!editor) return;
     setSlashCommandHandler({
       editor,
@@ -578,11 +630,15 @@ export const TiptapEditor = ({
   return (
     <div
       className={cn(
-        'relative w-full',
+        'relative w-full rounded-sm',
         isHtml &&
           'overflow-hidden rounded-md border border-gray-6 bg-transparent transition-[color,box-shadow] focus-within:border-gray-8 focus-within:ring-[1px] focus-within:ring-gray-8/50',
+        {
+          'ap-mapping-droppable': isMappingDragActive && !disabled,
+        },
         wrapperClassName,
       )}
+      {...(disabled ? {} : { [mappingDropEvent.TARGET_ATTRIBUTE]: '' })}
       ref={editorWrapperRef}
     >
       {isHtml && !disabled && <RichTextToolbar editor={editor} />}
@@ -958,3 +1014,5 @@ function flattenSampleData(
 }
 
 export type { TiptapEditorProps };
+
+type MentionInsertPosition = 'selection' | 'end' | number;

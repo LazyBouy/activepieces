@@ -8,13 +8,14 @@ import {
 } from '@activepieces/shared';
 import { t } from 'i18next';
 import { Play } from 'lucide-react';
-import { useContext, useEffect } from 'react';
+import { ComponentProps, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
 import { LoadingSpinner } from '@/components/custom/spinner';
 import { Button } from '@/components/ui/button';
 import { pieceSelectorUtils } from '@/features/pieces';
+import { cn } from '@/lib/utils';
 
 import { DynamicPropertiesContext } from '../piece-properties/dynamic-properties-context';
 
@@ -24,40 +25,34 @@ import {
 } from './test-runner-context';
 import { TestButtonTooltip } from './test-step-tooltip';
 
-const SOFT_PRIMARY_CTA_CLASSES =
-  'w-full justify-center bg-accent-3 enabled:hover:bg-accent-4 enabled:hover:text-accent-11 text-accent-11 border-accent-6';
-
 const TestStepCTAButton = () => {
-  const [selectedStep, flowVersion, setStepDataPanelOpen, run, saving] =
+  const [selectedStep, flowVersion, run, saving, readonly] =
     useBuilderStateContext((state) => [
       state.selectedStep,
       state.flowVersion,
-      state.setStepDataPanelOpen,
       state.run,
       state.saving,
+      state.readonly,
     ]);
 
   const currentStep = selectedStep
     ? flowStructureUtil.getStep(selectedStep, flowVersion.trigger)
     : null;
 
-  if (!currentStep) {
+  if (!currentStep || !isNil(run) || readonly) {
     return null;
   }
 
   const sampleDataExists = !isNil(
     currentStep.settings?.sampleData?.lastTestDate,
   );
-  const onOpenPanel = () => setStepDataPanelOpen(true);
 
   if (isFlowAction(currentStep)) {
     return (
-      <ActionCTAButton
+      <ActionTestButton
         currentStep={currentStep}
         sampleDataExists={sampleDataExists}
-        onOpenPanel={onOpenPanel}
         saving={saving}
-        hasRun={!isNil(run)}
       />
     );
   }
@@ -72,12 +67,10 @@ const TestStepCTAButton = () => {
       return null;
     }
     return (
-      <TriggerCTAButton
+      <TriggerTestButton
         sampleDataExists={sampleDataExists}
         stepIsValid={currentStep.valid !== false}
-        onOpenPanel={onOpenPanel}
         saving={saving}
-        hasRun={!isNil(run)}
       />
     );
   }
@@ -93,172 +86,109 @@ const isPieceTrigger = (
 ): step is Extract<FlowTrigger, { type: FlowTriggerType.PIECE }> =>
   step.type === FlowTriggerType.PIECE;
 
-type ActionCTAButtonProps = {
-  currentStep: FlowAction;
-  sampleDataExists: boolean;
-  onOpenPanel: () => void;
-  saving: boolean;
-  hasRun: boolean;
-};
-
-const ActionCTAButton = ({
+const ActionTestButton = ({
   currentStep,
   sampleDataExists,
-  onOpenPanel,
   saving,
-  hasRun,
-}: ActionCTAButtonProps) => {
+}: ActionTestButtonProps) => {
   const stepIsValid = currentStep.valid !== false;
   const { isLoadingDynamicProperties } = useContext(DynamicPropertiesContext);
   const runner = useActionTestRunner();
   const runnerBusy = runner?.isTesting ?? false;
   useConfigureStepShortcutToast(stepIsValid || runnerBusy);
 
-  const fireTest = () => {
-    onOpenPanel();
-    runner?.fireTest();
-  };
-
-  if (hasRun) {
+  if (runnerBusy) {
     return (
-      <CTAShell>
-        <TestButtonTooltip saving={saving} invalid={false}>
-          <Button
-            variant="outline"
-            onClick={onOpenPanel}
-            disabled={saving}
-            className={SOFT_PRIMARY_CTA_CLASSES}
-            size="sm"
-          >
-            {t('Show Data')}
-          </Button>
-        </TestButtonTooltip>
-      </CTAShell>
+      <HeaderTestButton
+        label={t('Testing...')}
+        testId="test-step-button"
+        testing={true}
+        disabled={false}
+      />
     );
   }
 
-  const testDisabled = saving || !stepIsValid || isLoadingDynamicProperties;
   return (
-    <CTAShell>
-      {sampleDataExists && (
-        <Button
-          variant="outline"
-          onClick={onOpenPanel}
-          disabled={saving}
-          className="w-full justify-center"
-          size="sm"
-        >
-          {t('Show Data')}
-        </Button>
-      )}
-      {runnerBusy ? (
-        <TestInProgressButton
-          label={t('Testing...')}
-          onOpenPanel={onOpenPanel}
-          testId="test-step-button"
-        />
-      ) : (
-        <TestButtonTooltip saving={saving} invalid={!stepIsValid}>
-          <Button
-            variant="outline"
-            onClick={fireTest}
-            disabled={testDisabled}
-            keyboardShortcut="G"
-            onKeyboardShortcut={fireTest}
-            className={SOFT_PRIMARY_CTA_CLASSES}
-            size="sm"
-            data-testid="test-step-button"
-          >
-            <Play className="size-4 fill-current" />
-            {sampleDataExists ? t('Retest Step') : t('Test Step')}
-          </Button>
-        </TestButtonTooltip>
-      )}
-    </CTAShell>
+    <TestButtonTooltip saving={saving} invalid={!stepIsValid}>
+      <HeaderTestButton
+        label={sampleDataExists ? t('Retest Step') : t('Test Step')}
+        testId="test-step-button"
+        testing={false}
+        disabled={saving || !stepIsValid || isLoadingDynamicProperties}
+        onTest={() => runner?.fireTest()}
+      />
+    </TestButtonTooltip>
   );
 };
 
-type TriggerCTAButtonProps = {
-  sampleDataExists: boolean;
-  stepIsValid: boolean;
-  onOpenPanel: () => void;
-  saving: boolean;
-  hasRun: boolean;
-};
-
-const TriggerCTAButton = ({
+const TriggerTestButton = ({
   sampleDataExists,
   stepIsValid,
-  onOpenPanel,
   saving,
-  hasRun,
-}: TriggerCTAButtonProps) => {
+}: TriggerTestButtonProps) => {
   const runner = useTriggerTestRunner();
   const runnerBusy = runner?.isTesting ?? false;
   useConfigureStepShortcutToast(stepIsValid || runnerBusy);
 
-  const fireTest = () => {
-    onOpenPanel();
-    runner?.fireTest();
-  };
-
-  if (hasRun) {
+  if (runnerBusy) {
     return (
-      <CTAShell>
-        <Button
-          variant="outline"
-          onClick={onOpenPanel}
-          disabled={saving}
-          className={SOFT_PRIMARY_CTA_CLASSES}
-          size="sm"
-        >
-          {t('Show Data')}
-        </Button>
-      </CTAShell>
+      <HeaderTestButton
+        label={t('Testing Trigger')}
+        testId="test-trigger-button"
+        testing={true}
+        disabled={false}
+      />
     );
   }
 
   const runnerReady = runner?.canFireTest ?? false;
-  const testDisabled = saving || !runnerReady;
   return (
-    <CTAShell>
-      {sampleDataExists && (
-        <Button
-          variant="outline"
-          onClick={onOpenPanel}
-          disabled={saving}
-          className="w-full justify-center"
-          size="sm"
-        >
-          {t('Show Data')}
-        </Button>
-      )}
-      {runnerBusy ? (
-        <TestInProgressButton
-          label={t('Testing Trigger')}
-          onOpenPanel={onOpenPanel}
-          testId="test-trigger-button"
-        />
-      ) : (
-        <TestButtonTooltip saving={saving} invalid={!stepIsValid}>
-          <Button
-            variant="outline"
-            onClick={fireTest}
-            disabled={testDisabled}
-            keyboardShortcut="G"
-            onKeyboardShortcut={fireTest}
-            className={SOFT_PRIMARY_CTA_CLASSES}
-            size="sm"
-            data-testid="test-trigger-button"
-          >
-            <Play className="size-4 fill-current" />
-            {sampleDataExists ? t('Retest Trigger') : t('Test Trigger')}
-          </Button>
-        </TestButtonTooltip>
-      )}
-    </CTAShell>
+    <TestButtonTooltip saving={saving} invalid={!stepIsValid}>
+      <HeaderTestButton
+        label={sampleDataExists ? t('Retest Trigger') : t('Test Trigger')}
+        testId="test-trigger-button"
+        testing={false}
+        disabled={saving || !runnerReady}
+        onTest={() => runner?.fireTest()}
+      />
+    </TestButtonTooltip>
   );
 };
+
+const HeaderTestButton = ({
+  label,
+  testId,
+  testing,
+  disabled,
+  onTest,
+  className,
+  ...rest
+}: HeaderTestButtonProps) => (
+  <Button
+    {...rest}
+    type="button"
+    size="sm"
+    data-testid={testId}
+    data-testing={testing || undefined}
+    aria-busy={testing || undefined}
+    disabled={disabled}
+    keyboardShortcut="G"
+    keyboardShortcutClassName={SHORTCUT_CHIP_CLASS_NAME}
+    onKeyboardShortcut={testing ? undefined : onTest}
+    onClick={testing ? undefined : onTest}
+    className={cn(
+      'transition-[color,background-color,box-shadow,opacity] duration-200',
+      className,
+    )}
+  >
+    {testing ? (
+      <LoadingSpinner className="size-3 stroke-on-accent" />
+    ) : (
+      <Play className="size-3 fill-current" />
+    )}
+    {label}
+  </Button>
+);
 
 const useConfigureStepShortcutToast = (stepIsValid: boolean) => {
   useEffect(() => {
@@ -275,43 +205,31 @@ const useConfigureStepShortcutToast = (stepIsValid: boolean) => {
   }, [stepIsValid]);
 };
 
-type TestInProgressButtonProps = {
-  label: string;
-  onOpenPanel: () => void;
-  testId: string;
-};
-
-const TestInProgressButton = ({
-  label,
-  onOpenPanel,
-  testId,
-}: TestInProgressButtonProps) => (
-  <Button
-    variant="outline"
-    onClick={onOpenPanel}
-    keyboardShortcut="G"
-    onKeyboardShortcut={onOpenPanel}
-    className={SOFT_PRIMARY_CTA_CLASSES}
-    size="sm"
-    data-testid={testId}
-  >
-    <LoadingSpinner className="size-4 stroke-current" />
-    {label}
-  </Button>
-);
-
-const CTAShell = ({ children }: { children: React.ReactNode }) => (
-  <div
-    data-test-panel-trigger
-    className="relative px-3 py-3 bg-gray-1 z-10 flex flex-col gap-2 shrink-0"
-  >
-    <div
-      aria-hidden
-      className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-gray-1 to-transparent"
-    />
-    {children}
-  </div>
-);
+const SHORTCUT_CHIP_CLASS_NAME =
+  'inline-flex h-4.5 grow-0 items-center rounded-xs bg-on-accent/20 px-1 text-xss tracking-normal text-on-accent';
 
 TestStepCTAButton.displayName = 'TestStepCTAButton';
 export { TestStepCTAButton };
+
+type ActionTestButtonProps = {
+  currentStep: FlowAction;
+  sampleDataExists: boolean;
+  saving: boolean;
+};
+
+type TriggerTestButtonProps = {
+  sampleDataExists: boolean;
+  stepIsValid: boolean;
+  saving: boolean;
+};
+
+type HeaderTestButtonProps = Omit<
+  ComponentProps<typeof Button>,
+  'onClick' | 'disabled'
+> & {
+  label: string;
+  testId: string;
+  testing: boolean;
+  disabled: boolean;
+  onTest?: () => void;
+};

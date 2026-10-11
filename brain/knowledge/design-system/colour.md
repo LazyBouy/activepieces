@@ -161,6 +161,8 @@ the wrapper clips) and `imageClassName` the image. On failure it renders a monog
   once there and referenced by role; where a role equals a step in both themes the variable points at the step.
   The minimap draws every step as a flat `--canvas-minimap-step` block (notes at 20%); it no longer samples logos,
   so the piece-logo tint (`lib/logo-tint.ts`) is the only place colour is sampled from an image.
+  The step modal reads from the same palette: its data panes (`--canvas-data-pane`), schema pills, table lines,
+  the JSON token colours (`--canvas-json-*`) and the violet drag-to-map outlines (`--canvas-mapping-*`).
 - **Older effects** — the `.recurring-chip`, gradient-border and note-scrollbar colours in `styles.css`, and
   the sheen, shimmer and ripple glows in `tag-with-bright.tsx`, `automatic-trial-activation.tsx`,
   `automations-empty-state.tsx` and `theme-provider.tsx`. They predate the scales and read the same in both

@@ -96,6 +96,7 @@ function renderButtonContent({
   variant,
   size,
   keyboardShortcut,
+  keyboardShortcutClassName,
   children,
 }: ButtonContentParams) {
   const content = keyboardShortcut ? (
@@ -104,10 +105,13 @@ function renderButtonContent({
       <Shortcut
         shortcutKey={keyboardShortcut}
         withCtrl={true}
-        className={cn({
-          'text-on-accent/70': variant === 'default',
-          'text-on-danger/70': variant === 'destructive',
-        })}
+        className={cn(
+          {
+            'text-on-accent/70': variant === 'default',
+            'text-on-danger/70': variant === 'destructive',
+          },
+          keyboardShortcutClassName,
+        )}
       />
     </div>
   ) : (
@@ -162,6 +166,7 @@ function Button({
   asChild = false,
   loading = false,
   keyboardShortcut,
+  keyboardShortcutClassName,
   onKeyboardShortcut,
   disabled,
   children,
@@ -202,6 +207,7 @@ function Button({
         variant,
         size,
         keyboardShortcut,
+        keyboardShortcutClassName,
         children,
       })}
     </Comp>
@@ -228,6 +234,7 @@ type ButtonProps = React.ComponentProps<'button'> &
     asChild?: boolean;
     loading?: boolean;
     keyboardShortcut?: string;
+    keyboardShortcutClassName?: string;
     onKeyboardShortcut?: () => void;
   };
 
@@ -237,5 +244,6 @@ type ButtonContentParams = {
   variant: ButtonProps['variant'];
   size: ButtonProps['size'];
   keyboardShortcut: string | undefined;
+  keyboardShortcutClassName: string | undefined;
   children: React.ReactNode;
 };

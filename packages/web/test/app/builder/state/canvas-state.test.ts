@@ -37,7 +37,7 @@ describe('createCanvasState', () => {
     expect(Object.keys(state)).not.toContain('setCanvasOrientation');
   });
 
-  it('records a step test request from the canvas and clears it', () => {
+  it('starts with the step modal closed and clears test requests', () => {
     const set = vi.fn();
     const state = createCanvasState(
       {
@@ -48,9 +48,10 @@ describe('createCanvasState', () => {
       },
       set,
     );
+    expect(state.isStepModalOpen).toBe(false);
     expect(state.stepTestRequest).toBeNull();
-    state.requestStepTest('step_1');
-    expect(set).toHaveBeenLastCalledWith({ stepTestRequest: 'step_1' });
+    expect(Object.keys(state)).not.toContain('isStepDataPanelOpen');
+    expect(Object.keys(state)).not.toContain('stepDataPanelView');
     state.clearStepTestRequest();
     expect(set).toHaveBeenLastCalledWith({ stepTestRequest: null });
   });

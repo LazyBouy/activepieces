@@ -224,6 +224,40 @@ describe('canvas keyboard map', () => {
     vi.clearAllMocks();
   });
 
+  it('opens the step modal for the selected step with Enter', async () => {
+    const { store } = await setup();
+    expect(store.getState().isStepModalOpen).toBe(false);
+    dispatchKeyFrom(document.body, { key: 'Enter' });
+    expect(store.getState().isStepModalOpen).toBe(true);
+    expect(store.getState().selectedStep).toBe('step_1');
+    expect(store.getState().stepModalEditNameOnOpen).toBe(false);
+  });
+
+  it('opens the step modal with the name in edit mode on F2', async () => {
+    const { store } = await setup();
+    dispatchKeyFrom(document.body, { key: 'F2' });
+    expect(store.getState().isStepModalOpen).toBe(true);
+    expect(store.getState().stepModalEditNameOnOpen).toBe(true);
+  });
+
+  it('does not open the step modal from Enter on a button', async () => {
+    const { container, store } = await setup();
+    const button = document.createElement('button');
+    container.appendChild(button);
+    dispatchKeyFrom(button, { key: 'Enter' });
+    expect(store.getState().isStepModalOpen).toBe(false);
+  });
+
+  it('turns canvas shortcuts off while the step modal is open', async () => {
+    const { applyOperation, store } = await setup();
+    await act(async () => {
+      store.getState().openStepModal({ stepName: 'step_1' });
+    });
+    dispatchKeyFrom(document.body, { key: 'd' });
+    dispatchKeyFrom(document.body, { key: 'Delete' });
+    expect(applyOperation).not.toHaveBeenCalled();
+  });
+
   it('skips the selected steps with D', async () => {
     const { applyOperation } = await setup();
     dispatchKeyFrom(document.body, { key: 'd' });
