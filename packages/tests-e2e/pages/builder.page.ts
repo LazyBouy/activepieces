@@ -11,14 +11,24 @@ export class BuilderPage extends BasePage {
   }
 
   async addAction(params: { piece: string; action: string }) {
+    await this.closeStepModal();
     await this.page.getByTestId('add-action-button').click();
-    await this.page.getByTestId('pieces-search-input').fill(params.piece);    
+    await this.page.getByTestId('pieces-search-input').fill(params.piece);
     await this.page.getByTestId(params.piece).click();
-    await this.page.getByText(params.action).nth(1).click();
+    await this.page.getByText(params.action).last().click();
+  }
+
+  async closeStepModal() {
+    const closeButton = this.page.getByTestId('step-modal-close');
+    if (await closeButton.isVisible()) {
+      await closeButton.click();
+      await this.page.getByTestId('step-modal').waitFor({ state: 'hidden' });
+    }
   }
 
   async testFlowAndWaitForSuccess() {
-    await this.page.getByRole('button', { name: 'Test Flow' }).click();
+    await this.closeStepModal();
+    await this.page.getByRole('button', { name: 'Test Flow' }).first().click();
     await this.page.waitForTimeout(1000);
     const runSuccessLocator = this.page.locator('text=Run Succeeded');
     const runSuccessText = await runSuccessLocator.textContent({ timeout: 60000 });
@@ -48,6 +58,7 @@ export class BuilderPage extends BasePage {
   }
 
   async publishFlow() {
+    await this.closeStepModal();
     await this.page.getByRole('button', { name: 'Publish' }).click();
     await this.page.waitForTimeout(15000);
   }

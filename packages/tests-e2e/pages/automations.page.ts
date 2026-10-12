@@ -44,7 +44,7 @@ export class AutomationsPage extends BasePage {
 
   async cleanupExistingAutomations() {
     while (true) {
-      const moreButtons = this.page.locator('button:has(svg.lucide-more-horizontal)');
+      const moreButtons = this.page.locator('button:has(svg.lucide-ellipsis)');
       if (!(await moreButtons.count())) break;
 
       await moreButtons.first().click();
