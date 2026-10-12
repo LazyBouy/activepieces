@@ -10,7 +10,13 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 const post = vi.fn();
-vi.mock('@/lib/api', () => ({ api: { post: () => post() } }));
+const get = vi.fn();
+vi.mock('@/lib/api', () => ({
+  api: {
+    post: (...args: unknown[]) => post(...args),
+    get: (...args: unknown[]) => get(...args),
+  },
+}));
 
 import { piecesApi } from '@/features/pieces/api/pieces-api';
 
@@ -26,9 +32,9 @@ describe('piecesApi.options', () => {
     const failure = new Error('boom');
     post.mockRejectedValue(failure);
 
-    await expect(
-      piecesApi.options(request, PropertyType.DYNAMIC),
-    ).rejects.toBe(failure);
+    await expect(piecesApi.options(request, PropertyType.DYNAMIC)).rejects.toBe(
+      failure,
+    );
   });
 
   it('rejects for DYNAMIC when the engine answers with the dropdown placeholder', async () => {
@@ -97,5 +103,32 @@ describe('piecesApi.options', () => {
     expect(result.type).toBe(PropertyType.DROPDOWN);
     expect(result.options.disabled).toBe(true);
     expect(internalErrorToast).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('piecesApi catalog', () => {
+  beforeEach(() => {
+    post.mockReset();
+    get.mockReset();
+  });
+
+  it('lists the catalog for the given locale', async () => {
+    get.mockResolvedValue([]);
+
+    await expect(piecesApi.catalog({ locale: 'fr' })).resolves.toEqual([]);
+
+    expect(get).toHaveBeenCalledWith('/v1/pieces/catalog', { locale: 'fr' });
+  });
+
+  it('downloads one piece through the sync endpoint by name', async () => {
+    post.mockResolvedValue('');
+
+    await piecesApi.downloadFromCatalog({
+      pieceName: '@activepieces/piece-asana',
+    });
+
+    expect(post).toHaveBeenCalledWith('/v1/pieces/sync', {
+      pieceName: '@activepieces/piece-asana',
+    });
   });
 });

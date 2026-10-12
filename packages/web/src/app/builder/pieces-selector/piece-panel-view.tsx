@@ -1,5 +1,6 @@
 import { isNil } from '@activepieces/core-utils';
-import { ChevronRight } from 'lucide-react';
+import { t } from 'i18next';
+import { ChevronRight, PackagePlus } from 'lucide-react';
 import React, { useEffect, useId, useRef, useState } from 'react';
 
 import { CardListOption } from '@/components/custom/card-list';
@@ -7,11 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { VirtualizedScrollArea } from '@/components/ui/virtualized-scroll-area';
 import {
   PiecesSearchInput,
+  PieceSelectorGroupRow,
   PieceSelectorOperation,
   PieceSelectorTabRow,
 } from '@/features/pieces';
 import { cn } from '@/lib/utils';
 
+import { CatalogPieceRow } from './catalog-piece-row';
 import { GenericActionOrTriggerItem } from './generic-piece-selector-item';
 import { NoResultsFound } from './no-results-found';
 import { PieceCardListItem } from './piece-card-item';
@@ -51,6 +54,12 @@ const PiecePanelView = ({
     const timeout = setTimeout(focusInput);
     return () => clearTimeout(timeout);
   }, [isTop]);
+
+  useEffect(() => {
+    if (isTop && document.activeElement === document.body) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
+  }, [isTop, showList]);
 
   const changeQuery = (nextQuery: string) => {
     setActiveKey(null);
@@ -164,6 +173,26 @@ const PiecePanelView = ({
             {...optionProps}
           />
         );
+      case 'browse-catalog':
+        return (
+          <PieceSelectorGroupRow
+            groupKey="catalog"
+            icon={<PackagePlus />}
+            title={t('Browse more pieces')}
+            description={t(
+              'Download pieces from the catalog when you need them',
+            )}
+            {...optionProps}
+          />
+        );
+      case 'catalog-piece':
+        return (
+          <CatalogPieceRow
+            piece={row.piece}
+            status={row.status}
+            {...optionProps}
+          />
+        );
     }
   };
 
@@ -235,6 +264,7 @@ function estimateRowSize(row: PiecePanelRow | undefined): number {
     case 'category':
       return 36;
     case 'group':
+    case 'browse-catalog':
       return 58;
     default:
       return 64;
@@ -254,6 +284,7 @@ export type PiecePanelViewBaseProps = {
   onPush: (view: PiecePanelViewModel) => void;
   onPop: () => void;
   onClose: () => void;
+  onAnnounce: (message: string) => void;
 };
 
 type PiecePanelViewProps = {

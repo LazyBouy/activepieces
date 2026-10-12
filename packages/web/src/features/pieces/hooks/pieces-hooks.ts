@@ -15,6 +15,7 @@ import {
   FlowTriggerType,
   ApFlagId,
   ApEnvironment,
+  PieceSyncMode,
   SuggestionType,
   TelemetryEventName,
 } from '@activepieces/shared';
@@ -25,6 +26,7 @@ import {
   usePrefetchQuery,
   useQueries,
   useQuery,
+  useQueryClient,
   UseQueryResult,
 } from '@tanstack/react-query';
 import { t } from 'i18next';
@@ -453,6 +455,28 @@ export const piecesHooks = {
       isLoading: query.isLoading,
     };
   },
+  useIsPieceCatalogAvailable: () => {
+    const { data: syncMode } = flagsHooks.useFlag<string>(
+      ApFlagId.PIECES_SYNC_MODE,
+    );
+    return syncMode === PieceSyncMode.OFFICIAL_SELECTED;
+  },
+  usePieceCatalog: () => {
+    const { i18n } = useTranslation();
+    const isAvailable = piecesHooks.useIsPieceCatalogAvailable();
+    const query = useQuery<PieceMetadataModelSummary[], Error>({
+      queryKey: [PIECE_CATALOG_QUERY_KEY, i18n.language],
+      queryFn: () => piecesApi.catalog({ locale: i18n.language }),
+      staleTime: CATALOG_STALE_TIME_MS,
+      enabled: isAvailable,
+    });
+    return {
+      pieces: query.data,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      refetch: query.refetch,
+    };
+  },
   usePieceForEmbeddingConnection: ({
     pieceName,
     connectionExternalId,
@@ -497,6 +521,26 @@ export const piecesMutations = {
       mutationFn: (data: AddPieceRequestBody) => piecesApi.install(data),
       onSuccess,
       onError,
+    });
+  },
+  useDownloadCatalogPiece: () => {
+    const queryClient = useQueryClient();
+    const { i18n } = useTranslation();
+    return useMutation<PieceMetadataModel, Error, { pieceName: string }>({
+      mutationFn: async ({ pieceName }) => {
+        await piecesApi.downloadFromCatalog({ pieceName });
+        return queryClient.fetchQuery(
+          latestPieceQueryOptions({ name: pieceName, language: i18n.language }),
+        );
+      },
+      onSuccess: (_piece, { pieceName }) => {
+        queryClient.setQueriesData<PieceMetadataModelSummary[]>(
+          { queryKey: [PIECE_CATALOG_QUERY_KEY] },
+          (pieces) => pieces?.filter((piece) => piece.name !== pieceName),
+        );
+        return invalidatePieceCaches(queryClient);
+      },
+      onError: () => undefined,
     });
   },
 };
@@ -702,6 +746,8 @@ function piecesQueryOptions({
 }
 
 const SEARCH_RESULTS_STALE_TIME_MS = 5 * 60 * 1000;
+const CATALOG_STALE_TIME_MS = 5 * 60 * 1000;
+const PIECE_CATALOG_QUERY_KEY = 'pieces-catalog';
 const PROJECT_ID_KEY_INDEX = 1;
 
 export const pieceQueryOptions = { latest: latestPieceQueryOptions };

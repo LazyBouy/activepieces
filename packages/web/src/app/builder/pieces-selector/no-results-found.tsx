@@ -8,19 +8,27 @@ import { Button } from '@/components/ui/button';
 import {
   Empty,
   EmptyContent,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
 import { flagsHooks } from '@/hooks/flags-hooks';
 
-const NoResultsFound = ({ message }: { message?: string }) => {
+const NoResultsFound = ({
+  message,
+  onSearchCatalog,
+}: {
+  message?: string;
+  onSearchCatalog?: () => void;
+}) => {
   const { data: showCommunityLinks } = flagsHooks.useFlag<boolean>(
     ApFlagId.SHOW_COMMUNITY,
   );
   const isEmbedding = useEmbedding().embedState.isEmbedded;
   const showRequestPieceButton =
     showCommunityLinks && !isEmbedding && isNil(message);
+  const showCatalogHint = !isNil(onSearchCatalog);
 
   return (
     <Empty
@@ -34,19 +42,36 @@ const NoResultsFound = ({ message }: { message?: string }) => {
         <EmptyTitle className="text-sm font-semibold tracking-normal">
           {message ?? t('No results')}
         </EmptyTitle>
+        {showCatalogHint && (
+          <EmptyDescription className="text-sm text-gray-11">
+            {t('Not here? Search the catalog')}
+          </EmptyDescription>
+        )}
       </EmptyHeader>
-      {showRequestPieceButton && (
-        <EmptyContent>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              window.open(`${feedbackUrl}`, '_blank', 'noopener noreferrer');
-            }}
-          >
-            <MessageSquarePlusIcon className="size-3" />
-            {t('Request Piece')}
-          </Button>
+      {(showCatalogHint || showRequestPieceButton) && (
+        <EmptyContent className="gap-3">
+          {showCatalogHint && (
+            <Button
+              variant="secondary"
+              size="sm"
+              data-piece-panel-search-catalog
+              onClick={onSearchCatalog}
+            >
+              {t('Search the catalog')}
+            </Button>
+          )}
+          {showRequestPieceButton && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                window.open(`${feedbackUrl}`, '_blank', 'noopener noreferrer');
+              }}
+            >
+              <MessageSquarePlusIcon className="size-3" />
+              {t('Request Piece')}
+            </Button>
+          )}
         </EmptyContent>
       )}
     </Empty>

@@ -1,5 +1,9 @@
 import { isNil } from '@activepieces/core-utils';
 import {
+  PieceMetadataModel,
+  PieceMetadataModelSummary,
+} from '@activepieces/pieces-framework';
+import {
   FlowActionType,
   FlowOperationType,
   FlowTriggerType,
@@ -204,6 +208,28 @@ function buildPieceRows({
 
 function buildRootRows({
   tabs,
+  showCatalog = false,
+}: {
+  tabs: ResolvedPieceSelectorTab[];
+  showCatalog?: boolean;
+}): PiecePanelRow[] {
+  const groupRows = buildGroupRows({ tabs });
+  if (!showCatalog) {
+    return groupRows;
+  }
+  const separator: PiecePanelRow[] =
+    groupRows.length > 0
+      ? [{ kind: 'separator', key: 'separator:catalog' }]
+      : [];
+  return [
+    ...groupRows,
+    ...separator,
+    { kind: 'browse-catalog', key: 'catalog:browse' },
+  ];
+}
+
+function buildGroupRows({
+  tabs,
 }: {
   tabs: ResolvedPieceSelectorTab[];
 }): PiecePanelRow[] {
@@ -226,6 +252,83 @@ function buildRootRows({
     { kind: 'separator', key: 'separator:custom-groups' },
     ...customRows,
   ];
+}
+
+function filterCatalogPieces({
+  pieces,
+  stepKind,
+  query,
+}: {
+  pieces: PieceMetadataModelSummary[];
+  stepKind: PiecePanelStepKind;
+  query: string;
+}): PieceMetadataModelSummary[] {
+  return pieces
+    .filter((piece) =>
+      stepKind === 'trigger' ? piece.triggers > 0 : piece.actions > 0,
+    )
+    .filter((piece) =>
+      matchesQuery({ texts: [piece.displayName, piece.description], query }),
+    )
+    .sort((first, second) =>
+      first.displayName.localeCompare(second.displayName),
+    );
+}
+
+function buildCatalogRows({
+  pieces,
+  downloads,
+}: {
+  pieces: PieceMetadataModelSummary[];
+  downloads: CatalogDownloads;
+}): PiecePanelRow[] {
+  return pieces.map((piece) => ({
+    kind: 'catalog-piece',
+    key: `catalog:${piece.name}`,
+    piece,
+    status: downloads[piece.name] ?? 'idle',
+  }));
+}
+
+function setCatalogDownloadStatus({
+  downloads,
+  pieceName,
+  status,
+}: {
+  downloads: CatalogDownloads;
+  pieceName: string;
+  status: CatalogDownloadStatus;
+}): CatalogDownloads {
+  if (status === 'idle') {
+    return Object.fromEntries(
+      Object.entries(downloads).filter(([name]) => name !== pieceName),
+    );
+  }
+  return { ...downloads, [pieceName]: status };
+}
+
+function isCatalogDownloadPending({
+  downloads,
+  pieceName,
+}: {
+  downloads: CatalogDownloads;
+  pieceName: string;
+}): boolean {
+  return downloads[pieceName] === 'downloading';
+}
+
+function toPieceStepMetadata({
+  piece,
+  stepKind,
+}: {
+  piece: PieceMetadataModel;
+  stepKind: PiecePanelStepKind;
+}): PieceStepMetadataWithSuggestions {
+  return {
+    ...stepUtils.mapPieceToMetadata({ piece, type: stepKind }),
+    suggestedActions: Object.values(piece.actions),
+    suggestedTriggers: Object.values(piece.triggers),
+  };
 }
 
 function buildSearchResultRows({
@@ -357,12 +460,19 @@ function isSelectableRow(row: PiecePanelRow): boolean {
     row.kind === 'group' ||
     row.kind === 'category' ||
     row.kind === 'piece' ||
-    row.kind === 'item'
+    row.kind === 'item' ||
+    row.kind === 'browse-catalog' ||
+    row.kind === 'catalog-piece'
   );
 }
 
 function opensSubView(row: PiecePanelRow | undefined): boolean {
-  return !isNil(row) && (row.kind === 'group' || row.kind === 'piece');
+  return (
+    !isNil(row) &&
+    (row.kind === 'group' ||
+      row.kind === 'piece' ||
+      row.kind === 'browse-catalog')
+  );
 }
 
 function getSelectableIndexes(rows: PiecePanelRow[]): number[] {
@@ -443,12 +553,21 @@ function pushView({
   stack,
   view,
   id,
+  parentId,
 }: {
   stack: PiecePanelStackEntry[];
   view: PiecePanelViewModel;
   id: number;
+  parentId?: number;
 }): PiecePanelStackEntry[] {
-  return [...stack, { id, view, query: '' }];
+  if (!isNil(parentId) && stack[stack.length - 1]?.id !== parentId) {
+    return stack;
+  }
+  return [...stack, { id, view, query: getInitialQuery(view) }];
+}
+
+function getInitialQuery(view: PiecePanelViewModel): string {
+  return view.kind === 'catalog' ? view.initialQuery : '';
 }
 
 function popView(stack: PiecePanelStackEntry[]): PiecePanelStackEntry[] {
@@ -484,7 +603,7 @@ function getPanelMode(operation: PieceSelectorOperation): PiecePanelMode {
   }
 }
 
-function getStepKind(operation: PieceSelectorOperation): 'action' | 'trigger' {
+function getStepKind(operation: PieceSelectorOperation): PiecePanelStepKind {
   return operation.type === FlowOperationType.UPDATE_TRIGGER
     ? 'trigger'
     : 'action';
@@ -507,6 +626,11 @@ export const piecePanelUtils = {
   buildItemRows,
   buildPieceRows,
   buildRootRows,
+  filterCatalogPieces,
+  buildCatalogRows,
+  setCatalogDownloadStatus,
+  isCatalogDownloadPending,
+  toPieceStepMetadata,
   buildSearchResultRows,
   buildSectionRows,
   buildCategoryRows,
@@ -551,12 +675,26 @@ export type PiecePanelRow =
       hideLogo: boolean;
       logoUrl: string;
       logoName: string;
+    }
+  | { kind: 'browse-catalog'; key: string }
+  | {
+      kind: 'catalog-piece';
+      key: string;
+      piece: PieceMetadataModelSummary;
+      status: CatalogDownloadStatus;
     };
 
 export type PiecePanelViewModel =
   | { kind: 'root' }
   | { kind: 'group'; tab: ResolvedPieceSelectorTab }
-  | { kind: 'piece'; metadata: PieceStepMetadataWithSuggestions };
+  | { kind: 'piece'; metadata: PieceStepMetadataWithSuggestions }
+  | { kind: 'catalog'; initialQuery: string };
+
+export type CatalogDownloadStatus = 'idle' | 'downloading' | 'failed';
+
+export type CatalogDownloads = Partial<Record<string, CatalogDownloadStatus>>;
+
+export type PiecePanelStepKind = 'action' | 'trigger';
 
 export type PiecePanelStackEntry = {
   id: number;

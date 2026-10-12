@@ -9,28 +9,43 @@ import { ResolvedPieceSelectorTab } from '../utils/piece-selector-customization'
 
 export const PieceSelectorTabRow = ({
   tab,
+  ...optionProps
+}: PieceSelectorTabRowProps) => {
+  return (
+    <PieceSelectorGroupRow
+      groupKey={tab.key}
+      icon={tab.icon}
+      title={tab.name}
+      description={getTabDescription(tab.type)}
+      {...optionProps}
+    />
+  );
+};
+
+export const PieceSelectorGroupRow = ({
+  groupKey,
+  icon,
+  title,
+  description,
   id,
   active,
   hoverEnabled,
   onClick,
-}: PieceSelectorTabRowProps) => {
-  const description = getTabDescription(tab.type);
+}: PieceSelectorGroupRowProps) => {
   return (
     <CardListOption
       id={id}
       active={active}
       hoverEnabled={hoverEnabled}
       onClick={onClick}
-      data-piece-panel-group={tab.key}
+      data-piece-panel-group={groupKey}
       className="min-h-12 gap-4 py-3 pr-2 pl-4"
     >
-      <span className="flex shrink-0 text-gray-11 [&>svg]:size-5">
-        {tab.icon}
-      </span>
+      <span className="flex shrink-0 text-gray-11 [&>svg]:size-5">{icon}</span>
       <div className="flex min-w-0 flex-1 flex-col">
-        <TextWithTooltip tooltipMessage={tab.name}>
+        <TextWithTooltip tooltipMessage={title}>
           <div className="text-sm leading-4.5 font-medium text-gray-12">
-            {tab.name}
+            {title}
           </div>
         </TextWithTooltip>
         {description && (
@@ -62,10 +77,20 @@ function getTabDescription(type: PieceSelectorTabType): string | null {
   }
 }
 
-type PieceSelectorTabRowProps = {
-  tab: ResolvedPieceSelectorTab;
+type PieceSelectorRowOptionProps = {
   id: string;
   active: boolean;
   hoverEnabled: boolean;
   onClick: () => void;
+};
+
+type PieceSelectorTabRowProps = PieceSelectorRowOptionProps & {
+  tab: ResolvedPieceSelectorTab;
+};
+
+type PieceSelectorGroupRowProps = PieceSelectorRowOptionProps & {
+  groupKey: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string | null;
 };

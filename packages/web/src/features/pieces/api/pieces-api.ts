@@ -12,6 +12,7 @@ import {
   GetPieceRequestQuery,
   ListPiecesRequestQuery,
   PackageType,
+  PieceCatalogRequestQuery,
   PieceOptionRequest,
 } from '@activepieces/shared';
 import { t } from 'i18next';
@@ -75,6 +76,16 @@ export const piecesApi = {
   },
   syncFromCloud() {
     return api.post<void>(`/v1/pieces/sync`, {});
+  },
+  catalog({
+    locale,
+  }: PieceCatalogRequestQuery): Promise<PieceMetadataModelSummary[]> {
+    return api.get<PieceMetadataModelSummary[]>('/v1/pieces/catalog', {
+      locale,
+    });
+  },
+  downloadFromCatalog({ pieceName }: { pieceName: string }) {
+    return api.post<void>(`/v1/pieces/sync`, { pieceName });
   },
   async install(params: AddPieceRequestBody) {
     const formData = new FormData();

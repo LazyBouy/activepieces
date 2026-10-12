@@ -141,6 +141,9 @@ export function useActivatePiecePanelRow({
       case 'piece':
         onPush({ kind: 'piece', metadata: row.metadata });
         return;
+      case 'browse-catalog':
+        onPush({ kind: 'catalog', initialQuery: '' });
+        return;
       case 'item':
         pick({ item: row.item, query });
         return;

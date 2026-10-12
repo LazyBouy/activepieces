@@ -32,7 +32,9 @@ import { isEditableTarget } from '@/lib/dom-utils';
 
 import { AITabContent } from './ai-tab-content';
 import { ApprovalsTabContent } from './approvals-tab-content';
+import { CatalogView } from './catalog-view';
 import { ExploreTabContent } from './explore-tab-content';
+import { NoResultsFound } from './no-results-found';
 import {
   PieceActionsOrTriggersList,
   useActivatePiecePanelRow,
@@ -110,13 +112,25 @@ const PiecePanelStack = ({
   const [stack, setStack] = useState<PiecePanelStackEntry[]>(() => [
     { id: 0, view: { kind: 'root' }, query: '' },
   ]);
-  const push = (view: PiecePanelViewModel) => {
+  const [announcement, setAnnouncement] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
+  const push = ({
+    view,
+    parentId,
+  }: {
+    view: PiecePanelViewModel;
+    parentId: number;
+  }) => {
     const id = nextEntryIdRef.current;
     nextEntryIdRef.current += 1;
     setStack((current) =>
-      piecePanelUtils.pushView({ stack: current, view, id }),
+      piecePanelUtils.pushView({ stack: current, view, id, parentId }),
     );
   };
+  const announce = (message: string) =>
+    setAnnouncement((current) => ({ id: (current?.id ?? 0) + 1, message }));
   const pop = () => setStack((current) => piecePanelUtils.popView(current));
   const setQuery = (query: string) =>
     setStack((current) =>
@@ -147,14 +161,25 @@ const PiecePanelStack = ({
                 isTop={isTop}
                 depth={index}
                 onQueryChange={setQuery}
-                onPush={push}
+                onPush={(view) => push({ view, parentId: entry.id })}
                 onPop={pop}
                 onClose={onClose}
+                onAnnounce={announce}
               />
             </motion.div>
           );
         })}
       </AnimatePresence>
+      <div
+        role="status"
+        aria-live="polite"
+        data-piece-panel-announcer
+        className="sr-only"
+      >
+        {announcement && (
+          <span key={announcement.id}>{announcement.message}</span>
+        )}
+      </div>
     </div>
   );
 };
@@ -170,6 +195,8 @@ const PiecePanelEntry = ({
       return (
         <PieceActionsOrTriggersList {...viewProps} metadata={view.metadata} />
       );
+    case 'catalog':
+      return <CatalogView {...viewProps} />;
     case 'group':
       switch (view.tab.type) {
         case PieceSelectorTabType.EXPLORE:
@@ -195,6 +222,7 @@ const RootView = (viewProps: PiecePanelViewBaseProps) => {
       : '',
   );
   const tabs = useRootTabs(operation);
+  const isCatalogAvailable = piecesHooks.useIsPieceCatalogAvailable();
   const searchResults = usePieceSearchResultRows({ query, operation });
   const activateRow = useActivatePiecePanelRow({ operation, query, onPush });
   const isSearching = query !== '';
@@ -211,7 +239,10 @@ const RootView = (viewProps: PiecePanelViewBaseProps) => {
       rows={
         isSearching
           ? searchResults.rows
-          : piecePanelUtils.buildRootRows({ tabs })
+          : piecePanelUtils.buildRootRows({
+              tabs,
+              showCatalog: isCatalogAvailable,
+            })
       }
       isLoading={isSearching && searchResults.isLoading}
       isTop={isTop}
@@ -219,6 +250,15 @@ const RootView = (viewProps: PiecePanelViewBaseProps) => {
       onPop={onPop}
       onClose={viewProps.onClose}
       onActivate={activateRow}
+      emptyState={
+        <NoResultsFound
+          onSearchCatalog={
+            isCatalogAvailable
+              ? () => onPush({ kind: 'catalog', initialQuery: query })
+              : undefined
+          }
+        />
+      }
     />
   );
 };
