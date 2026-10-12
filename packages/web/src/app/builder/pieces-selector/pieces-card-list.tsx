@@ -28,7 +28,10 @@ export const PiecesCardList = ({
     shouldCaptureEvent: false,
     searchQuery: '',
     type: piecePanelUtils.getStepKind(operation),
-    tab: { type: tab.type, customTabId: tab.customTabId ?? null },
+    tab: {
+      type: PieceSelectorTabType.CUSTOM,
+      customTabId: tab.customTabId ?? null,
+    },
   });
   const rows = piecePanelUtils.buildSectionRows({
     categories: piecePanelUtils.filterCategories({ categories, query }),

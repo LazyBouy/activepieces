@@ -11,10 +11,8 @@ import {
   FlowActionType,
   flowPieceUtil,
   PieceOptionRequest,
-  PlatformWithoutSensitiveData,
   FlowTriggerType,
   ApFlagId,
-  ApEnvironment,
   PieceSyncMode,
   SuggestionType,
   TelemetryEventName,
@@ -39,6 +37,10 @@ import { appConnectionsApi } from '@/features/connections/api/app-connections';
 import {
   StepMetadataWithSuggestions,
   CategorizedStepMetadataWithSuggestions,
+  PieceSelectorItem,
+  PieceSelectorSection,
+  PieceSelectorTriggerListKind,
+  PieceSelectorTriggerOption,
 } from '@/features/pieces/types';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
@@ -47,23 +49,13 @@ import { authenticationSession } from '@/lib/authentication-session';
 
 import { piecesApi } from '../api/pieces-api';
 import {
+  PieceSelectorCategoryType,
   PieceSelectorTabType,
-  usePieceSelectorTabs,
 } from '../stores/piece-selector-tabs-provider';
 import { pieceSearchUtils } from '../utils/piece-search-utils';
 import { pieceSelectorCustomization } from '../utils/piece-selector-customization';
 
 import { stepsHooks } from './steps-hooks';
-
-const {
-  getPinnedPieces,
-  getPopularPieces,
-  getAiAndAgentsPieces,
-  isUtilityPiece,
-  isAppPiece,
-  getHighlightedPieces,
-  isFlowController,
-} = pieceSearchUtils;
 
 type UsePieceModelForStepSettings = {
   name: string;
@@ -100,10 +92,9 @@ type UsePiecesSearchProps = {
   enabled?: boolean;
   type: 'action' | 'trigger';
   shouldCaptureEvent: boolean;
-  tab?: {
-    type: PieceSelectorTabType;
-    customTabId?: string | null;
-  };
+  tab:
+    | { type: PieceSelectorTabType.CUSTOM; customTabId: string | null }
+    | { type: PieceSelectorTabType.NONE };
 };
 
 export const piecesHooks = {
@@ -244,149 +235,49 @@ export const piecesHooks = {
     isLoading: boolean;
     data: CategorizedStepMetadataWithSuggestions[];
   } => {
-    const tabsContext = usePieceSelectorTabs();
-    const selectedTab = props.tab?.type ?? tabsContext.selectedTab;
-    const selectedCustomTabId = props.tab
-      ? props.tab.customTabId ?? null
-      : tabsContext.selectedCustomTabId;
     const { capture } = useTelemetry();
-    const { data: environment } = flagsHooks.useFlag<ApEnvironment>(
-      ApFlagId.ENVIRONMENT,
-    );
-    const { metadata, isLoading: isLoadingPieces } =
-      stepsHooks.useAllStepsMetadata(props);
+    const { steps, isLoading } = useSelectorSteps({
+      searchQuery: props.searchQuery,
+      type: props.type,
+      enabled: props.enabled,
+    });
     const { platform } = platformHooks.useCurrentPlatform();
-    if (!metadata || isLoadingPieces) {
+    if (isLoading) {
       return {
         isLoading: true,
         data: [],
       };
     }
-    const piecesMetadataWithoutEmptySuggestions =
-      filterOutPiecesWithNoSuggestions(metadata);
-
-    const pinnedPieces = getPinnedPieces(
-      piecesMetadataWithoutEmptySuggestions,
-      platform.pinnedPieces ?? [],
-    );
-
-    const popularPieces = getPopularPieces(
-      piecesMetadataWithoutEmptySuggestions,
-      platform.pinnedPieces ?? [],
-    );
-
-    const flowControllerPieces =
-      piecesMetadataWithoutEmptySuggestions.filter(isFlowController);
-
-    const utilityPieces =
-      piecesMetadataWithoutEmptySuggestions.filter(isUtilityPiece);
-
-    const pieceMetadataWithoutPopularOrPinnedPieces =
-      piecesMetadataWithoutEmptySuggestions.filter(
-        (p) => !popularPieces.includes(p) && !pinnedPieces.includes(p),
-      );
-
-    const appPieces =
-      pieceMetadataWithoutPopularOrPinnedPieces.filter(isAppPiece);
-
-    const utilitiesCategory = {
-      title: t('Utility'),
-      metadata: utilityPieces,
-    };
-    const flowControllerCategory = {
-      title: t('Flow Controller'),
-      metadata: flowControllerPieces,
-    };
-    const appsCategory = {
-      title: t('Apps'),
-      metadata: appPieces,
-    };
-    const popularCategory = {
-      title: t('Popular'),
-      metadata: popularPieces,
-    };
-    const allCategory = {
-      title: t('All'),
-      metadata: piecesMetadataWithoutEmptySuggestions,
-    };
-
-    switch (selectedTab) {
-      case PieceSelectorTabType.EXPLORE:
-        return {
-          isLoading: false,
-          data: getExploreTabContent(
-            piecesMetadataWithoutEmptySuggestions,
-            platform,
-            props.type,
-            environment,
-          ),
-        };
-      case PieceSelectorTabType.UTILITY:
-        return {
-          isLoading: false,
-          data: [utilitiesCategory, flowControllerCategory],
-        };
-      case PieceSelectorTabType.AI_AND_AGENTS:
-        return {
-          isLoading: false,
-          data: getAiAndAgentsPieces(piecesMetadataWithoutEmptySuggestions),
-        };
-      case PieceSelectorTabType.APPROVALS:
-        return {
-          isLoading: false,
-          data: [],
-        };
+    switch (props.tab.type) {
       case PieceSelectorTabType.CUSTOM: {
         const customTab = pieceSelectorCustomization.getCustomTab({
           config: platform.pieceSelectorConfig,
-          customTabId: selectedCustomTabId,
+          customTabId: props.tab.customTabId,
         });
-        const categories: CategorizedStepMetadataWithSuggestions[] = [];
-        const flatPieces = getPinnedPieces(
-          piecesMetadataWithoutEmptySuggestions,
-          customTab?.pieceNames ?? [],
+        const flatPieces = pieceSearchUtils.getPinnedPieces({
+          steps,
+          pinnedPieceNames: customTab?.pieceNames ?? [],
+        });
+        const sectionCategories = (customTab?.sections ?? []).map(
+          (section) => ({
+            title: section.title,
+            metadata: pieceSearchUtils.getPinnedPieces({
+              steps,
+              pinnedPieceNames: section.pieceNames,
+            }),
+          }),
         );
-        if (flatPieces.length > 0) {
-          categories.push({
-            title: customTab?.title ?? t('All'),
-            metadata: flatPieces,
-          });
-        }
-        for (const section of customTab?.sections ?? []) {
-          const sectionPieces = getPinnedPieces(
-            piecesMetadataWithoutEmptySuggestions,
-            section.pieceNames,
-          );
-          if (sectionPieces.length > 0) {
-            categories.push({
-              title: section.title,
-              metadata: sectionPieces,
-            });
-          }
-        }
         return {
           isLoading: false,
-          data: categories,
+          data: [
+            {
+              title: customTab?.title ?? t('All'),
+              metadata: flatPieces,
+            },
+            ...sectionCategories,
+          ].filter((category) => category.metadata.length > 0),
         };
       }
-      case PieceSelectorTabType.APPS: {
-        const popularAppsCategory = {
-          ...popularCategory,
-          metadata: popularCategory.metadata.filter(isAppPiece),
-        };
-        const result = {
-          isLoading: false,
-          data: [popularAppsCategory, appsCategory],
-        };
-        if (pinnedPieces.length > 0) {
-          result.data.unshift({
-            title: t('Highlights'),
-            metadata: pinnedPieces,
-          });
-        }
-        return result;
-      }
-
       case PieceSelectorTabType.NONE: {
         if (props.shouldCaptureEvent && props.searchQuery.length > 3) {
           capture({
@@ -400,10 +291,78 @@ export const piecesHooks = {
         }
         return {
           isLoading: false,
-          data: allCategory.metadata.length > 0 ? [allCategory] : [],
+          data: steps.length > 0 ? [{ title: t('All'), metadata: steps }] : [],
         };
       }
     }
+  },
+  usePieceCategorySections: ({
+    category,
+    type,
+    aiPieceItems,
+  }: {
+    category: PieceSelectorCategoryType;
+    type: 'action' | 'trigger';
+    aiPieceItems: PieceSelectorItem[];
+  }): { isLoading: boolean; sections: PieceSelectorSection[] } => {
+    const { steps, isLoading } = useSelectorSteps({ searchQuery: '', type });
+    const { platform } = platformHooks.useCurrentPlatform();
+    return {
+      isLoading,
+      sections: isLoading
+        ? []
+        : pieceSearchUtils.getCategorySections({
+            category,
+            steps,
+            pinnedPieceNames: platform.pinnedPieces ?? [],
+            aiPieceItems,
+          }),
+    };
+  },
+  useTriggerListSections: ({
+    list,
+  }: {
+    list: PieceSelectorTriggerListKind;
+  }): { isLoading: boolean; sections: PieceSelectorSection[] } => {
+    const { steps, isLoading } = useSelectorSteps({
+      searchQuery: '',
+      type: 'trigger',
+    });
+    const { platform } = platformHooks.useCurrentPlatform();
+    return {
+      isLoading,
+      sections: isLoading
+        ? []
+        : pieceSearchUtils.getTriggerListSections({
+            list,
+            steps,
+            pinnedPieceNames: platform.pinnedPieces ?? [],
+          }),
+    };
+  },
+  useTriggerOptions: ({
+    enabled,
+  }: {
+    enabled: boolean;
+  }): { isLoading: boolean; options: PieceSelectorTriggerOption[] } => {
+    const { steps, isLoading } = useSelectorSteps({
+      searchQuery: '',
+      type: 'trigger',
+      enabled,
+    });
+    const { platform } = platformHooks.useCurrentPlatform();
+    if (!enabled) {
+      return { isLoading: false, options: [] };
+    }
+    return {
+      isLoading,
+      options: isLoading
+        ? []
+        : pieceSearchUtils.getTriggerOptions({
+            steps,
+            pinnedPieceNames: platform.pinnedPieces ?? [],
+          }),
+    };
   },
   usePieceOptions: <
     T extends
@@ -545,6 +504,29 @@ export const piecesMutations = {
   },
 };
 
+function useSelectorSteps({
+  searchQuery,
+  type,
+  enabled,
+}: {
+  searchQuery: string;
+  type: 'action' | 'trigger';
+  enabled?: boolean;
+}): { steps: StepMetadataWithSuggestions[]; isLoading: boolean } {
+  const { metadata, isLoading } = stepsHooks.useAllStepsMetadata({
+    searchQuery,
+    type,
+    enabled,
+  });
+  if (!metadata || isLoading) {
+    return { steps: [], isLoading: true };
+  }
+  return {
+    steps: filterOutPiecesWithNoSuggestions(metadata),
+    isLoading: false,
+  };
+}
+
 const isPieceNotFoundError = (error: unknown) =>
   api.isError(error) && error.response?.status === 404;
 
@@ -569,77 +551,6 @@ const filterOutPiecesWithNoSuggestions = (
       isActionWithSuggestions || isTriggerWithSuggestions || isNotPieceType
     );
   });
-};
-
-const getExploreTabContent = (
-  queryResult: StepMetadataWithSuggestions[],
-  platform: PlatformWithoutSensitiveData,
-  type: 'action' | 'trigger',
-  environment: ApEnvironment | null,
-) => {
-  const popularCategory: CategorizedStepMetadataWithSuggestions = {
-    title: t('Popular'),
-    metadata: environment === ApEnvironment.DEVELOPMENT ? queryResult : [],
-  };
-  if (environment === ApEnvironment.DEVELOPMENT) {
-    return [popularCategory];
-  }
-  const pinnedPieces = getPinnedPieces(
-    queryResult,
-    platform.pinnedPieces ?? [],
-  );
-  const popularPieces = getPopularPieces(
-    queryResult,
-    platform.pinnedPieces ?? [],
-  );
-
-  if (popularPieces.length > 0) {
-    popularCategory.metadata = [...popularCategory.metadata, ...popularPieces];
-  }
-
-  const hightlightedPiecesCategory: CategorizedStepMetadataWithSuggestions = {
-    title: t('Highlights'),
-    metadata: [],
-  };
-  const highlightedPieces = getHighlightedPieces(queryResult, type);
-  const codePiece = queryResult.find(
-    (piece) => piece.type === FlowActionType.CODE,
-  );
-  const branchPiece = queryResult.find(
-    (piece) => piece.type === FlowActionType.ROUTER,
-  );
-  const loopPiece = queryResult.find(
-    (piece) => piece.type === FlowActionType.LOOP_ON_ITEMS,
-  );
-  const aiRouterPiece = queryResult.find(
-    (piece) => piece.type === FlowActionType.AI_ROUTER,
-  );
-
-  if (highlightedPieces.length > 0) {
-    hightlightedPiecesCategory.metadata.push(...highlightedPieces);
-  }
-
-  if (branchPiece) {
-    hightlightedPiecesCategory.metadata.splice(0, 0, branchPiece);
-  }
-  if (aiRouterPiece) {
-    hightlightedPiecesCategory.metadata.splice(1, 0, aiRouterPiece);
-  }
-
-  if (codePiece) {
-    hightlightedPiecesCategory.metadata.splice(3, 0, codePiece);
-  }
-  if (loopPiece) {
-    hightlightedPiecesCategory.metadata.splice(5, 0, loopPiece);
-  }
-  if (pinnedPieces.length > 0) {
-    hightlightedPiecesCategory.metadata = [
-      ...pinnedPieces,
-      ...hightlightedPiecesCategory.metadata,
-    ];
-  }
-
-  return [popularCategory, hightlightedPiecesCategory];
 };
 
 function latestPieceQueryOptions({

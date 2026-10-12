@@ -17,11 +17,8 @@ export {
 } from './hooks/pieces-hooks';
 export { stepsHooks } from './hooks/steps-hooks';
 export { usePieceOutputSchema } from './hooks/use-piece-output-schema';
-export {
-  PieceSelectorTabsProvider,
-  PieceSelectorTabType,
-  usePieceSelectorTabs,
-} from './stores/piece-selector-tabs-provider';
+export { PieceSelectorTabType } from './stores/piece-selector-tabs-provider';
+export type { PieceSelectorCategoryType } from './stores/piece-selector-tabs-provider';
 export type {
   PieceSelectorItem,
   PieceSelectorOperation,
@@ -34,6 +31,11 @@ export type {
   PrimitiveStepMetadata,
   StepMetadataWithActionOrTriggerOrAgentDisplayName,
   CategorizedStepMetadataWithSuggestions,
+  PieceSelectorSection,
+  PieceSelectorSectionEntry,
+  PieceSelectorTriggerListKind,
+  PieceSelectorTriggerOption,
+  PieceSelectorTriggerOptionId,
 } from './types';
 export { formUtils } from './utils/form-utils';
 export { pieceSelectorUtils } from './utils/piece-selector-utils';

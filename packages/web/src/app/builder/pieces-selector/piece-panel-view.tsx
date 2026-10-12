@@ -23,6 +23,7 @@ import {
   PiecePanelViewModel,
   piecePanelUtils,
 } from './piece-panel-utils';
+import { triggerOptionDisplay } from './trigger-option-display';
 
 const PiecePanelView = ({
   header,
@@ -155,6 +156,19 @@ const PiecePanelView = ({
         );
       case 'group':
         return <PieceSelectorTabRow tab={row.tab} {...optionProps} />;
+      case 'trigger-option': {
+        const display = triggerOptionDisplay.get(row.option.id);
+        return (
+          <PieceSelectorGroupRow
+            groupKey={row.key}
+            icon={<display.Icon />}
+            title={display.title}
+            description={display.description}
+            opensList={row.option.kind !== 'pick'}
+            {...optionProps}
+          />
+        );
+      }
       case 'piece':
         return (
           <PieceCardListItem
@@ -264,6 +278,7 @@ function estimateRowSize(row: PiecePanelRow | undefined): number {
     case 'category':
       return 36;
     case 'group':
+    case 'trigger-option':
     case 'browse-catalog':
       return 58;
     default:

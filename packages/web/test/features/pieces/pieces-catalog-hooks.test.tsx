@@ -26,13 +26,6 @@ vi.mock('@/hooks/platform-hooks', () => ({
 vi.mock('@/lib/authentication-session', () => ({
   authenticationSession: { getProjectId: () => 'project_a' },
 }));
-vi.mock('@/features/pieces/stores/piece-selector-tabs-provider', () => ({
-  PieceSelectorTabType: {},
-  usePieceSelectorTabs: () => ({
-    selectedTab: undefined,
-    selectedCustomTabId: undefined,
-  }),
-}));
 
 const catalog = vi.fn();
 const downloadFromCatalog = vi.fn();

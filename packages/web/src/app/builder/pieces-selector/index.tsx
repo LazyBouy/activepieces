@@ -1,14 +1,7 @@
 import { isNil } from '@activepieces/core-utils';
 import { FlowOperationType, flowStructureUtil } from '@activepieces/shared';
 import { t } from 'i18next';
-import {
-  CheckCircle2Icon,
-  LayoutGridIcon,
-  PuzzleIcon,
-  SparklesIcon,
-  WrenchIcon,
-  X,
-} from 'lucide-react';
+import { X } from 'lucide-react';
 import { AnimatePresence, motion, type Transition } from 'motion/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -21,19 +14,14 @@ import {
 } from '@/components/ui/tooltip';
 import {
   PieceSelectorOperation,
-  PieceSelectorTabType,
   pieceSelectorCustomization,
   piecesHooks,
 } from '@/features/pieces';
-import { aiProviderQueries } from '@/features/platform-admin';
 import { platformHooks } from '@/hooks/platform-hooks';
-import { authenticationSession } from '@/lib/authentication-session';
 import { isEditableTarget } from '@/lib/dom-utils';
 
-import { AITabContent } from './ai-tab-content';
-import { ApprovalsTabContent } from './approvals-tab-content';
 import { CatalogView } from './catalog-view';
-import { ExploreTabContent } from './explore-tab-content';
+import { PieceCategoryView, TriggerListView } from './category-view';
 import { NoResultsFound } from './no-results-found';
 import {
   PieceActionsOrTriggersList,
@@ -197,17 +185,17 @@ const PiecePanelEntry = ({
       );
     case 'catalog':
       return <CatalogView {...viewProps} />;
-    case 'group':
-      switch (view.tab.type) {
-        case PieceSelectorTabType.EXPLORE:
-          return <ExploreTabContent {...viewProps} tab={view.tab} />;
-        case PieceSelectorTabType.AI_AND_AGENTS:
-          return <AITabContent {...viewProps} tab={view.tab} />;
-        case PieceSelectorTabType.APPROVALS:
-          return <ApprovalsTabContent {...viewProps} tab={view.tab} />;
-        default:
-          return <PiecesCardList {...viewProps} tab={view.tab} />;
+    case 'trigger-list':
+      return <TriggerListView {...viewProps} list={view.list} />;
+    case 'group': {
+      const tabType = view.tab.type;
+      if (pieceSelectorCustomization.isCategoryTabType(tabType)) {
+        return (
+          <PieceCategoryView {...viewProps} tab={view.tab} category={tabType} />
+        );
       }
+      return <PiecesCardList {...viewProps} tab={view.tab} />;
+    }
   }
 };
 
@@ -222,6 +210,9 @@ const RootView = (viewProps: PiecePanelViewBaseProps) => {
       : '',
   );
   const tabs = useRootTabs(operation);
+  const triggerOptions = piecesHooks.useTriggerOptions({
+    enabled: mode === 'trigger',
+  });
   const isCatalogAvailable = piecesHooks.useIsPieceCatalogAvailable();
   const searchResults = usePieceSearchResultRows({ query, operation });
   const activateRow = useActivatePiecePanelRow({ operation, query, onPush });
@@ -241,10 +232,13 @@ const RootView = (viewProps: PiecePanelViewBaseProps) => {
           ? searchResults.rows
           : piecePanelUtils.buildRootRows({
               tabs,
+              triggerOptions: triggerOptions.options,
               showCatalog: isCatalogAvailable,
             })
       }
-      isLoading={isSearching && searchResults.isLoading}
+      isLoading={
+        isSearching ? searchResults.isLoading : triggerOptions.isLoading
+      }
       isTop={isTop}
       canPop={depth > 0}
       onPop={onPop}
@@ -264,26 +258,9 @@ const RootView = (viewProps: PiecePanelViewBaseProps) => {
 };
 
 function useRootTabs(operation: PieceSelectorOperation) {
-  const { data: aiProviders } = aiProviderQueries.useProjectAiProviders();
-  const {
-    pieceModel: aiPieceModel,
-    isError: isAiPieceError,
-    isSuccess: isAiPieceLoaded,
-  } = piecesHooks.usePiece({
-    name: '@activepieces/piece-ai',
-    projectId: authenticationSession.getProjectId() ?? undefined,
-  });
   const { platform } = platformHooks.useCurrentPlatform();
-  const isAiPieceUnavailable =
-    isAiPieceError ||
-    (isAiPieceLoaded && Object.keys(aiPieceModel?.actions ?? {}).length === 0);
-  const hasAiPieceActions =
-    !isNil(aiProviders) && aiProviders.length > 0 && !isAiPieceUnavailable;
   return pieceSelectorCustomization.buildResolvedTabs({
-    availableBuiltinTabs: getTabsList({
-      operationType: operation.type,
-      aiAndAgentsAvailable: hasAiPieceActions,
-    }),
+    availableBuiltinTabs: getTabsList(operation.type),
     config: platform.pieceSelectorConfig,
   });
 }
@@ -332,50 +309,10 @@ function usePiecePanelDismiss({
   }, [isOpen, panelRef, onDismiss]);
 }
 
-function getTabsList({
-  operationType,
-  aiAndAgentsAvailable,
-}: {
-  operationType: FlowOperationType;
-  aiAndAgentsAvailable: boolean;
-}) {
-  const baseTabs = [
-    {
-      value: PieceSelectorTabType.EXPLORE,
-      name: t('Explore'),
-      icon: <LayoutGridIcon className="size-5" />,
-    },
-    {
-      value: PieceSelectorTabType.APPS,
-      name: t('Apps'),
-      icon: <PuzzleIcon className="size-5" />,
-    },
-    {
-      value: PieceSelectorTabType.UTILITY,
-      name: t('Utility'),
-      icon: <WrenchIcon className="size-5" />,
-    },
-  ];
-  const replaceOrAddAction = [
-    FlowOperationType.ADD_ACTION,
-    FlowOperationType.UPDATE_ACTION,
-  ].includes(operationType);
-  const aiTab = {
-    value: PieceSelectorTabType.AI_AND_AGENTS,
-    name: t('AI & Agents'),
-    icon: <SparklesIcon className="size-5" />,
-  };
-  const approvalsTab = {
-    value: PieceSelectorTabType.APPROVALS,
-    name: t('Approvals'),
-    icon: <CheckCircle2Icon className="size-5" />,
-  };
-  return [
-    baseTabs[0],
-    ...(replaceOrAddAction && aiAndAgentsAvailable ? [aiTab] : []),
-    ...baseTabs.slice(1),
-    ...(replaceOrAddAction ? [approvalsTab] : []),
-  ];
+function getTabsList(operationType: FlowOperationType) {
+  return operationType === FlowOperationType.UPDATE_TRIGGER
+    ? []
+    : pieceSelectorCustomization.getCategoryTabs();
 }
 
 function getRootTitle(mode: PiecePanelMode): string {

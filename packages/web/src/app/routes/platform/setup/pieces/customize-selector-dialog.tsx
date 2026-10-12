@@ -133,10 +133,10 @@ export const CustomizeSelectorDialog = ({
 
 const SelectorTabsEditor = ({ onClose }: { onClose: () => void }) => {
   const { platform, refetch } = platformHooks.useCurrentPlatform();
-  const [tabs, setTabs] = useState<PieceSelectorTabConfig[]>(
-    platform.pieceSelectorConfig?.tabs.length
-      ? platform.pieceSelectorConfig.tabs
-      : pieceSelectorCustomization.getDefaultTabConfigs(),
+  const [tabs, setTabs] = useState<PieceSelectorTabConfig[]>(() =>
+    pieceSelectorCustomization.getEditableTabConfigs(
+      platform.pieceSelectorConfig,
+    ),
   );
   const { pieces } = piecesHooks.usePieces({
     includeHidden: true,
@@ -294,7 +294,7 @@ const TabCard = ({
     pieceSelectorCustomization.renderIcon(display?.defaultIconKey) ?? (
       <PuzzleIcon className="size-5" />
     );
-  const placeholder = display ? t(display.defaultLabel) : t('Tab name');
+  const placeholder = display ? display.defaultLabel : t('Tab name');
   const sections = tab.sections ?? [];
   const isCustom = tab.kind === 'CUSTOM';
 

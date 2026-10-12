@@ -162,7 +162,7 @@ export const PlatformThemeColors = z.object({
 })
 export type PlatformThemeColors = z.infer<typeof PlatformThemeColors>
 
-export const PIECE_SELECTOR_BUILTIN_TABS = ['EXPLORE', 'APPS', 'UTILITY', 'AI_AND_AGENTS', 'APPROVALS'] as const
+export const PIECE_SELECTOR_BUILTIN_TABS = ['EXPLORE', 'APPS', 'UTILITY', 'AI_AND_AGENTS', 'APPROVALS', 'DATA_TRANSFORMATION', 'FLOW_CONTROL'] as const
 
 export const PieceSelectorTabSection = z.object({
     id: z.string(),

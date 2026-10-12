@@ -15,6 +15,10 @@ import {
   PieceSelectorItem,
   PieceSelectorOperation,
   PieceSelectorPieceItem,
+  PieceSelectorSection,
+  PieceSelectorSectionEntry,
+  PieceSelectorTriggerListKind,
+  PieceSelectorTriggerOption,
   PieceStepMetadataWithSuggestions,
   StepMetadataWithSuggestions,
 } from '@/features/pieces/types';
@@ -208,12 +212,14 @@ function buildPieceRows({
 
 function buildRootRows({
   tabs,
+  triggerOptions = [],
   showCatalog = false,
 }: {
   tabs: ResolvedPieceSelectorTab[];
+  triggerOptions?: PieceSelectorTriggerOption[];
   showCatalog?: boolean;
 }): PiecePanelRow[] {
-  const groupRows = buildGroupRows({ tabs });
+  const groupRows = buildGroupRows({ tabs, triggerOptions });
   if (!showCatalog) {
     return groupRows;
   }
@@ -230,17 +236,28 @@ function buildRootRows({
 
 function buildGroupRows({
   tabs,
+  triggerOptions,
 }: {
   tabs: ResolvedPieceSelectorTab[];
+  triggerOptions: PieceSelectorTriggerOption[];
 }): PiecePanelRow[] {
   const toRow = (tab: ResolvedPieceSelectorTab): PiecePanelRow => ({
     kind: 'group',
     key: `group:${tab.key}`,
     tab,
   });
-  const builtinRows = tabs
-    .filter((tab) => tab.type !== PieceSelectorTabType.CUSTOM)
-    .map(toRow);
+  const builtinRows: PiecePanelRow[] = [
+    ...triggerOptions.map(
+      (option): PiecePanelRow => ({
+        kind: 'trigger-option',
+        key: `trigger:${option.id}`,
+        option,
+      }),
+    ),
+    ...tabs
+      .filter((tab) => tab.type !== PieceSelectorTabType.CUSTOM)
+      .map(toRow),
+  ];
   const customRows = tabs
     .filter((tab) => tab.type === PieceSelectorTabType.CUSTOM)
     .map(toRow);
@@ -378,57 +395,183 @@ function buildSectionRows({
   ]);
 }
 
-function isCategoryExpanded({
-  index,
+function isSectionExpanded({
   title,
-  toggledTitles,
+  collapsedTitles,
   query,
 }: {
-  index: number;
   title: string;
-  toggledTitles: string[];
+  collapsedTitles: string[];
   query: string;
 }): boolean {
-  if (query.trim() !== '') {
-    return true;
+  return query.trim() !== '' || !collapsedTitles.includes(title);
+}
+
+function entryMatchesQuery({
+  entry,
+  query,
+}: {
+  entry: PieceSelectorSectionEntry;
+  query: string;
+}): boolean {
+  if (entry.kind === 'item') {
+    const info = getItemInfo(entry.item);
+    return matchesQuery({ texts: [info.displayName, info.description], query });
   }
-  return (index === 0) !== toggledTitles.includes(title);
+  return matchesQuery({
+    texts: [
+      entry.metadata.displayName,
+      ...getItems(entry.metadata).map((item) => getItemInfo(item).displayName),
+    ],
+    query,
+  });
+}
+
+function filterSections({
+  sections,
+  query,
+}: {
+  sections: PieceSelectorSection[];
+  query: string;
+}): PieceSelectorSection[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      entries: section.entries.filter((entry) =>
+        entryMatchesQuery({ entry, query }),
+      ),
+    }))
+    .filter((section) => section.entries.length > 0);
+}
+
+function buildSectionEntryRows({
+  entries,
+  keyPrefix,
+  getLogoUrl,
+}: {
+  entries: PieceSelectorSectionEntry[];
+  keyPrefix: string;
+  getLogoUrl?: (item: PieceSelectorItem) => string | undefined;
+}): PiecePanelRow[] {
+  return entries.flatMap((entry, index) =>
+    entry.kind === 'item'
+      ? buildItemRows({
+          items: [entry.item],
+          keyPrefix: `${keyPrefix}:${index}`,
+          getLogoUrl,
+        })
+      : buildPieceRows({
+          pieces: [entry.metadata],
+          keyPrefix: `${keyPrefix}:${index}`,
+          showDescription: true,
+        }),
+  );
 }
 
 function buildCategoryRows({
-  categories,
-  toggledTitles,
+  sections,
+  collapsedTitles,
   query,
+  getLogoUrl,
 }: {
-  categories: CategorizedStepMetadataWithSuggestions[];
-  toggledTitles: string[];
+  sections: PieceSelectorSection[];
+  collapsedTitles: string[];
   query: string;
+  getLogoUrl?: (item: PieceSelectorItem) => string | undefined;
 }): PiecePanelRow[] {
-  return categories.flatMap((category, index) => {
-    const expanded = isCategoryExpanded({
-      index,
-      title: category.title,
-      toggledTitles,
+  return filterSections({ sections, query }).flatMap((section, index) => {
+    const keyPrefix = `category:${index}:${section.id}`;
+    const entryRows = buildSectionEntryRows({
+      entries: section.entries,
+      keyPrefix,
+      getLogoUrl,
+    });
+    if (isNil(section.title)) {
+      return entryRows;
+    }
+    const expanded = isSectionExpanded({
+      title: section.title,
+      collapsedTitles,
       query,
     });
     const categoryRow: PiecePanelRow = {
       kind: 'category',
-      key: `category:${index}:${category.title}`,
-      title: category.title,
+      key: keyPrefix,
+      title: section.title,
       expanded,
     };
-    if (!expanded) {
-      return [categoryRow];
-    }
-    return [
-      categoryRow,
-      ...buildPieceRows({
-        pieces: category.metadata,
-        keyPrefix: `category:${index}`,
-        showDescription: true,
-      }),
-    ];
+    return expanded ? [categoryRow, ...entryRows] : [categoryRow];
   });
+}
+
+function toggleTitle({
+  titles,
+  title,
+}: {
+  titles: string[];
+  title: string;
+}): string[] {
+  return titles.includes(title)
+    ? titles.filter((candidate) => candidate !== title)
+    : [...titles, title];
+}
+
+function getRowIdentities(row: PiecePanelRow): string[] {
+  switch (row.kind) {
+    case 'piece':
+      return [getPieceIdentity(row.metadata.pieceName)];
+    case 'item':
+      return [getItemIdentity(row.item)];
+    default:
+      return [];
+  }
+}
+
+function getPieceIdentity(pieceName: string): string {
+  return `piece:${pieceName}`;
+}
+
+function getItemIdentity(item: PieceSelectorItem): string {
+  return `item:${getItemKey(item)}`;
+}
+
+function buildOtherGroupRows({
+  shownRows,
+  resultRows,
+  label,
+}: {
+  shownRows: PiecePanelRow[];
+  resultRows: PiecePanelRow[];
+  label: string;
+}): PiecePanelRow[] {
+  const shown = new Set(shownRows.flatMap(getRowIdentities));
+  const shownPieceNames = resultRows.flatMap((row) =>
+    row.kind === 'piece' && shown.has(getPieceIdentity(row.metadata.pieceName))
+      ? [row.metadata.pieceName]
+      : [],
+  );
+  const remaining = resultRows.filter((row) => {
+    if (row.kind === 'piece') {
+      return !shownPieceNames.includes(row.metadata.pieceName);
+    }
+    if (row.kind !== 'item') {
+      return true;
+    }
+    const ownerName = isPieceItem(row.item)
+      ? row.item.pieceMetadata.pieceName
+      : null;
+    return (
+      !shown.has(getItemIdentity(row.item)) &&
+      (isNil(ownerName) || !shownPieceNames.includes(ownerName))
+    );
+  });
+  if (remaining.length === 0) {
+    return [];
+  }
+  return [
+    { kind: 'label', key: 'label:other-groups', text: label },
+    ...remaining,
+  ];
 }
 
 function buildLabelledItemRows({
@@ -458,6 +601,7 @@ function buildLabelledItemRows({
 function isSelectableRow(row: PiecePanelRow): boolean {
   return (
     row.kind === 'group' ||
+    row.kind === 'trigger-option' ||
     row.kind === 'category' ||
     row.kind === 'piece' ||
     row.kind === 'item' ||
@@ -467,12 +611,25 @@ function isSelectableRow(row: PiecePanelRow): boolean {
 }
 
 function opensSubView(row: PiecePanelRow | undefined): boolean {
+  if (isNil(row)) {
+    return false;
+  }
+  if (row.kind === 'trigger-option') {
+    return row.option.kind !== 'pick';
+  }
   return (
-    !isNil(row) &&
-    (row.kind === 'group' ||
-      row.kind === 'piece' ||
-      row.kind === 'browse-catalog')
+    row.kind === 'group' ||
+    row.kind === 'piece' ||
+    row.kind === 'browse-catalog'
   );
+}
+
+function getTriggerOptionView(
+  option: Exclude<PieceSelectorTriggerOption, { kind: 'pick' }>,
+): PiecePanelViewModel {
+  return option.kind === 'piece'
+    ? { kind: 'piece', metadata: option.metadata }
+    : { kind: 'trigger-list', list: option.list };
 }
 
 function getSelectableIndexes(rows: PiecePanelRow[]): number[] {
@@ -633,11 +790,14 @@ export const piecePanelUtils = {
   toPieceStepMetadata,
   buildSearchResultRows,
   buildSectionRows,
+  filterSections,
   buildCategoryRows,
+  toggleTitle,
+  buildOtherGroupRows,
   buildLabelledItemRows,
-  isCategoryExpanded,
   isSelectableRow,
   opensSubView,
+  getTriggerOptionView,
   getFirstSelectableIndex,
   resolveActiveIndex,
   moveActiveIndex,
@@ -661,6 +821,7 @@ export type PiecePanelRow =
   | { kind: 'label'; key: string; text: string }
   | { kind: 'separator'; key: string }
   | { kind: 'group'; key: string; tab: ResolvedPieceSelectorTab }
+  | { kind: 'trigger-option'; key: string; option: PieceSelectorTriggerOption }
   | { kind: 'category'; key: string; title: string; expanded: boolean }
   | {
       kind: 'piece';
@@ -687,6 +848,7 @@ export type PiecePanelRow =
 export type PiecePanelViewModel =
   | { kind: 'root' }
   | { kind: 'group'; tab: ResolvedPieceSelectorTab }
+  | { kind: 'trigger-list'; list: PieceSelectorTriggerListKind }
   | { kind: 'piece'; metadata: PieceStepMetadataWithSuggestions }
   | { kind: 'catalog'; initialQuery: string };
 

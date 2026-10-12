@@ -101,3 +101,42 @@ export type PieceSelectorPieceItem =
 export type PieceSelectorItem = PieceSelectorPieceItem | PrimitiveStepMetadata;
 
 export type HandleSelectActionOrTrigger = (item: PieceSelectorItem) => void;
+
+export type PieceSelectorSectionEntry =
+  | { kind: 'step'; metadata: StepMetadataWithSuggestions }
+  | { kind: 'item'; item: PieceSelectorItem };
+
+export type PieceSelectorSection = {
+  id: string;
+  title: string | null;
+  entries: PieceSelectorSectionEntry[];
+};
+
+export type PieceSelectorTriggerListKind = 'apps' | 'other';
+
+export type PieceSelectorTriggerOptionId =
+  | 'manual'
+  | 'apps'
+  | 'schedule'
+  | 'webhook'
+  | 'form'
+  | 'chat'
+  | 'subflow'
+  | 'other';
+
+export type PieceSelectorTriggerOption =
+  | {
+      id: PieceSelectorTriggerOptionId;
+      kind: 'pick';
+      item: PieceSelectorPieceItem;
+    }
+  | {
+      id: PieceSelectorTriggerOptionId;
+      kind: 'piece';
+      metadata: PieceStepMetadataWithSuggestions;
+    }
+  | {
+      id: PieceSelectorTriggerOptionId;
+      kind: 'list';
+      list: PieceSelectorTriggerListKind;
+    };

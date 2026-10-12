@@ -27,6 +27,7 @@ export const PieceSelectorGroupRow = ({
   icon,
   title,
   description,
+  opensList = true,
   id,
   active,
   hoverEnabled,
@@ -56,23 +57,27 @@ export const PieceSelectorGroupRow = ({
           </TextWithTooltip>
         )}
       </div>
-      <ArrowRight className="size-4 shrink-0 text-gray-11 group-hover/option:text-gray-12" />
+      {opensList && (
+        <ArrowRight className="size-4 shrink-0 text-gray-11 group-hover/option:text-gray-12" />
+      )}
     </CardListOption>
   );
 };
 
 function getTabDescription(type: PieceSelectorTabType): string | null {
   switch (type) {
-    case PieceSelectorTabType.EXPLORE:
-      return t('Popular pieces to get started');
     case PieceSelectorTabType.AI_AND_AGENTS:
-      return t('Use AI models and agents in this flow');
+      return t('Run agents, ask models and use AI services');
     case PieceSelectorTabType.APPS:
-      return t('Do something in an app or service');
+      return t('Work with the apps and services you connect');
+    case PieceSelectorTabType.DATA_TRANSFORMATION:
+      return t('Reshape text, dates, numbers and files');
+    case PieceSelectorTabType.FLOW_CONTROL:
+      return t('Route, repeat, wait or call another flow');
     case PieceSelectorTabType.UTILITY:
-      return t('Code, loops, routers, HTTP and other core tools');
+      return t('HTTP, webhooks, code, storage and other building blocks');
     case PieceSelectorTabType.APPROVALS:
-      return t('Pause the flow until someone responds');
+      return t('Wait for someone to approve or answer');
     case PieceSelectorTabType.CUSTOM:
     case PieceSelectorTabType.NONE:
       return null;
@@ -95,4 +100,5 @@ type PieceSelectorGroupRowProps = PieceSelectorRowOptionProps & {
   icon: React.ReactNode;
   title: string;
   description: string | null;
+  opensList?: boolean;
 };

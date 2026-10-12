@@ -25,8 +25,13 @@ import {
 } from '@/app/builder/pieces-selector/piece-panel-utils';
 import { PieceSelectorTabType } from '@/features/pieces/stores/piece-selector-tabs-provider';
 import {
+  PieceSelectorPieceItem,
+  PieceSelectorSection,
+  PieceSelectorSectionEntry,
+  PieceSelectorTriggerOption,
   PieceStepMetadataWithSuggestions,
   PrimitiveStepMetadata,
+  StepMetadataWithSuggestions,
 } from '@/features/pieces/types';
 import { ResolvedPieceSelectorTab } from '@/features/pieces/utils/piece-selector-customization';
 
@@ -241,17 +246,17 @@ describe('piece panel row builders', () => {
     ],
   });
 
-  it('lists built-in groups first and custom groups after a separator', () => {
+  it('lists the six categories first and custom groups after a separator', () => {
     const rows = piecePanelUtils.buildRootRows({
-      tabs: [
-        tab('EXPLORE', PieceSelectorTabType.EXPLORE),
-        tab('custom-1', PieceSelectorTabType.CUSTOM),
-        tab('APPS', PieceSelectorTabType.APPS),
-      ],
+      tabs: [...CATEGORY_TABS, tab('custom-1', PieceSelectorTabType.CUSTOM)],
     });
     expect(rows.map((row) => row.key)).toEqual([
-      'group:EXPLORE',
+      'group:AI_AND_AGENTS',
       'group:APPS',
+      'group:DATA_TRANSFORMATION',
+      'group:FLOW_CONTROL',
+      'group:UTILITY',
+      'group:APPROVALS',
       'separator:custom-groups',
       'group:custom-1',
     ]);
@@ -262,17 +267,67 @@ describe('piece panel row builders', () => {
     ).toEqual(['group']);
   });
 
+  it('lists the trigger rows first in trigger mode, then custom groups and the catalog row', () => {
+    const webhook = pieceMetadata({
+      displayName: 'Webhook',
+      triggers: [trigger('catch_webhook', 'Catch Webhook')],
+    });
+    const catchWebhook: PieceSelectorPieceItem = {
+      actionOrTrigger: trigger('catch_webhook', 'Catch Webhook'),
+      type: FlowTriggerType.PIECE,
+      pieceMetadata: webhook,
+    };
+    const options: PieceSelectorTriggerOption[] = [
+      { id: 'webhook', kind: 'pick', item: catchWebhook },
+      { id: 'schedule', kind: 'piece', metadata: webhook },
+      { id: 'other', kind: 'list', list: 'other' },
+    ];
+    const rows = piecePanelUtils.buildRootRows({
+      tabs: [tab('custom-1', PieceSelectorTabType.CUSTOM)],
+      triggerOptions: options,
+      showCatalog: true,
+    });
+    expect(rows.map((row) => row.key)).toEqual([
+      'trigger:webhook',
+      'trigger:schedule',
+      'trigger:other',
+      'separator:custom-groups',
+      'group:custom-1',
+      'separator:catalog',
+      'catalog:browse',
+    ]);
+    const [pickRow, pieceRow, listRow] = rows;
+    expect(rows.slice(0, 3).every(piecePanelUtils.isSelectableRow)).toBe(true);
+    expect(piecePanelUtils.opensSubView(pickRow)).toBe(false);
+    expect(piecePanelUtils.opensSubView(pieceRow)).toBe(true);
+    expect(piecePanelUtils.opensSubView(listRow)).toBe(true);
+    expect(
+      piecePanelUtils.getTriggerOptionView({
+        id: 'other',
+        kind: 'list',
+        list: 'other',
+      }),
+    ).toEqual({ kind: 'trigger-list', list: 'other' });
+    expect(
+      piecePanelUtils.getTriggerOptionView({
+        id: 'schedule',
+        kind: 'piece',
+        metadata: webhook,
+      }),
+    ).toEqual({ kind: 'piece', metadata: webhook });
+  });
+
   it('ends the root list with the catalog row after a separator when the catalog is available', () => {
     const tabs = [
-      tab('EXPLORE', PieceSelectorTabType.EXPLORE),
+      ...CATEGORY_TABS,
       tab('custom-1', PieceSelectorTabType.CUSTOM),
     ];
     expect(
       piecePanelUtils
         .buildRootRows({ tabs, showCatalog: true })
-        .map((row) => row.key),
+        .map((row) => row.key)
+        .slice(-4),
     ).toEqual([
-      'group:EXPLORE',
       'separator:custom-groups',
       'group:custom-1',
       'separator:catalog',
@@ -305,40 +360,161 @@ describe('piece panel row builders', () => {
     expect(codeRow.kind === 'item' && codeRow.hideLogo).toBe(false);
   });
 
-  it('expands only the first category until one is toggled or a query is typed', () => {
-    const categories = [
-      { title: 'Popular', metadata: [sheets] },
-      { title: 'Highlights', metadata: [sheets] },
+  it('opens every section expanded and collapses one when it is toggled', () => {
+    const sections: PieceSelectorSection[] = [
+      {
+        id: 'popular',
+        title: 'Popular',
+        entries: [step(codeStep()), step(sheets)],
+      },
+      { id: 'others', title: 'Others', entries: [step(sheets)] },
     ];
+    const expanded = piecePanelUtils.buildCategoryRows({
+      sections,
+      collapsedTitles: [],
+      query: '',
+    });
+    expect(expanded.map((row) => row.kind)).toEqual([
+      'category',
+      'item',
+      'piece',
+      'category',
+      'piece',
+    ]);
     const collapsed = piecePanelUtils.buildCategoryRows({
-      categories,
-      toggledTitles: [],
+      sections,
+      collapsedTitles: piecePanelUtils.toggleTitle({
+        titles: [],
+        title: 'Popular',
+      }),
       query: '',
     });
     expect(collapsed.map((row) => row.kind)).toEqual([
       'category',
-      'piece',
-      'category',
-    ]);
-    const toggled = piecePanelUtils.buildCategoryRows({
-      categories,
-      toggledTitles: ['Popular', 'Highlights'],
-      query: '',
-    });
-    expect(toggled.map((row) => row.kind)).toEqual([
-      'category',
       'category',
       'piece',
     ]);
+    expect(
+      piecePanelUtils.toggleTitle({ titles: ['Popular'], title: 'Popular' }),
+    ).toEqual([]);
     const searching = piecePanelUtils.buildCategoryRows({
-      categories,
-      toggledTitles: ['Popular'],
+      sections,
+      collapsedTitles: ['Popular', 'Others'],
       query: 'sheet',
     });
     expect(searching.filter((row) => row.kind === 'piece')).toHaveLength(2);
     expect(new Set(searching.map((row) => row.key)).size).toBe(
       searching.length,
     );
+  });
+
+  it('shows action entries as item rows and hides empty sections while filtering', () => {
+    const [insertRow] = piecePanelUtils.getItems(sheets);
+    const sections: PieceSelectorSection[] = [
+      {
+        id: 'ask',
+        title: 'Ask a person',
+        entries: [{ kind: 'item', item: insertRow }],
+      },
+      { id: 'list', title: null, entries: [step(sheets)] },
+    ];
+    const rows = piecePanelUtils.buildCategoryRows({
+      sections,
+      collapsedTitles: [],
+      query: '',
+      getLogoUrl: () => 'https://example.test/override.svg',
+    });
+    expect(rows.map((row) => row.kind)).toEqual(['category', 'item', 'piece']);
+    const [, itemRow] = rows;
+    expect(itemRow.kind === 'item' && itemRow.logoUrl).toBe(
+      'https://example.test/override.svg',
+    );
+    expect(
+      piecePanelUtils
+        .buildCategoryRows({ sections, collapsedTitles: [], query: 'find' })
+        .map((row) => row.kind),
+    ).toEqual(['piece']);
+  });
+
+  it('adds the root results that are not already shown under a label', () => {
+    const slack = pieceMetadata({
+      displayName: 'Slack',
+      actions: [
+        action('request_approval_message', 'Request Approval'),
+        action('send_message', 'Send Message'),
+      ],
+    });
+    const store = pieceMetadata({
+      displayName: 'Storage',
+      actions: [action('get', 'Get')],
+    });
+    const [approval] = piecePanelUtils.getItems(slack);
+    const shownRows = piecePanelUtils.buildCategoryRows({
+      sections: [
+        {
+          id: 'ask',
+          title: 'Ask a person',
+          entries: [{ kind: 'item', item: approval }, step(store)],
+        },
+      ],
+      collapsedTitles: [],
+      query: '',
+    });
+    const resultRows = piecePanelUtils.buildSearchResultRows({
+      categories: [{ title: 'All', metadata: [slack, store, codeStep()] }],
+    });
+    const otherRows = piecePanelUtils.buildOtherGroupRows({
+      shownRows,
+      resultRows,
+      label: 'Found in other groups',
+    });
+    expect(
+      otherRows.map((row) =>
+        row.kind === 'label'
+          ? row.text
+          : row.kind === 'item'
+          ? piecePanelUtils.getItemInfo(row.item).displayName
+          : row.kind === 'piece'
+          ? row.metadata.displayName
+          : row.kind,
+      ),
+    ).toEqual(['Found in other groups', 'Slack', 'Send Message', 'Code']);
+    expect(
+      piecePanelUtils.buildOtherGroupRows({
+        shownRows: resultRows,
+        resultRows,
+        label: 'Found in other groups',
+      }),
+    ).toEqual([]);
+  });
+
+  it('leaves out members of the open category that the query hides', () => {
+    const http = pieceMetadata({
+      displayName: 'HTTP',
+      actions: [action('send_request', 'Send HTTP request')],
+    });
+    const sections = [
+      {
+        id: 'popular',
+        title: 'Popular',
+        entries: [step(http), step(codeStep())],
+      },
+    ];
+    const memberRows = piecePanelUtils.buildCategoryRows({
+      sections,
+      collapsedTitles: [],
+      query: '',
+    });
+    const resultRows = piecePanelUtils.buildSearchResultRows({
+      categories: [{ title: 'All', metadata: [http, codeStep()] }],
+    });
+    expect(
+      piecePanelUtils.buildOtherGroupRows({
+        shownRows: memberRows,
+        resultRows,
+        label: 'Found in other groups',
+      }),
+    ).toEqual([]);
   });
 
   it('heads a piece sub-view with a section label and leaves empty lists empty', () => {
@@ -613,6 +789,12 @@ describe('piece panel modes', () => {
   });
 });
 
+function step(
+  metadata: StepMetadataWithSuggestions,
+): PieceSelectorSectionEntry {
+  return { kind: 'step', metadata };
+}
+
 function groupRow(key: string): PiecePanelRow {
   return {
     kind: 'group',
@@ -627,6 +809,15 @@ function tab(
 ): ResolvedPieceSelectorTab {
   return { key, type, name: key, icon: null };
 }
+
+const CATEGORY_TABS = [
+  tab('AI_AND_AGENTS', PieceSelectorTabType.AI_AND_AGENTS),
+  tab('APPS', PieceSelectorTabType.APPS),
+  tab('DATA_TRANSFORMATION', PieceSelectorTabType.DATA_TRANSFORMATION),
+  tab('FLOW_CONTROL', PieceSelectorTabType.FLOW_CONTROL),
+  tab('UTILITY', PieceSelectorTabType.UTILITY),
+  tab('APPROVALS', PieceSelectorTabType.APPROVALS),
+];
 
 function action(name: string, displayName: string): ActionBase {
   return {

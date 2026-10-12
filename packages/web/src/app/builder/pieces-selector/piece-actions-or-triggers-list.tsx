@@ -138,6 +138,13 @@ export function useActivatePiecePanelRow({
       case 'group':
         onPush({ kind: 'group', tab: row.tab });
         return;
+      case 'trigger-option':
+        if (row.option.kind === 'pick') {
+          pick({ item: row.option.item, query });
+          return;
+        }
+        onPush(piecePanelUtils.getTriggerOptionView(row.option));
+        return;
       case 'piece':
         onPush({ kind: 'piece', metadata: row.metadata });
         return;

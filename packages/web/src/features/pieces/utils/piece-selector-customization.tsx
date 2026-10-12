@@ -1,8 +1,9 @@
+import { isNil } from '@activepieces/core-utils';
 import {
-  PIECE_SELECTOR_BUILTIN_TABS,
   PieceSelectorConfig,
   PieceSelectorTabConfig,
 } from '@activepieces/shared';
+import { t } from 'i18next';
 import {
   ActivityIcon,
   AppWindowIcon,
@@ -43,11 +44,14 @@ import {
   SettingsIcon,
   ShieldIcon,
   ShoppingCartIcon,
+  ShuffleIcon,
   SparklesIcon,
+  SplitIcon,
   StarIcon,
   TableIcon,
   TargetIcon,
   TerminalIcon,
+  UserCheckIcon,
   UsersIcon,
   WandSparklesIcon,
   WorkflowIcon,
@@ -56,19 +60,19 @@ import {
 } from 'lucide-react';
 import React from 'react';
 
-import { PieceSelectorTabType } from '@/features/pieces/stores/piece-selector-tabs-provider';
-
-type DefaultBuiltinTab = {
-  value: PieceSelectorTabType;
-  name: string;
-  icon: React.ReactNode;
-};
+import {
+  PieceSelectorCategoryType,
+  PieceSelectorTabType,
+} from '@/features/pieces/stores/piece-selector-tabs-provider';
 
 const PIECE_SELECTOR_TAB_ICONS: Record<string, LucideIcon> = {
   Puzzle: PuzzleIcon,
   LayoutGrid: LayoutGridIcon,
   Sparkles: SparklesIcon,
   Wrench: WrenchIcon,
+  Shuffle: ShuffleIcon,
+  Split: SplitIcon,
+  UserCheck: UserCheckIcon,
   CheckCircle2: CheckCircle2Icon,
   Star: StarIcon,
   Heart: HeartIcon,
@@ -196,29 +200,58 @@ const buildResolvedTabs = ({
   return [...resolved, ...appendedBuiltins];
 };
 
-const BUILTIN_TAB_DISPLAY: Record<
-  string,
-  { defaultLabel: string; defaultIconKey: string }
-> = {
-  EXPLORE: { defaultLabel: 'Explore', defaultIconKey: 'LayoutGrid' },
-  AI_AND_AGENTS: { defaultLabel: 'AI & Agents', defaultIconKey: 'Sparkles' },
-  APPS: { defaultLabel: 'Apps', defaultIconKey: 'Puzzle' },
-  UTILITY: { defaultLabel: 'Utility', defaultIconKey: 'Wrench' },
-  APPROVALS: { defaultLabel: 'Approvals', defaultIconKey: 'CheckCircle2' },
-};
+const getCategoryTabs = (): DefaultBuiltinTab[] =>
+  CATEGORY_TABS.map((category) => ({
+    value: category.type,
+    name: category.label(),
+    icon: renderIcon(category.iconKey),
+  }));
 
 const getDefaultTabConfigs = (): PieceSelectorTabConfig[] =>
-  PIECE_SELECTOR_BUILTIN_TABS.map((builtinTab) => ({
-    id: builtinTab,
+  CATEGORY_TABS.map((category) => ({
+    id: category.builtinTab,
     kind: 'BUILTIN' as const,
-    builtinTab,
+    builtinTab: category.builtinTab,
     hidden: false,
   }));
 
+const getEditableTabConfigs = (
+  config: PieceSelectorConfig | null | undefined,
+): PieceSelectorTabConfig[] => {
+  const savedTabs = (config?.tabs ?? []).filter(
+    (tab) => tab.kind === 'CUSTOM' || !isNil(getCategoryTab(tab.builtinTab)),
+  );
+  if (savedTabs.length === 0) {
+    return getDefaultTabConfigs();
+  }
+  const missingCategories = getDefaultTabConfigs().filter(
+    (defaultTab) =>
+      !savedTabs.some(
+        (tab) =>
+          tab.kind === 'BUILTIN' && tab.builtinTab === defaultTab.builtinTab,
+      ),
+  );
+  return [...savedTabs, ...missingCategories];
+};
+
 const getBuiltinTabDisplay = (
   builtinTab: string | undefined,
-): { defaultLabel: string; defaultIconKey: string } | undefined =>
-  builtinTab ? BUILTIN_TAB_DISPLAY[builtinTab] : undefined;
+): { defaultLabel: string; defaultIconKey: string } | undefined => {
+  const category = getCategoryTab(builtinTab);
+  return isNil(category)
+    ? undefined
+    : { defaultLabel: category.label(), defaultIconKey: category.iconKey };
+};
+
+const isCategoryTabType = (
+  type: PieceSelectorTabType,
+): type is PieceSelectorCategoryType =>
+  CATEGORY_TABS.some((category) => category.type === type);
+
+const getCategoryTab = (
+  builtinTab: string | undefined,
+): CategoryTab | undefined =>
+  CATEGORY_TABS.find((category) => category.builtinTab === builtinTab);
 
 const getCustomTab = ({
   config,
@@ -238,10 +271,51 @@ const getCustomTab = ({
   );
 };
 
+const CATEGORY_TABS: CategoryTab[] = [
+  {
+    type: PieceSelectorTabType.AI_AND_AGENTS,
+    builtinTab: 'AI_AND_AGENTS',
+    label: () => t('AI'),
+    iconKey: 'Sparkles',
+  },
+  {
+    type: PieceSelectorTabType.APPS,
+    builtinTab: 'APPS',
+    label: () => t('Apps'),
+    iconKey: 'Puzzle',
+  },
+  {
+    type: PieceSelectorTabType.DATA_TRANSFORMATION,
+    builtinTab: 'DATA_TRANSFORMATION',
+    label: () => t('Transform data'),
+    iconKey: 'Shuffle',
+  },
+  {
+    type: PieceSelectorTabType.FLOW_CONTROL,
+    builtinTab: 'FLOW_CONTROL',
+    label: () => t('Flow control'),
+    iconKey: 'Split',
+  },
+  {
+    type: PieceSelectorTabType.UTILITY,
+    builtinTab: 'UTILITY',
+    label: () => t('Core tools'),
+    iconKey: 'Wrench',
+  },
+  {
+    type: PieceSelectorTabType.APPROVALS,
+    builtinTab: 'APPROVALS',
+    label: () => t('Human in the loop'),
+    iconKey: 'UserCheck',
+  },
+];
+
 export const pieceSelectorCustomization = {
   buildResolvedTabs,
+  getCategoryTabs,
+  isCategoryTabType,
   getCustomTab,
-  getDefaultTabConfigs,
+  getEditableTabConfigs,
   getBuiltinTabDisplay,
   getRandomIconKey,
   renderIcon,
@@ -261,4 +335,17 @@ export type ResolvedPieceSelectorTab = {
   customTabId?: string;
   name: string;
   icon: React.ReactNode;
+};
+
+type DefaultBuiltinTab = {
+  value: PieceSelectorTabType;
+  name: string;
+  icon: React.ReactNode;
+};
+
+type CategoryTab = {
+  type: PieceSelectorCategoryType;
+  builtinTab: NonNullable<PieceSelectorTabConfig['builtinTab']>;
+  label: () => string;
+  iconKey: string;
 };
