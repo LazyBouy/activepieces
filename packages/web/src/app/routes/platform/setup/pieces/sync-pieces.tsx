@@ -15,7 +15,8 @@ const SyncPiecesButton = () => {
 
   return (
     <>
-      {piecesSyncMode === PieceSyncMode.OFFICIAL_AUTO && (
+      {(piecesSyncMode === PieceSyncMode.OFFICIAL_AUTO ||
+        piecesSyncMode === PieceSyncMode.OFFICIAL_SELECTED) && (
         <Button
           {...adminControl(AdminControl.PIECES_SYNC_RUN)}
           variant={'outline'}

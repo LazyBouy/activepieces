@@ -1,4 +1,5 @@
-import { groupBy, tryCatch } from '@activepieces/core-utils'
+import { ActivepiecesError, ErrorCode, groupBy, isEmpty, isNil, tryCatch } from '@activepieces/core-utils'
+import { PieceMetadataModelSummary } from '@activepieces/pieces-framework'
 import { apVersionUtil } from '@activepieces/server-utils'
 import { PieceAudienceFilter, PieceSyncMode, PieceType } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
@@ -18,6 +19,10 @@ import { pieceMetadataService, pieceRepos } from './metadata/piece-metadata-serv
 const CLOUD_API_URL = 'https://cloud.activepieces.com/api/v1/pieces'
 const syncMode = system.get<PieceSyncMode>(AppSystemProp.PIECES_SYNC_MODE)
 const CACHE_INVALIDATION_INTERVAL_MS = 15_000
+const CATALOG_CACHE_TTL_MS = 60 * 60 * 1000
+const REGISTRY_CACHE_TTL_MS = 15 * 60 * 1000
+const registryCache = createTimedCache<PieceRegistryResponse[]>({ ttlMs: REGISTRY_CACHE_TTL_MS })
+const catalogCache = createTimedCache<PieceMetadataModelSummary[]>({ ttlMs: CATALOG_CACHE_TTL_MS })
 
 export const pieceSyncService = (log: FastifyBaseLogger) => ({
     async setup(): Promise<void> {
@@ -38,12 +43,12 @@ export const pieceSyncService = (log: FastifyBaseLogger) => ({
         })
     },
     async sync({ publishCacheRefresh }: { publishCacheRefresh: boolean }): Promise<void> {
-        if (syncMode !== PieceSyncMode.OFFICIAL_AUTO) {
+        if (!isSyncEnabled()) {
             log.info('Piece sync service is disabled')
             return
         }
         try {
-            log.info('Starting piece synchronization')
+            log.info({ syncMode }, 'Starting piece synchronization')
             const startTime = performance.now()
             const [dbPieces, cloudPieces] = await Promise.all([pieceRepos().find({
                 select: {
@@ -53,7 +58,10 @@ export const pieceSyncService = (log: FastifyBaseLogger) => ({
                 },
             }), listCloudPieces()])
             log.info({ dbCount: dbPieces.length, cloudCount: cloudPieces.length }, 'Fetched pieces from DB and Cloud')
-            const { added, fetchFailed } = await installNewPieces(cloudPieces, dbPieces, log, publishCacheRefresh)
+            const piecesToSync = syncMode === PieceSyncMode.OFFICIAL_SELECTED
+                ? selectLatestOfWantedPieces({ cloudPieces, dbPieces })
+                : cloudPieces
+            const { added, fetchFailed } = await installNewPieces(piecesToSync, dbPieces, log, publishCacheRefresh)
             const deleted = await deletePiecesIfNotOnCloud(dbPieces, cloudPieces, log)
 
             log.info({
@@ -76,7 +84,112 @@ export const pieceSyncService = (log: FastifyBaseLogger) => ({
             log.error({ error }, 'Error syncing pieces')
         }
     },
+    async downloadPiece({ pieceName }: { pieceName: string }): Promise<void> {
+        if (!isSyncEnabled()) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: { message: 'Piece downloads are turned off on this instance' },
+            })
+        }
+        const cloudPieces = await listCloudPiecesCached()
+        const latest = pickLatestVersions(cloudPieces).find((piece) => piece.name === pieceName)
+        if (isNil(latest)) {
+            throw new ActivepiecesError({
+                code: ErrorCode.ENTITY_NOT_FOUND,
+                params: { entityType: 'piece', entityId: pieceName, message: `piece_not_in_catalog pieceName=${pieceName}` },
+            })
+        }
+        const dbPieces = await pieceRepos().find({
+            select: { name: true, version: true, pieceType: true },
+            where: { name: pieceName },
+        })
+        const { added, fetchFailed } = await installNewPieces([latest], dbPieces, log, true)
+        if (fetchFailed > 0) {
+            throw new Error(`Could not download piece ${pieceName}@${latest.version} from the catalog`)
+        }
+        log.info({ piece: { name: pieceName, version: latest.version }, added }, 'Piece downloaded on demand')
+        if (added > 0 && isToolSearchEnabled()) {
+            rejectedPromiseHandler(toolSearchReindexJob(log).enqueue({ type: 'all' }), log)
+        }
+    },
+    async listCatalog({ platformId, locale }: { platformId: string, locale: string | undefined }): Promise<PieceMetadataModelSummary[]> {
+        if (syncMode !== PieceSyncMode.OFFICIAL_SELECTED) {
+            return []
+        }
+        const [summaries, cloudPieces, localPieces] = await Promise.all([
+            listCloudSummariesCached({ locale: locale ?? 'en' }),
+            listCloudPiecesCached(),
+            pieceMetadataService(log).registry({ release: apVersionUtil.getCurrentRelease(), platformId }),
+        ])
+        const latestCompatible = new Map(pickLatestVersions(cloudPieces).map((piece) => [piece.name, piece.version]))
+        const downloaded = new Set(localPieces.map((piece) => piece.name))
+        return summaries
+            .filter((summary) => latestCompatible.has(summary.name) && !downloaded.has(summary.name))
+            .map((summary) => ({ ...summary, version: latestCompatible.get(summary.name) ?? summary.version }))
+    },
 })
+
+function isSyncEnabled(): boolean {
+    return syncMode === PieceSyncMode.OFFICIAL_AUTO || syncMode === PieceSyncMode.OFFICIAL_SELECTED
+}
+
+function selectLatestOfWantedPieces({ cloudPieces, dbPieces }: { cloudPieces: PieceRegistryResponse[], dbPieces: PieceMetadataOnly[] }): PieceRegistryResponse[] {
+    const downloadedNames = dbPieces
+        .filter((piece) => piece.pieceType === PieceType.OFFICIAL)
+        .map((piece) => piece.name)
+    const wanted = new Set([...configuredPieceNames(), ...downloadedNames])
+    return pickLatestVersions(cloudPieces).filter((piece) => wanted.has(piece.name))
+}
+
+function configuredPieceNames(): string[] {
+    const configured = system.get(AppSystemProp.PIECES_SYNC_LIST)
+    if (isNil(configured) || isEmpty(configured)) {
+        return []
+    }
+    return configured
+        .split(',')
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0)
+        .map((name) => name.startsWith('@') ? name : `@activepieces/piece-${name}`)
+}
+
+function pickLatestVersions(pieces: PieceRegistryResponse[]): PieceRegistryResponse[] {
+    return Object.values(groupBy(pieces, (piece) => piece.name)).map((group) => sortByVersionDesc(group)[0])
+}
+
+async function listCloudPiecesCached(): Promise<PieceRegistryResponse[]> {
+    return registryCache.get({ key: 'registry', load: listCloudPieces })
+}
+
+async function listCloudSummariesCached({ locale }: { locale: string }): Promise<PieceMetadataModelSummary[]> {
+    return catalogCache.get({
+        key: locale,
+        load: async () => {
+            const queryParams = new URLSearchParams({ locale })
+            const response = await fetch(`${CLOUD_API_URL}?${queryParams.toString()}`)
+            if (!response.ok) {
+                throw new Error(`Failed to fetch the piece catalog: ${response.status}`)
+            }
+            const summaries: PieceMetadataModelSummary[] = await response.json()
+            return summaries
+        },
+    })
+}
+
+function createTimedCache<T>({ ttlMs }: { ttlMs: number }): TimedCache<T> {
+    const entries = new Map<string, { fetchedAt: number, value: T }>()
+    return {
+        async get({ key, load }: { key: string, load: () => Promise<T> }): Promise<T> {
+            const cached = entries.get(key)
+            if (!isNil(cached) && Date.now() - cached.fetchedAt < ttlMs) {
+                return cached.value
+            }
+            const value = await load()
+            entries.set(key, { fetchedAt: Date.now(), value })
+            return value
+        },
+    }
+}
 
 async function deletePiecesIfNotOnCloud(dbPieces: PieceMetadataOnly[], cloudPieces: PieceRegistryResponse[], log: FastifyBaseLogger): Promise<number> {
     const cloudMap = new Map<string, true>(cloudPieces.map(cloudPiece => [`${cloudPiece.name}:${cloudPiece.version}`, true]))
@@ -169,3 +282,7 @@ type PieceRegistryResponse = {
 
 
 type PieceMetadataOnly = Pick<PieceMetadataSchema, 'name' | 'version' | 'pieceType'>
+
+type TimedCache<T> = {
+    get(params: { key: string, load: () => Promise<T> }): Promise<T>
+}

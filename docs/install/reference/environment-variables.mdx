@@ -351,7 +351,8 @@ flow-authoring defaults.
 
 | Variable | Description | Default |
 |---|---|---|
-| `AP_PIECES_SYNC_MODE` | `OFFICIAL_AUTO` syncs piece metadata automatically from the cloud; `NONE` disables syncing. | `OFFICIAL_AUTO` |
+| `AP_PIECES_SYNC_MODE` | `OFFICIAL_AUTO` syncs piece metadata automatically from the cloud; `OFFICIAL_SELECTED` syncs only the latest version of the pieces in `AP_PIECES_SYNC_LIST` plus any piece a user downloads from the builder; `NONE` disables syncing. | `OFFICIAL_AUTO` |
+| `AP_PIECES_SYNC_LIST` | Comma-separated piece names synced in `OFFICIAL_SELECTED` mode. A short name such as `slack` means `@activepieces/piece-slack`. | (empty) |
 | `AP_TRIGGER_DEFAULT_POLL_INTERVAL` | Minutes between checks for new data on pieces with scheduled triggers (e.g. new Google Contacts). | `5` |
 | `AP_ENABLE_FLOW_ON_PUBLISH` | Automatically enable a flow when a new version is published. | `true` |
 | `AP_ENFORCE_CONNECTION_PIECE_BINDING` | Reject a step's connection at runtime unless the connection was created for the same piece as the step. | `false` |

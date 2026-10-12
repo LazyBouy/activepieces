@@ -1,6 +1,6 @@
 import { ActivepiecesError, ErrorCode, isEmpty, isNil, LocalesEnum } from '@activepieces/core-utils'
 import { PieceMetadataModel, PieceMetadataModelSummary } from '@activepieces/pieces-framework'
-import { ALL_PRINCIPAL_TYPES, ApEdition, EngineResponse, GetPieceRequestParams, GetPieceRequestQuery, GetPieceRequestWithScopeParams, ListPiecesRequestQuery, PieceAudienceFilter, PieceCategory, PieceOptionRequest, Principal, PrincipalType, RegistryPiecesRequestQuery, SampleDataFileType, WorkerJobType } from '@activepieces/shared'
+import { ALL_PRINCIPAL_TYPES, ApEdition, EngineResponse, GetPieceRequestParams, GetPieceRequestQuery, GetPieceRequestWithScopeParams, ListPiecesRequestQuery, PieceAudienceFilter, PieceCatalogRequestQuery, PieceCategory, PieceOptionRequest, Principal, PrincipalType, RegistryPiecesRequestQuery, SampleDataFileType, SyncPiecesRequestBody, WorkerJobType } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
@@ -117,7 +117,20 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
         return pieces
     })
 
-    app.post('/sync', SyncPiecesRequest, async (req) => pieceSyncService(req.log).sync({ publishCacheRefresh: true }))
+    app.post('/sync', SyncPiecesRequest, async (req) => {
+        const pieceName = req.body?.pieceName
+        if (!isNil(pieceName)) {
+            return pieceSyncService(req.log).downloadPiece({ pieceName })
+        }
+        return pieceSyncService(req.log).sync({ publishCacheRefresh: true })
+    })
+
+    app.get('/catalog', PieceCatalogRequest, async (req): Promise<PieceMetadataModelSummary[]> => {
+        return pieceSyncService(req.log).listCatalog({
+            platformId: req.principal.platform.id,
+            locale: req.query.locale,
+        })
+    })
 
     app.delete('/:id', DeletePieceRequest, async (req, reply) => {
         await pieceMetadataService(req.log).delete({
@@ -262,6 +275,18 @@ const OptionsPieceRequest = {
 const SyncPiecesRequest = {
     config: {
         security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        body: SyncPiecesRequestBody,
+    },
+}
+
+const PieceCatalogRequest = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        querystring: PieceCatalogRequestQuery,
     },
 }
 

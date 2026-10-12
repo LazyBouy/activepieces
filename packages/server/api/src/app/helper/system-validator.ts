@@ -159,6 +159,7 @@ const systemPropValidators: {
     [AppSystemProp.JWT_SECRET]: stringValidator,
     [AppSystemProp.DEFAULT_CONCURRENT_JOBS_LIMIT]: numberValidator,
     [AppSystemProp.PIECES_SYNC_MODE]: enumValidator(Object.values(PieceSyncMode)),
+    [AppSystemProp.PIECES_SYNC_LIST]: stringValidator,
     [AppSystemProp.POSTGRES_DATABASE]: stringValidator,
     [AppSystemProp.POSTGRES_HOST]: stringValidator,
     [AppSystemProp.POSTGRES_PASSWORD]: stringValidator,

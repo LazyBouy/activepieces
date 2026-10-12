@@ -72,6 +72,18 @@ export const RegistryPiecesRequestQuery = z.object({
 
 export type RegistryPiecesRequestQuery = z.infer<typeof RegistryPiecesRequestQuery>
 
+export const SyncPiecesRequestBody = z.object({
+    pieceName: z.string().min(1).optional(),
+}).optional()
+
+export type SyncPiecesRequestBody = z.infer<typeof SyncPiecesRequestBody>
+
+export const PieceCatalogRequestQuery = z.object({
+    locale: z.string().optional(),
+})
+
+export type PieceCatalogRequestQuery = z.infer<typeof PieceCatalogRequestQuery>
+
 export const GetPieceRequestQuery = z.object({
     version: VersionType.optional(),
     projectId: z.string().optional(),

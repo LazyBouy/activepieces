@@ -43,6 +43,8 @@ Custom and private pieces are managed manually. See [Manage pieces](/admin-guide
 | `AP_PIECES_SYNC_MODE` | Behavior |
 |---|---|
 | `OFFICIAL_AUTO` | Hourly reconcile against the cloud registry. Default for all deployments. |
+| `OFFICIAL_SELECTED` | Hourly reconcile limited to the latest version of the pieces in `AP_PIECES_SYNC_LIST` and of pieces already downloaded. Builders can download any other catalog piece on demand from the "+" panel (`POST /v1/pieces/sync` with a piece name); `GET /v1/pieces/catalog` lists what is not downloaded yet. |
+| `NONE` | No syncing; only locally loaded pieces are available. |
 
 Custom and private pieces are never touched by the sync job.
 
