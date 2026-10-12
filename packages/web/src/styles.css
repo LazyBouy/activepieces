@@ -1248,7 +1248,8 @@
     --scrim: oklch(0% 0 0 / 60%);
     --scrim-strong: oklch(0% 0 0 / 60%);
     --focus: #8e51ff;
-    --focus-halo: oklch(45.7% 0.24 277.02 / 25%);
+    --focus-halo-dark: oklch(70.2% 0.183 293.541 / 75%);
+    --focus-halo: var(--focus-halo-dark);
     --canvas-dot: var(--gray-7);
     --canvas-readonly-stripe: oklch(26.86% 0 0 / 50%);
     --canvas-label: oklch(68.3% 0 0);
@@ -1478,6 +1479,10 @@
     ):focus-visible {
     outline: 2px solid var(--focus-halo);
     outline-offset: 0;
+  }
+
+  [data-theme='dark'] [data-theme='light'] {
+    --focus-halo: var(--focus-halo-dark);
   }
 
   [data-canvas-contrast] {

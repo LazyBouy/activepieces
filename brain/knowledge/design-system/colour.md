@@ -52,7 +52,7 @@ inside an island, can do it, it is not an exception.
 | `--scrim` | black at an alpha in both themes (30% light, 60% dark), for dialogs and sheets; not a member of any scale |
 | `--scrim-strong` | the step-modal overlay, black 60% in both themes, which the plain scrim cannot be in light |
 | `--focus` | violet `#8e51ff` in both themes, for the focus border and solid focus rings; no scale holds violet |
-| `--focus-halo` | the soft 2px focus outline: indigo `#432dd7` at 25%, translucent so it shows what is under it |
+| `--focus-halo` | the soft 2px focus outline: indigo `#432dd7` at 25% in light, translucent so it shows what is under it; violet-400 at 75% in dark (`--focus-halo-dark`), because the light value is near-invisible on dark surfaces. A light-scoped element inside dark mode (the solid accent button, a logo plate) also takes the dark value, since its outline is drawn over the dark page |
 | `--canvas-dot` | the canvas grid dots, `gray-9` in light and `gray-7` in dark; no single step does both |
 
 Every coloured scale (accent, success, warning, danger) comes from one generator, `brandColors.ramp`
