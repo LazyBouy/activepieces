@@ -49,9 +49,11 @@ export const PieceSelectorGroupRow = ({
           </div>
         </TextWithTooltip>
         {description && (
-          <div className="mt-0.5 truncate text-xs leading-4 text-gray-11">
-            {description}
-          </div>
+          <TextWithTooltip tooltipMessage={description}>
+            <div className="mt-0.5 truncate text-xs leading-4 text-gray-11">
+              {description}
+            </div>
+          </TextWithTooltip>
         )}
       </div>
       <ArrowRight className="size-4 shrink-0 text-gray-11 group-hover/option:text-gray-12" />
