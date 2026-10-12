@@ -536,6 +536,18 @@ describe('flowCanvasUtils.getAddStepParentName', () => {
     ).toBe('step_1');
   });
 
+  it('treats a selected empty trigger as no selection', () => {
+    const trigger = emptyTrigger(
+      code({ name: 'step_1', next: code({ name: 'step_2' }) }),
+    );
+    expect(
+      flowCanvasUtils.getAddStepParentName({
+        trigger,
+        selectedStep: 'trigger',
+      }),
+    ).toBe('step_2');
+  });
+
   it('adds after the trigger of an empty flow', () => {
     expect(
       flowCanvasUtils.getAddStepParentName({

@@ -532,7 +532,7 @@ function getAddStepParentName({
   const selected = isNil(selectedStep)
     ? undefined
     : flowStructureUtil.getStep(selectedStep, trigger);
-  if (!isNil(selected)) {
+  if (!isNil(selected) && selected.type !== FlowTriggerType.EMPTY) {
     return selected.name;
   }
   const mainChain = flowStructureUtil.getAllNextActionsWithoutChildren(trigger);
