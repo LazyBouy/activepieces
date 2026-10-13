@@ -1,0 +1,20 @@
+{
+  "One-Time Passwords": "One-Time Passwords",
+  "Generate time-based one-time codes (TOTP)": "Generate time-based one-time codes (TOTP)",
+  "Secret": "Secret",
+  "The secret key shown when two-step sign-in is set up, often under \"enter this code manually\" next to the QR code. It uses the letters A to Z and the digits 2 to 7; spaces and lower case are fine.": "The secret key shown when two-step sign-in is set up, often under \"enter this code manually\" next to the QR code. It uses the letters A to Z and the digits 2 to 7; spaces and lower case are fine.",
+  "Generate Code": "Generate Code",
+  "Generates the current one-time code for the connection's secret, like an authenticator app.": "Generates the current one-time code for the connection's secret, like an authenticator app.",
+  "Algorithm": "Algorithm",
+  "Digits": "Digits",
+  "Period (seconds)": "Period (seconds)",
+  "The hash the service uses. Most services use SHA-1.": "The hash the service uses. Most services use SHA-1.",
+  "How long the code is. Most services use 6 digits.": "How long the code is. Most services use 6 digits.",
+  "How long each code lasts. Most services use 30 seconds.": "How long each code lasts. Most services use 30 seconds.",
+  "SHA-1": "SHA-1",
+  "SHA-256": "SHA-256",
+  "SHA-512": "SHA-512",
+  "6 digits": "6 digits",
+  "7 digits": "7 digits",
+  "8 digits": "8 digits"
+}

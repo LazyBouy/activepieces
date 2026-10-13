@@ -1,0 +1,19 @@
+{
+  "Gzip": "Gzip",
+  "Compress and decompress files with gzip": "Compress and decompress files with gzip",
+  "Compress File": "Compress File",
+  "Decompress File": "Decompress File",
+  "Compresses a file with gzip and keeps its original name inside the .gz file.": "Compresses a file with gzip and keeps its original name inside the .gz file.",
+  "Unpacks a gzip-compressed file. The file is recognized by its content, whatever its name.": "Unpacks a gzip-compressed file. The file is recognized by its content, whatever its name.",
+  "File": "File",
+  "File name": "File name",
+  "Compression level": "Compression level",
+  "The file to compress, from an earlier step or a file URL.": "The file to compress, from an earlier step or a file URL.",
+  "Name for the compressed file. Leave empty to use the original name plus .gz; .gz is added when missing.": "Name for the compressed file. Leave empty to use the original name plus .gz; .gz is added when missing.",
+  "Fastest finishes quickest, Smallest makes the smallest file, Balanced sits between them.": "Fastest finishes quickest, Smallest makes the smallest file, Balanced sits between them.",
+  "The gzip-compressed file, from an earlier step or a file URL.": "The gzip-compressed file, from an earlier step or a file URL.",
+  "Name for the unpacked file. Leave empty to use the name stored in the file, or else the input name without .gz.": "Name for the unpacked file. Leave empty to use the name stored in the file, or else the input name without .gz.",
+  "Fastest": "Fastest",
+  "Balanced": "Balanced",
+  "Smallest": "Smallest"
+}

@@ -114,7 +114,10 @@ describe('piece category map, next-step and replace modes', () => {
           pieceName('crypto'),
           pieceName('csv'),
           pieceName('file-helper'),
+          GZIP,
           pieceName('image-helper'),
+          JSON_WEB_TOKENS,
+          ONE_TIME_PASSWORDS,
           pieceName('pdf'),
           pieceName('qrcode'),
           pieceName('xml'),
@@ -247,6 +250,58 @@ describe('piece category map, next-step and replace modes', () => {
       'popular',
       'formats-and-files',
       'others',
+    ]);
+  });
+
+  it('places JSON Web Tokens, One-Time Passwords and Gzip in Transform data, under Formats and files, and nowhere else', () => {
+    const transformSections = sectionsFor({
+      category: PieceSelectorTabType.DATA_TRANSFORMATION,
+    });
+    const placements = NEW_FORMAT_PIECES.map((name) => ({
+      name,
+      categories: CATEGORIES.filter((category) =>
+        sectionsFor({ category, aiPieceItems: aiPieceItems() })
+          .flatMap((section) => section.entries)
+          .some((entry) => entryPieceName(entry) === name),
+      ),
+      sections: transformSections
+        .filter((section) =>
+          section.entries.some((entry) => entryPieceName(entry) === name),
+        )
+        .map((section) => section.id),
+    }));
+    expect(placements).toEqual(
+      NEW_FORMAT_PIECES.map((name) => ({
+        name,
+        categories: [PieceSelectorTabType.DATA_TRANSFORMATION],
+        sections: ['formats-and-files'],
+      })),
+    );
+  });
+
+  it('keeps Formats and files as before when the new pieces are not downloaded', () => {
+    const sections = pieceSearchUtils.getCategorySections({
+      category: PieceSelectorTabType.DATA_TRANSFORMATION,
+      steps: steps.filter(
+        (step) =>
+          step.type !== FlowActionType.PIECE ||
+          !NEW_FORMAT_PIECES.includes(step.pieceName),
+      ),
+      pinnedPieceNames: [],
+      aiPieceItems: [],
+    });
+    expect(
+      sections
+        .find((section) => section.id === 'formats-and-files')
+        ?.entries.map(entryId),
+    ).toEqual([
+      pieceName('crypto'),
+      pieceName('csv'),
+      pieceName('file-helper'),
+      pieceName('image-helper'),
+      pieceName('pdf'),
+      pieceName('qrcode'),
+      pieceName('xml'),
     ]);
   });
 
@@ -602,6 +657,10 @@ const CORE = [PieceCategory.CORE];
 const CORE_FLOW = [PieceCategory.CORE, PieceCategory.FLOW_CONTROL];
 const AI_PIECE = pieceName('ai');
 const LIST_TOOLS = '@iphi-flow/piece-list-tools';
+const JSON_WEB_TOKENS = '@iphi-flow/piece-json-web-tokens';
+const ONE_TIME_PASSWORDS = '@iphi-flow/piece-one-time-passwords';
+const GZIP = '@iphi-flow/piece-gzip';
+const NEW_FORMAT_PIECES = [JSON_WEB_TOKENS, ONE_TIME_PASSWORDS, GZIP];
 
 const BUILT_IN_TYPES = [
   FlowActionType.CODE,
@@ -717,10 +776,24 @@ const PIECE_FIXTURES: PieceFixture[] = [
     actions: [action('send_request', 'Send HTTP request')],
   }),
   fixture({
+    slug: 'gzip',
+    displayName: 'Gzip',
+    packageName: GZIP,
+    categories: CORE,
+    actions: [action('compress_file', 'Compress File')],
+  }),
+  fixture({
     slug: 'image-helper',
     displayName: 'Image Helper',
     categories: CORE,
     actions: [action('resize_image', 'Resize Image')],
+  }),
+  fixture({
+    slug: 'json-web-tokens',
+    displayName: 'JSON Web Tokens',
+    packageName: JSON_WEB_TOKENS,
+    categories: CORE,
+    actions: [action('create_token', 'Create Token')],
   }),
   fixture({
     slug: 'list-tools',
@@ -740,6 +813,13 @@ const PIECE_FIXTURES: PieceFixture[] = [
     displayName: 'Math Helper',
     categories: CORE,
     actions: [action('addition', 'Addition')],
+  }),
+  fixture({
+    slug: 'one-time-passwords',
+    displayName: 'One-Time Passwords',
+    packageName: ONE_TIME_PASSWORDS,
+    categories: CORE,
+    actions: [action('generate_code', 'Generate Code')],
   }),
   fixture({
     slug: 'pdf',

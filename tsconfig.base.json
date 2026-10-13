@@ -1605,8 +1605,17 @@
       "@activepieces/sandbox": ["packages/server/sandbox/src/index.ts"],
       "@activepieces/shared": ["packages/core/shared/src/index.ts"],
       "@ee/*": ["packages/ee/*"],
+      "@iphi-flow/piece-gzip": [
+        "packages/pieces/custom/gzip/src/index.ts"
+      ],
+      "@iphi-flow/piece-json-web-tokens": [
+        "packages/pieces/custom/json-web-tokens/src/index.ts"
+      ],
       "@iphi-flow/piece-list-tools": [
         "packages/pieces/custom/list-tools/src/index.ts"
+      ],
+      "@iphi-flow/piece-one-time-passwords": [
+        "packages/pieces/custom/one-time-passwords/src/index.ts"
       ],
       "Aminos": ["packages/pieces/community/Aminos/src/index.ts"],
       "activepieces/piece-microsoft-dynamics-365-business-central": [
