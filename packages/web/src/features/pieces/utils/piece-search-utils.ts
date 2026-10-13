@@ -396,6 +396,7 @@ const PIECE = {
   GRAPHQL: '@activepieces/piece-graphql',
   HTTP: '@activepieces/piece-http',
   IMAGE_HELPER: '@activepieces/piece-image-helper',
+  LIST_TOOLS: '@iphi-flow/piece-list-tools',
   MANUAL_TRIGGER: '@activepieces/piece-manual-trigger',
   MATH_HELPER: '@activepieces/piece-math-helper',
   PDF: '@activepieces/piece-pdf',
@@ -525,6 +526,12 @@ const CATEGORY_SECTIONS: Record<
         pieceMember(PIECE.DATE_HELPER),
         pieceMember(PIECE.DATA_MAPPER),
       ],
+    },
+    {
+      id: 'work-with-lists',
+      title: () => t('Work with lists'),
+      order: 'listed',
+      members: [pieceMember(PIECE.LIST_TOOLS)],
     },
     {
       id: 'formats-and-files',

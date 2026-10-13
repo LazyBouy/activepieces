@@ -89,7 +89,7 @@ describe('piece category map, next-step and replace modes', () => {
     ]);
   });
 
-  it('fills Transform data with its popular steps, formats and files, and others', () => {
+  it('fills Transform data with its popular steps, list tools, formats and files, and others', () => {
     expect(
       describeSections(
         sectionsFor({ category: PieceSelectorTabType.DATA_TRANSFORMATION }),
@@ -103,6 +103,10 @@ describe('piece category map, next-step and replace modes', () => {
           pieceName('date-helper'),
           pieceName('data-mapper'),
         ],
+      },
+      {
+        title: 'Work with lists',
+        entries: [LIST_TOOLS],
       },
       {
         title: 'Formats and files',
@@ -213,6 +217,37 @@ describe('piece category map, next-step and replace modes', () => {
         categories: EXPECTED_CORE_HOMES[slug],
       })),
     );
+  });
+
+  it('places List Tools second in Transform data, under Work with lists, and nowhere else', () => {
+    const homes = CATEGORIES.filter((category) =>
+      sectionsFor({ category, aiPieceItems: aiPieceItems() })
+        .flatMap((section) => section.entries)
+        .some((entry) => entryPieceName(entry) === LIST_TOOLS),
+    );
+    expect(homes).toEqual([PieceSelectorTabType.DATA_TRANSFORMATION]);
+    const sections = sectionsFor({
+      category: PieceSelectorTabType.DATA_TRANSFORMATION,
+    });
+    expect(sections[1].id).toBe('work-with-lists');
+    expect(sections[1].title).toBe('Work with lists');
+  });
+
+  it('hides Work with lists when List Tools is not downloaded', () => {
+    const sections = pieceSearchUtils.getCategorySections({
+      category: PieceSelectorTabType.DATA_TRANSFORMATION,
+      steps: steps.filter(
+        (step) =>
+          step.type !== FlowActionType.PIECE || step.pieceName !== LIST_TOOLS,
+      ),
+      pinnedPieceNames: [],
+      aiPieceItems: [],
+    });
+    expect(sections.map((section) => section.id)).toEqual([
+      'popular',
+      'formats-and-files',
+      'others',
+    ]);
   });
 
   it('places each built-in step in its categories', () => {
@@ -491,11 +526,13 @@ function builtInStep(
 function actionPiece({
   slug,
   displayName,
+  packageName,
   categories = [],
   actions = [],
 }: {
   slug: string;
   displayName: string;
+  packageName?: string;
   categories?: string[];
   actions?: ActionBase[];
   triggers?: TriggerBase[];
@@ -505,7 +542,7 @@ function actionPiece({
     logoUrl: `https://example.test/${slug}.svg`,
     description: `${displayName} description`,
     type: FlowActionType.PIECE,
-    pieceName: pieceName(slug),
+    pieceName: packageName ?? pieceName(slug),
     pieceVersion: '0.1.0',
     categories,
     packageType: PackageType.REGISTRY,
@@ -546,22 +583,25 @@ function pieceName(slug: string): string {
 function fixture({
   slug,
   displayName,
+  packageName,
   categories,
   actions = [],
   triggers = [],
 }: {
   slug: string;
   displayName: string;
+  packageName?: string;
   categories: string[];
   actions?: ActionBase[];
   triggers?: TriggerBase[];
 }): PieceFixture {
-  return { slug, displayName, categories, actions, triggers };
+  return { slug, displayName, packageName, categories, actions, triggers };
 }
 
 const CORE = [PieceCategory.CORE];
 const CORE_FLOW = [PieceCategory.CORE, PieceCategory.FLOW_CONTROL];
 const AI_PIECE = pieceName('ai');
+const LIST_TOOLS = '@iphi-flow/piece-list-tools';
 
 const BUILT_IN_TYPES = [
   FlowActionType.CODE,
@@ -681,6 +721,13 @@ const PIECE_FIXTURES: PieceFixture[] = [
     displayName: 'Image Helper',
     categories: CORE,
     actions: [action('resize_image', 'Resize Image')],
+  }),
+  fixture({
+    slug: 'list-tools',
+    displayName: 'List Tools',
+    packageName: LIST_TOOLS,
+    categories: CORE,
+    actions: [action('filter_list', 'Filter List')],
   }),
   fixture({
     slug: 'manual-trigger',
@@ -952,6 +999,7 @@ const EXPECTED_CORE_HOMES: Record<string, string[]> = {
 type PieceFixture = {
   slug: string;
   displayName: string;
+  packageName?: string;
   categories: string[];
   actions: ActionBase[];
   triggers: TriggerBase[];
