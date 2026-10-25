@@ -34,6 +34,7 @@ export * from './lib/management/invitations'
 export * from './lib/management/analytics'
 export * from './lib/management/ai-providers'
 export * from './lib/management/ai-tools'
+export * from './lib/management/opencode'
 export * from './lib/management/template'
 
 // automation — flows / flow-run / engine / agents / workers were extracted to

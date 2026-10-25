@@ -127,13 +127,17 @@ export function PlatformSidebar() {
           tier: PLATFORM_FEATURES.aiProviders.tier,
           subItems:
             edition === ApEdition.COMMUNITY
-              ? undefined
+              ? [
+                  { to: '/platform/ai', label: t('Providers'), end: true },
+                  { to: '/platform/ai/opencode', label: t('OpenCode') },
+                ]
               : [
                   { to: '/platform/ai', label: t('Providers'), end: true },
                   {
                     to: '/platform/ai/capabilities',
                     label: t('Capabilities'),
                   },
+                  { to: '/platform/ai/opencode', label: t('OpenCode') },
                 ],
         },
       ],

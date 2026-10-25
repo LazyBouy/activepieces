@@ -360,6 +360,17 @@ flow-authoring defaults.
 
 ---
 
+### AI on OpenCode
+
+Defaults for the OpenCode connection a platform admin sets on the AI → OpenCode page. They apply when a platform's connection is first created; the page's values win after that.
+
+| Variable | Description | Default |
+|---|---|---|
+| `AP_OPENCODE_URL` | Base URL of the OpenCode server that AI steps run on. | `http://127.0.0.1:4444` |
+| `AP_OPENCODE_CALLBACK_URL` | URL the OpenCode server uses to reach this server's API (for the tools of agent steps). | the public API URL |
+
+---
+
 ### Tool search
 
 Semantic discovery of piece actions and triggers for AI agents connected

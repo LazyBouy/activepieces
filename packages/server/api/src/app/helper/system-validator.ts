@@ -160,6 +160,8 @@ const systemPropValidators: {
     [AppSystemProp.DEFAULT_CONCURRENT_JOBS_LIMIT]: numberValidator,
     [AppSystemProp.PIECES_SYNC_MODE]: enumValidator(Object.values(PieceSyncMode)),
     [AppSystemProp.PIECES_SYNC_LIST]: stringValidator,
+    [AppSystemProp.OPENCODE_URL]: urlValidator,
+    [AppSystemProp.OPENCODE_CALLBACK_URL]: urlValidator,
     [AppSystemProp.POSTGRES_DATABASE]: stringValidator,
     [AppSystemProp.POSTGRES_HOST]: stringValidator,
     [AppSystemProp.POSTGRES_PASSWORD]: stringValidator,

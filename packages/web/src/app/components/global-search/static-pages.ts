@@ -86,6 +86,13 @@ export const STATIC_PAGES: StaticPage[] = [
     requiresPlatformAdmin: true,
   },
   {
+    id: 'page-platform-ai-opencode',
+    label: 'Platform Admin — OpenCode',
+    href: '/platform/ai/opencode',
+    icon: BotIcon,
+    requiresPlatformAdmin: true,
+  },
+  {
     id: 'page-platform-mcp',
     label: 'Platform Admin — MCP Tools',
     href: '/platform/mcp',

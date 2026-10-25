@@ -48,6 +48,8 @@ import { McpServerEntity } from '../mcp/mcp-entity'
 import { McpOAuthClientEntity } from '../mcp/oauth/client/mcp-oauth-client.entity'
 import { McpOAuthAuthorizationCodeEntity } from '../mcp/oauth/code/mcp-oauth-code.entity'
 import { McpOAuthTokenEntity } from '../mcp/oauth/token/mcp-oauth-token.entity'
+import { OpencodeConnectionEntity } from '../opencode/opencode-connection.entity'
+import { OpencodeProjectLinkEntity } from '../opencode/opencode-project-link.entity'
 import { PieceMetadataEntity } from '../pieces/metadata/piece-metadata-entity'
 import { PlatformConfigurationEntity } from '../platform/platform-configuration.entity'
 import { PlatformEntity } from '../platform/platform.entity'
@@ -98,6 +100,8 @@ function getEntities(): EntitySchema<unknown>[] {
         AIProviderEntity,
         AiToolConfigEntity,
         PlatformModelTierEntity,
+        OpencodeConnectionEntity,
+        OpencodeProjectLinkEntity,
         ProjectRoleEntity,
         TableEntity,
         FieldEntity,

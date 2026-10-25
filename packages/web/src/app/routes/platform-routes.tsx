@@ -205,6 +205,20 @@ export const platformRoutes = [
     ),
   },
   {
+    path: '/platform/ai/opencode',
+    element: (
+      <PlatformLayout>
+        <PageTitle title="OpenCode">
+          <PlanFeatureSample feature="aiProviders">
+            <SuspenseWrapper>
+              <AIProvidersPage section="opencode" />
+            </SuspenseWrapper>
+          </PlanFeatureSample>
+        </PageTitle>
+      </PlatformLayout>
+    ),
+  },
+  {
     path: '/platform/mcp',
     element: (
       <PlatformLayout>

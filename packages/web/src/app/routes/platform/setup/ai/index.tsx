@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { flagsHooks } from '@/hooks/flags-hooks';
 
 import { CapabilitiesTab } from './capabilities-tab';
+import { OpencodeTab } from './opencode-tab';
 import { ProvidersTab } from './providers-tab';
 import { TiersTab } from './tiers-tab';
 
@@ -27,6 +28,8 @@ function AICenter({ section }: { section: AISection }) {
           </div>
         ) : section === 'tiers' ? (
           <TiersTab />
+        ) : section === 'opencode' ? (
+          <OpencodeTab />
         ) : (
           <CapabilitiesTab />
         )}
@@ -35,7 +38,7 @@ function AICenter({ section }: { section: AISection }) {
   );
 }
 
-type AISection = 'providers' | 'capabilities' | 'tiers';
+type AISection = 'providers' | 'capabilities' | 'tiers' | 'opencode';
 
 type AIProvidersPageProps = {
   section: AISection;
