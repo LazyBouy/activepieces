@@ -24,6 +24,7 @@ const baseVersion = (trigger: FlowVersion['trigger']): FlowVersion => ({
     agentIds: [],
     notes: [],
     stepPositions: {},
+    opencodeDefaults: {},
 })
 
 const trigger = (): FlowVersion['trigger'] => ({

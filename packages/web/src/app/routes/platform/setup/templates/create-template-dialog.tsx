@@ -81,6 +81,7 @@ export const CreateTemplateDialog = ({
         displayName: formValue.displayName,
         valid: formValue.template.valid ?? true,
         stepPositions: formValue.template.stepPositions ?? {},
+        opencodeDefaults: formValue.template.opencodeDefaults ?? {},
       };
 
       return templatesApi.create({

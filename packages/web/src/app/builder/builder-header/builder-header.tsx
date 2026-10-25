@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { flowHooks } from '@/features/flows';
 import { FlowCreatedByBadge } from '@/features/flows/components/flow-created-by-badge';
 import { foldersHooks } from '@/features/folders';
+import { FlowAiSettingsDialog } from '@/features/opencode';
 import { getProjectName, projectCollectionUtils } from '@/features/projects';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
@@ -62,12 +63,14 @@ export const BuilderHeader = ({
     moveToFolderClientSide,
     applyOperation,
     setRightSidebar,
+    readonly,
   ] = useBuilderStateContext((state) => [
     state.flow,
     state.flowVersion,
     state.moveToFolderClientSide,
     state.applyOperation,
     state.setRightSidebar,
+    state.readonly,
   ]);
 
   const { embedState } = useEmbedding();
@@ -81,6 +84,7 @@ export const BuilderHeader = ({
     flowVersion.state === FlowVersionState.DRAFT ||
     flowVersion.id === flow.publishedVersionId;
   const [isEditingFlowName, setIsEditingFlowName] = useState(false);
+  const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
   useEffect(() => {
     setIsEditingFlowName(queryParams.get(NEW_FLOW_QUERY_PARAM) === 'true');
   }, []);
@@ -162,6 +166,7 @@ export const BuilderHeader = ({
                 onVersionsListClick={() => {
                   setRightSidebar(RightSideBarType.VERSIONS);
                 }}
+                onAiSettingsClick={() => setIsAiSettingsOpen(true)}
                 insideBuilder={true}
                 flow={flow}
                 flowVersion={flowVersion}
@@ -183,6 +188,18 @@ export const BuilderHeader = ({
                   <Ellipsis className="size-4 text-gray-11" />
                 </Button>
               </FlowActionMenu>
+              <FlowAiSettingsDialog
+                open={isAiSettingsOpen}
+                onOpenChange={setIsAiSettingsOpen}
+                defaults={flowVersion.opencodeDefaults}
+                readonly={!isLatestVersion || readonly}
+                onSave={(defaults) =>
+                  applyOperation({
+                    type: FlowOperationType.UPDATE_OPENCODE_DEFAULTS,
+                    request: defaults,
+                  })
+                }
+              />
             </>
           )}
         </div>

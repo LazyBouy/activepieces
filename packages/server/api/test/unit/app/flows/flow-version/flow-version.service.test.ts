@@ -129,6 +129,7 @@ function makeFlowVersion(overrides: { id?: string, trigger?: FlowVersion['trigge
         backupFiles: null,
         notes: [],
         stepPositions: {},
+        opencodeDefaults: {},
     }
 }
 

@@ -16,6 +16,7 @@ import {
   Import,
   Pencil,
   Share2,
+  Sparkles,
   Trash2,
   UploadCloud,
   User,
@@ -63,8 +64,16 @@ type FlowActionMenuProps = {
   onOwnerChange?: () => void;
   contentAlign?: 'start' | 'center' | 'end';
 } & (
-  | { insideBuilder: true; onVersionsListClick: () => void }
-  | { insideBuilder: false; onVersionsListClick: null }
+  | {
+      insideBuilder: true;
+      onVersionsListClick: () => void;
+      onAiSettingsClick: () => void;
+    }
+  | {
+      insideBuilder: false;
+      onVersionsListClick: null;
+      onAiSettingsClick?: undefined;
+    }
 );
 
 const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
@@ -78,6 +87,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
   onDelete,
   onOwnerChange,
   onVersionsListClick,
+  onAiSettingsClick,
   insideBuilder,
   contentAlign,
 }) => {
@@ -156,6 +166,7 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
           schemaVersion: modifiedFlowVersion.schemaVersion,
           notes: modifiedFlowVersion.notes,
           stepPositions: modifiedFlowVersion.stepPositions,
+          opencodeDefaults: modifiedFlowVersion.opencodeDefaults,
         },
       });
       return updatedFlow;
@@ -310,6 +321,14 @@ const FlowActionMenu: React.FC<FlowActionMenuProps> = ({
               <div className="flex cursor-pointer  flex-row gap-2 items-center">
                 <GalleryVerticalEnd className="h-4 w-4" />
                 <span>{t('Versions')}</span>
+              </div>
+            </DropdownMenuItem>
+          )}
+          {insideBuilder && !isRunsPage && (
+            <DropdownMenuItem onClick={onAiSettingsClick}>
+              <div className="flex cursor-pointer  flex-row gap-2 items-center">
+                <Sparkles className="h-4 w-4" />
+                <span>{t('AI settings')}</span>
               </div>
             </DropdownMenuItem>
           )}

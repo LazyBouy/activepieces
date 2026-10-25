@@ -70,6 +70,7 @@ function makeFlowVersion({ triggerVersion }: { triggerVersion: string }): FlowVe
         backupFiles: null,
         notes: [],
         stepPositions: {},
+        opencodeDefaults: {},
     }
 }
 

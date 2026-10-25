@@ -64,6 +64,7 @@ export async function assertUserHasPermissionToFlow(
         case FlowOperationType.UPDATE_NOTE:
         case FlowOperationType.UPDATE_SAMPLE_DATA_INFO:
         case FlowOperationType.UPDATE_STEP_POSITIONS:
+        case FlowOperationType.UPDATE_OPENCODE_DEFAULTS:
         case FlowOperationType.DELETE_NOTE: {
             await assertRoleHasPermission(principal, projectId, Permission.WRITE_FLOW, log)
             break

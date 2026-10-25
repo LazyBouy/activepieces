@@ -456,6 +456,7 @@ import { AddAuditLogRetentionDaysToPlatform1865000000000 } from './migration/pos
 import { AddAiSpecificModelsVisibleToPlatformConfiguration1866000000000 } from './migration/postgres/1866000000000-AddAiSpecificModelsVisibleToPlatformConfiguration'
 import { AddStepPositionsToFlowVersion1867000000000 } from './migration/postgres/1867000000000-AddStepPositionsToFlowVersion'
 import { AddOpencodeConnection1868000000000 } from './migration/postgres/1868000000000-AddOpencodeConnection'
+import { AddOpencodeDefaultsToFlowVersion1869000000000 } from './migration/postgres/1869000000000-AddOpencodeDefaultsToFlowVersion'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -927,6 +928,7 @@ export const getMigrations = (): (new () => Migration)[] => {
         AddAiSpecificModelsVisibleToPlatformConfiguration1866000000000,
         AddStepPositionsToFlowVersion1867000000000,
         AddOpencodeConnection1868000000000,
+        AddOpencodeDefaultsToFlowVersion1869000000000,
     ]
     return migrations
 }

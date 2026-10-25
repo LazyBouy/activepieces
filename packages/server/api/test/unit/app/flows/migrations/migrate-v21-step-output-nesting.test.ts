@@ -23,6 +23,7 @@ const baseVersion = (trigger: FlowVersion['trigger']): FlowVersion => ({
     agentIds: [],
     notes: [],
     stepPositions: {},
+    opencodeDefaults: {},
 })
 
 const triggerWithNoNext = (overrides: Partial<FlowVersion['trigger']['settings']> = {}): FlowVersion['trigger'] => ({

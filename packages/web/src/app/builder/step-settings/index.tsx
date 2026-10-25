@@ -7,6 +7,7 @@ import {
   FlowTriggerType,
   flowPieceUtil,
   flowStructureUtil,
+  opencodeStepUtil,
 } from '@activepieces/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import deepEqual from 'deep-equal';
@@ -16,6 +17,7 @@ import { useForm, Resolver, useFormContext } from 'react-hook-form';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
 import { Form } from '@/components/ui/form';
+import { OpencodeStepSection } from '@/features/opencode';
 import {
   stepsHooks,
   formUtils,
@@ -180,7 +182,13 @@ StepParametersTab.displayName = 'StepParametersTab';
 
 const StepSettingsTab = () => {
   const { selectedStep } = useStepSettingsContext();
-  const readonly = useBuilderStateContext((state) => state.readonly);
+  const [readonly, projectId, opencodeDefaults] = useBuilderStateContext(
+    (state) => [
+      state.readonly,
+      state.flow.projectId,
+      state.flowVersion.opencodeDefaults,
+    ],
+  );
   const { stepMetadata } = stepsHooks.useStepMetadata({
     step: selectedStep,
   });
@@ -216,6 +224,15 @@ const StepSettingsTab = () => {
             </div>
           </div>
         )}
+      {opencodeStepUtil.isOpencodeStep({ step: selectedStep }) && (
+        <OpencodeStepSection
+          projectId={projectId}
+          readonly={readonly}
+          flowSessionMode={opencodeStepUtil.resolveFlowSessionMode({
+            defaults: opencodeDefaults,
+          })}
+        />
+      )}
     </div>
   );
 };
@@ -228,7 +245,8 @@ function useHasStepSettingsTab(): boolean {
   });
   return (
     getErrorHandlingVisibility({ step: selectedStep, stepMetadata }).show ||
-    !isNil(getPieceVersion({ step: selectedStep, stepMetadata }))
+    !isNil(getPieceVersion({ step: selectedStep, stepMetadata })) ||
+    opencodeStepUtil.isOpencodeStep({ step: selectedStep })
   );
 }
 

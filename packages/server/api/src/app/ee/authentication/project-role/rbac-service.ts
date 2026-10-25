@@ -98,7 +98,8 @@ export const rbacService = (log: FastifyBaseLogger) => ({
             case FlowOperationType.UPDATE_NOTE:
             case FlowOperationType.DELETE_NOTE:
             case FlowOperationType.UPDATE_SAMPLE_DATA_INFO:
-            case FlowOperationType.UPDATE_STEP_POSITIONS: {
+            case FlowOperationType.UPDATE_STEP_POSITIONS:
+            case FlowOperationType.UPDATE_OPENCODE_DEFAULTS: {
                 await this.assertPrinicpalAccessToProject({ principal, permission: Permission.WRITE_FLOW, projectId })
                 break
             }

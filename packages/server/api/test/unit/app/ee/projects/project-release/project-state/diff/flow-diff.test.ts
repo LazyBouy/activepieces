@@ -271,6 +271,53 @@ describe('Flow Diff Service', () => {
         expect(diff.flows).toEqual([])
     })
 
+    it('should detect the flow as changed when only the AI settings differ', async () => {
+        const flowOne = flowGenerator.simpleActionAndTrigger()
+        flowOne.version.opencodeDefaults = {}
+        const flowTwo = JSON.parse(JSON.stringify(flowOne))
+        flowTwo.version.opencodeDefaults = { sessionMode: 'ONE_PER_RUN' }
+
+        const diff = await projectDiffService.diff({
+            currentState: {
+                flows: [flowOne],
+            },
+            newState: {
+                flows: [flowTwo],
+            },
+        })
+
+        expect(diff.flows).toEqual([
+            { type: 'UPDATE_FLOW', flowState: flowOne, newFlowState: flowTwo },
+        ])
+    })
+
+    it('should not detect a change between a version without AI settings and empty ones', async () => {
+        const flowOne = flowGenerator.simpleActionAndTrigger()
+        flowOne.version.opencodeDefaults = {}
+        const flowTwo = JSON.parse(JSON.stringify(flowOne))
+        delete flowTwo.version.opencodeDefaults
+
+        const diff = await projectDiffService.diff({
+            currentState: {
+                flows: [flowOne],
+            },
+            newState: {
+                flows: [flowTwo],
+            },
+        })
+
+        expect(diff.flows).toEqual([])
+    })
+
+    it('should keep the AI settings in the cleaned flow state', async () => {
+        const flowOne = flowGenerator.simpleActionAndTrigger()
+        flowOne.version.opencodeDefaults = { sessionMode: 'ONE_PER_RUN' }
+
+        const state = await projectStateService(logger).getFlowState(flowOne)
+
+        expect(state.version.opencodeDefaults).toEqual({ sessionMode: 'ONE_PER_RUN' })
+    })
+
     it('should keep step positions in the cleaned flow state', async () => {
         const flowOne = flowGenerator.simpleActionAndTrigger()
         const stepPositions = { trigger: { x: 176, y: 240 }, [flowOne.version.trigger.nextAction.name]: { x: 400, y: 240 } }

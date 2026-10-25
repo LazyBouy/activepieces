@@ -59,6 +59,11 @@ export const FlowVersionEntity = new EntitySchema<FlowVersionSchema>({
             nullable: false,
             default: '{}',
         },
+        opencodeDefaults: {
+            type: 'jsonb',
+            nullable: false,
+            default: '{}',
+        },
     },
     indices: [
         {

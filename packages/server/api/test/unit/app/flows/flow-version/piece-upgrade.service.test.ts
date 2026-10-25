@@ -107,6 +107,7 @@ function storedFlowVersion(): FlowVersion {
         backupFiles: null,
         notes: [],
         stepPositions: {},
+        opencodeDefaults: {},
     }
 }
 

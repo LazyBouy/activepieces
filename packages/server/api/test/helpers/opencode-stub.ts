@@ -71,7 +71,7 @@ function route({ state, method, url, body, res }: RouteParams): void {
         return send({ res, value: { key: json['key'], description: json['description'], status: 'active', members: [], groups: [] } })
     }
     if (key === 'GET /operator/agent') {
-        return send({ res, value: state.agents.filter((agent) => agent.directory === directory).map((agent) => ({ name: agent.name, mode: agent.mode })) })
+        return send({ res, value: state.agents.filter((agent) => agent.directory === directory).map(({ directory: _directory, scope: _scope, ...agent }) => agent) })
     }
     if (key === 'POST /operator/agent') {
         const name = String(json['name'])
@@ -164,6 +164,9 @@ type StubAgent = {
     name: string
     mode: string
     scope: string
+    description?: string
+    hidden?: boolean
+    disabled?: boolean
 }
 
 type StubCall = {

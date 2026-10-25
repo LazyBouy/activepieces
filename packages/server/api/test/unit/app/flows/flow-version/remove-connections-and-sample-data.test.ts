@@ -64,6 +64,7 @@ function buildChainedFlowVersion(stepCount: number): FlowVersion {
         connectionIds: [],
         agentIds: [],
         stepPositions: {},
+        opencodeDefaults: {},
     }
 }
 

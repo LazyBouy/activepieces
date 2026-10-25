@@ -101,6 +101,7 @@ function buildFlow(): PopulatedFlow {
       backupFiles: null,
       notes: [],
       stepPositions: {},
+      opencodeDefaults: {},
       trigger: {
         name: 'trigger',
         valid: true,

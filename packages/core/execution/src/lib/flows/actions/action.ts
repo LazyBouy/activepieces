@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { formErrors, STEP_NAME_REGEX } from '@activepieces/core-utils'
 import { VersionType } from '@activepieces/core-piece-types'
+import { OpencodeStepSettings, OpencodeStepSettingsWithValidation } from '../opencode-settings'
 import { PropertySettings } from '../properties'
 import { SampleDataSetting } from '../sample-data'
 
@@ -83,6 +84,7 @@ const pieceActionSettingsFields = {
     actionName: z.string().optional(),
     input: z.record(z.string(), z.unknown()),
     errorHandlingOptions: ActionErrorHandlingOptions,
+    opencode: OpencodeStepSettings.optional(),
 }
 
 export const PieceActionSettings = z.object({
@@ -313,6 +315,7 @@ export const AiRouterActionSettings = z.object({
     branches: AiRouterBranchesSchema(false),
     matchMode: z.enum(AiRouterMatchMode).optional(),
     minConfidence: z.number().min(0).max(1).optional(),
+    opencode: OpencodeStepSettings.optional(),
 })
 
 export const AiRouterActionSettingsWithValidation = z.object({
@@ -321,6 +324,7 @@ export const AiRouterActionSettingsWithValidation = z.object({
     branches: AiRouterBranchesSchema(true),
     matchMode: z.enum(AiRouterMatchMode).optional(),
     minConfidence: z.number().min(0).max(1).optional(),
+    opencode: OpencodeStepSettingsWithValidation.optional(),
 }).superRefine((settings, ctx) => {
     const seen = new Set<string>()
     settings.branches.forEach((branch, index) => {

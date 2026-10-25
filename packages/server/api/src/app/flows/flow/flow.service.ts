@@ -55,6 +55,7 @@ export const flowService = (log: FastifyBaseLogger) => ({
                 displayName: request.displayName,
                 notes: [],
                 stepPositions: {},
+                opencodeDefaults: {},
                 schemaVersion: null,
                 entityManager,
             })
@@ -1063,6 +1064,7 @@ async function createNewDraftIfVersionIsPublished({
                 displayName: lockedVersion.displayName,
                 notes: lockedVersion.notes,
                 stepPositions: lockedVersion.stepPositions,
+                opencodeDefaults: lockedVersion.opencodeDefaults ?? {},
                 schemaVersion: lockedVersion.schemaVersion,
                 entityManager,
             })

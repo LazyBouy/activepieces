@@ -4,7 +4,7 @@ import {
     piecePropertiesUtils,
     PiecePropertyMap,
 } from '@activepieces/pieces-framework'
-import { AiRouterActionSettingsWithValidation, CodeActionSettings, FlowActionType, FlowOperationRequest, FlowOperationType, flowPieceUtil, flowStructureUtil, FlowTrigger, FlowTriggerType, LoopOnItemsActionSettings, PieceActionSettings, PieceTriggerSettings, RouterActionSettingsWithValidation, SourceCode } from '@activepieces/shared'
+import { AiRouterActionSettingsWithValidation, CodeActionSettings, FlowActionType, FlowOperationRequest, FlowOperationType, flowPieceUtil, flowStructureUtil, FlowTrigger, FlowTriggerType, LoopOnItemsActionSettings, OpencodeStepSettingsWithValidation, PieceActionSettings, PieceTriggerSettings, RouterActionSettingsWithValidation, SourceCode } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
 import { pieceMetadataService } from '../../pieces/metadata/piece-metadata-service'
@@ -14,6 +14,7 @@ const loopSettingsValidator = LoopOnItemsActionSettings.and(z.object({
 }))
 const routerSettingsValidator = RouterActionSettingsWithValidation
 const aiRouterSettingsValidator = AiRouterActionSettingsWithValidation
+const opencodeSettingsValidator = OpencodeStepSettingsWithValidation.optional()
 const codeSettingsValidator = CodeActionSettings.and(z.object({
     sourceCode: SourceCode.and(z.object({
         code: z.string().min(1),
@@ -174,7 +175,11 @@ async function validateAction({ settings, platformId, log }: ValidateActionParam
 
     const props = { ...action.props }
 
-    return validateProps(props, settings.input, piece.auth, action.requireAuth)
+    const result = validateProps(props, settings.input, piece.auth, action.requireAuth)
+    return {
+        ...result,
+        valid: result.valid && opencodeSettingsValidator.safeParse(settings.opencode).success,
+    }
 }
 
 async function validateTrigger({ settings, platformId, log }: ValidateTriggerParams): Promise<ValidationResult> {

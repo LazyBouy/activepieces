@@ -9,6 +9,7 @@ import {
   flowStructureUtil,
   StepSettings,
   FlowTriggerType,
+  opencodeStepUtil,
 } from '@activepieces/shared';
 import { QueryClient } from '@tanstack/react-query';
 import { StoreApi } from 'zustand';
@@ -389,6 +390,11 @@ export const createFlowState = (
           ) {
             break;
           }
+          const carriedOpencode =
+            opencodeStepUtil.isOpencodeStep({ step: currentAction }) &&
+            opencodeStepUtil.isOpencodeStep({ step: defaultValues })
+              ? opencodeStepUtil.settingsOf({ step: currentAction })
+              : undefined;
           applyOperation({
             type: FlowOperationType.UPDATE_ACTION,
             request: {
@@ -398,6 +404,9 @@ export const createFlowState = (
               settings: {
                 ...defaultValues.settings,
                 customLogoUrl,
+                ...(isNil(carriedOpencode)
+                  ? {}
+                  : { opencode: carriedOpencode }),
               },
               valid: defaultValues.valid,
             },

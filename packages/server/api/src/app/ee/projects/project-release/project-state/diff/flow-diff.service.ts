@@ -103,6 +103,7 @@ async function isFlowChanged(fromFlow: FlowState, targetFlow: FlowState): Promis
     const normalizedTargetFlow = await normalize(mergeDestinationAuth({ destinationVersion: fromFlow.version, incomingVersion: targetFlow.version }))
     return normalizedFromFlow.displayName !== normalizedTargetFlow.displayName
         || !deepEqual(normalizedFromFlow.trigger, normalizedTargetFlow.trigger) || !isMatched || !notesMatched
+        || !deepEqual(fromFlow.version.opencodeDefaults ?? {}, targetFlow.version.opencodeDefaults ?? {})
 }
 
 async function normalize(flowVersion: FlowVersion): Promise<FlowVersion> {

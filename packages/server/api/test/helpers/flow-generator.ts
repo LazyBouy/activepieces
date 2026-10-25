@@ -47,6 +47,7 @@ const flowVersionGenerator = {
             agentIds: [],
             notes: [],
             stepPositions: {},
+            opencodeDefaults: {},
         }
     },
 }

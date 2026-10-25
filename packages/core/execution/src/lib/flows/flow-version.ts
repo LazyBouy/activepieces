@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { BaseModelSchema, Nullable } from '@activepieces/core-utils'
 import { UserWithMetaInformation } from '@activepieces/core-piece-types'
 import { Note } from './note'
+import { OpencodeDefaults } from './opencode-settings'
 import { FlowTrigger } from './triggers/trigger'
 
 export const LATEST_FLOW_SCHEMA_VERSION = '28'
@@ -36,6 +37,7 @@ export const FlowVersion = z.object({
     backupFiles: Nullable(z.record(z.string(), z.string())),
     notes: z.array(Note),
     stepPositions: StepPositions.default({}),
+    opencodeDefaults: OpencodeDefaults.default({}),
 })
 
 export type FlowVersion = z.infer<typeof FlowVersion>

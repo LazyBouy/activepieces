@@ -5,6 +5,7 @@ import { AiRouterActionSchema, AiRouterActionSettings, BranchCondition, CodeActi
 import { FlowStatus } from '../flow'
 import { FlowVersion, FlowVersionState, StepPositions } from '../flow-version'
 import { Note } from '../note'
+import { OpencodeDefaults } from '../opencode-settings'
 import { SampleDataSetting, SaveSampleDataRequest } from '../sample-data'
 import { EmptyTrigger, FlowTrigger, FlowTriggerType, PieceTrigger, PieceTriggerSettings } from '../triggers/trigger'
 import { flowPieceUtil } from '../util/flow-piece-util'
@@ -54,6 +55,7 @@ export enum FlowOperationType {
     ADD_NOTE = 'ADD_NOTE',
     UPDATE_SAMPLE_DATA_INFO = 'UPDATE_SAMPLE_DATA_INFO',
     UPDATE_STEP_POSITIONS = 'UPDATE_STEP_POSITIONS',
+    UPDATE_OPENCODE_DEFAULTS = 'UPDATE_OPENCODE_DEFAULTS',
 }
 
 export const DeleteBranchRequest = z.object({
@@ -99,6 +101,9 @@ export const UpdateStepPositionsRequest = z.object({
 })
 export type UpdateStepPositionsRequest = z.infer<typeof UpdateStepPositionsRequest>
 
+export const UpdateOpencodeDefaultsRequest = OpencodeDefaults
+export type UpdateOpencodeDefaultsRequest = z.infer<typeof UpdateOpencodeDefaultsRequest>
+
 
 export const DuplicateBranchRequest = z.object({
     branchIndex: z.number(),
@@ -134,6 +139,7 @@ export const ImportFlowRequest = z.object({
     schemaVersion: Nullable(z.string()),
     notes: Nullable(z.array(Note)),
     stepPositions: Nullable(StepPositions),
+    opencodeDefaults: Nullable(OpencodeDefaults),
 })
 
 export type ImportFlowRequest = z.infer<typeof ImportFlowRequest>
@@ -333,6 +339,10 @@ export const FlowOperationRequest = z.discriminatedUnion('type', [
         type: z.literal(FlowOperationType.UPDATE_STEP_POSITIONS),
         request: UpdateStepPositionsRequest,
     }).describe('Update Step Positions'),
+    z.object({
+        type: z.literal(FlowOperationType.UPDATE_OPENCODE_DEFAULTS),
+        request: UpdateOpencodeDefaultsRequest,
+    }).describe('Update OpenCode Defaults'),
 ])
 
 
@@ -414,6 +424,7 @@ export const flowOperations = {
                     clonedVersion = flowOperations.apply(clonedVersion, operation)
                 })
                 clonedVersion = stepPositionsOperations.replace({ flowVersion: clonedVersion, stepPositions: operation.request.stepPositions })
+                clonedVersion = { ...clonedVersion, opencodeDefaults: { ...(operation.request.opencodeDefaults ?? {}) } }
                 break
             }
             case FlowOperationType.SET_SKIP_ACTION: {
@@ -442,6 +453,10 @@ export const flowOperations = {
             }
             case FlowOperationType.UPDATE_STEP_POSITIONS: {
                 clonedVersion = stepPositionsOperations.update({ flowVersion: clonedVersion, request: operation.request })
+                break
+            }
+            case FlowOperationType.UPDATE_OPENCODE_DEFAULTS: {
+                clonedVersion = { ...clonedVersion, opencodeDefaults: { ...operation.request } }
                 break
             }
             default:

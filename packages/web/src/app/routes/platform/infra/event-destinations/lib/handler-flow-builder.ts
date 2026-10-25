@@ -65,6 +65,7 @@ export const handlerFlowBuilder = {
           valid: true,
           notes: [onboardingNote, sampleDataNote],
           stepPositions: {},
+          opencodeDefaults: {},
           trigger: {
             name: 'trigger',
             type: FlowTriggerType.PIECE,

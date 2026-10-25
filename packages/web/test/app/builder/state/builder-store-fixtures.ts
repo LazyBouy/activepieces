@@ -171,6 +171,7 @@ function buildFlow({
       backupFiles: null,
       notes: [],
       stepPositions,
+      opencodeDefaults: {},
       trigger,
     },
   };

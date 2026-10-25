@@ -1,5 +1,5 @@
 import { ActivepiecesError, apId, Cursor, ErrorCode, FlowId, FlowVersionId, isNil, PlatformId, ProjectId, sanitizeObjectForPostgresql, SeekPage, UserId } from '@activepieces/core-utils'
-import { FlowOperationRequest, flowOperations, FlowOperationType, flowStructureUtil, FlowTriggerType, FlowVersion, FlowVersionState, LATEST_FLOW_SCHEMA_VERSION, Note, StepPositions } from '@activepieces/shared'
+import { FlowOperationRequest, flowOperations, FlowOperationType, flowStructureUtil, FlowTriggerType, FlowVersion, FlowVersionState, LATEST_FLOW_SCHEMA_VERSION, Note, OpencodeDefaults, StepPositions } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { EntityManager, FindOneOptions, SelectQueryBuilder } from 'typeorm'
@@ -64,6 +64,7 @@ export const flowVersionService = (log: FastifyBaseLogger) => ({
                         schemaVersion: previousVersion.schemaVersion,
                         notes: previousVersion.notes,
                         stepPositions: previousVersion.stepPositions,
+                        opencodeDefaults: previousVersion.opencodeDefaults,
                     },
                 }]
                 if (
@@ -285,6 +286,7 @@ export const flowVersionService = (log: FastifyBaseLogger) => ({
         displayName,
         notes,
         stepPositions,
+        opencodeDefaults,
         schemaVersion,
         entityManager,
     }: CreateEmptyVersionParams): Promise<FlowVersion> {
@@ -307,6 +309,7 @@ export const flowVersionService = (log: FastifyBaseLogger) => ({
             state: FlowVersionState.DRAFT,
             notes,
             stepPositions,
+            opencodeDefaults,
         }
         return flowVersionRepo(entityManager).save(flowVersion)
     },
@@ -407,6 +410,7 @@ type CreateEmptyVersionParams = {
     displayName: string
     notes: Note[]
     stepPositions: StepPositions
+    opencodeDefaults: OpencodeDefaults
     schemaVersion: string | undefined | null
     entityManager?: EntityManager
 }

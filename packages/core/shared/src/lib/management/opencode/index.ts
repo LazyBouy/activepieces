@@ -66,3 +66,35 @@ export const OpencodeCatalog = z.object({
     error: z.string().optional(),
 })
 export type OpencodeCatalog = z.infer<typeof OpencodeCatalog>
+
+export const OpencodeProjectOptions = z.object({
+    enabled: z.boolean(),
+    adminPanelUrl: z.string(),
+    namespaces: z.array(OpencodeCatalogNamespace),
+    defaultLocation: z.object({
+        namespace: z.string(),
+        project: z.string().nullable(),
+        agent: z.string(),
+    }),
+    error: z.string().optional(),
+})
+export type OpencodeProjectOptions = z.infer<typeof OpencodeProjectOptions>
+
+export const ListOpencodeAgentsQuery = z.object({
+    namespace: z.string().min(1).optional(),
+    project: z.string().min(1).optional(),
+})
+export type ListOpencodeAgentsQuery = z.infer<typeof ListOpencodeAgentsQuery>
+
+export const OpencodeAgentSummary = z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    mode: z.string(),
+})
+export type OpencodeAgentSummary = z.infer<typeof OpencodeAgentSummary>
+
+export const OpencodeAgentList = z.object({
+    agents: z.array(OpencodeAgentSummary),
+    error: z.string().optional(),
+})
+export type OpencodeAgentList = z.infer<typeof OpencodeAgentList>

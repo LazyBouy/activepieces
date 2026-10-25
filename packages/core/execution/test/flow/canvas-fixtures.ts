@@ -9,6 +9,7 @@ import {
     FlowVersion,
     FlowVersionState,
     LoopOnItemsAction,
+    OpencodeDefaults,
     RouterAction,
     RouterExecutionType,
     StepPositions,
@@ -98,7 +99,7 @@ function trigger(next?: FlowAction): FlowTrigger {
     }
 }
 
-function flowVersion({ next, stepPositions = {} }: { next?: FlowAction, stepPositions?: StepPositions }): FlowVersion {
+function flowVersion({ next, stepPositions = {}, opencodeDefaults = {} }: { next?: FlowAction, stepPositions?: StepPositions, opencodeDefaults?: OpencodeDefaults }): FlowVersion {
     return {
         id: 'version-id',
         created: LAST_UPDATED,
@@ -114,6 +115,7 @@ function flowVersion({ next, stepPositions = {} }: { next?: FlowAction, stepPosi
         backupFiles: null,
         notes: [],
         stepPositions,
+        opencodeDefaults,
         trigger: trigger(next),
     }
 }

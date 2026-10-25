@@ -167,6 +167,7 @@ export function useAutomationsMutations(deps: MutationDeps) {
           schemaVersion: version.schemaVersion,
           notes: version.notes,
           stepPositions: version.stepPositions,
+          opencodeDefaults: version.opencodeDefaults,
         },
       });
     },

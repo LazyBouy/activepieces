@@ -37,6 +37,7 @@ export const projectStateHelper = (log: FastifyBaseLogger) => ({
                     schemaVersion: newFlow.version.schemaVersion,
                     notes: newFlow.version.notes,
                     stepPositions: newFlow.version.stepPositions,
+                    opencodeDefaults: newFlow.version.opencodeDefaults ?? null,
                 },
             },
         })

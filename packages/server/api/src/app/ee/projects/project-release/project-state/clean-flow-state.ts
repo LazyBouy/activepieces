@@ -38,6 +38,7 @@ function cleanFlowVersion(version: FlowVersion): FlowVersion {
         backupFiles: version.backupFiles,
         notes: version.notes,
         stepPositions: version.stepPositions,
+        opencodeDefaults: version.opencodeDefaults ?? {},
     }
 }
 

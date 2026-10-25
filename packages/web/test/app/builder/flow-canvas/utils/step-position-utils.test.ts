@@ -231,6 +231,7 @@ function createFlowVersion({
     backupFiles: null,
     notes: [],
     stepPositions,
+    opencodeDefaults: {},
   };
 }
 

@@ -1,5 +1,5 @@
 import { ProjectId } from '@activepieces/core-utils'
-import { FlowVersion, FlowVersionState, FlowVersionTemplate, StepPositions } from '@activepieces/shared'
+import { FlowVersion, FlowVersionState, FlowVersionTemplate, OpencodeDefaults, StepPositions } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { migrateBranchToRouter } from './migrate-v0-branch-to-router'
 import { migrateConnectionIds } from './migrate-v1-connection-ids'
@@ -83,7 +83,7 @@ export const flowMigrations = {
     },
 }
 
-export const migrateFlowVersionTemplate = async ({ trigger, schemaVersion, notes, stepPositions, valid, displayName }: MigrateFlowVersionTemplateParams): Promise<FlowVersionTemplate> => {
+export const migrateFlowVersionTemplate = async ({ trigger, schemaVersion, notes, stepPositions, opencodeDefaults, valid, displayName }: MigrateFlowVersionTemplateParams): Promise<FlowVersionTemplate> => {
     return flowMigrations.apply({
         agentIds: [],
         connectionIds: [],
@@ -99,6 +99,7 @@ export const migrateFlowVersionTemplate = async ({ trigger, schemaVersion, notes
         schemaVersion,
         notes: notes ?? [],
         stepPositions: stepPositions ?? {},
+        opencodeDefaults: opencodeDefaults ?? {},
     })
 }
 
@@ -110,4 +111,5 @@ export const migrateFlowVersionTemplateList = async (flowVersions: FlowVersionTe
 
 type MigrateFlowVersionTemplateParams = Pick<FlowVersionTemplate, 'trigger' | 'schemaVersion' | 'notes' | 'valid' | 'displayName'> & {
     stepPositions?: StepPositions | null
+    opencodeDefaults?: OpencodeDefaults | null
 }
