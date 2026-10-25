@@ -10937,6 +10937,7 @@
         "@fastify/static": "10.1.2",
         "@fastify/swagger": "9.5.1",
         "@modelcontextprotocol/sdk": "1.27.1",
+        "@opencode-ai/sdk": "file:../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-858ed8c833-58eb66cf.tgz",
         "@openrouter/ai-sdk-provider": "3.0.0",
         "@openrouter/sdk": "0.2.9",
         "@sentry/node": "7.120.0",
@@ -13860,6 +13861,8 @@
     "@oclif/plugin-warn-if-update-available": ["@oclif/plugin-warn-if-update-available@3.1.61", "", { "dependencies": { "@oclif/core": "^4", "ansis": "^3.17.0", "debug": "^4.4.3", "http-call": "^5.2.2", "lodash": "^4.18.1", "registry-auth-token": "^5.1.1" } }, "sha512-4XcrTxcCs+brR/eZ0BPeuiREiH3USlJiaHbUqPhnIBuyxhhUSYVd8ZO6s5MQN7AXJq4SMQ+B5zLaHq+ep/afIw=="],
 
     "@onfleet/node-onfleet": ["@onfleet/node-onfleet@1.3.3", "", { "dependencies": { "bottleneck": "^2.19.5", "node-fetch": "^2.6.7" } }, "sha512-0pcg+J9pdNEMAt/GYq96l4rmBsrsDwnTCWrjZhRCKmTlZq0QHBN/8u8smR7RPubg+DsMc5MOSPXXoLsfn03YIg=="],
+
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-858ed8c833-58eb66cf.tgz", {}, "sha512-7xcpImw1IcOu9itloFE7w2EHdgNg06jSl+mVqHRup4iqeIQEY7zmGOXgkG0NT6I04dJd3RQq9dx90CFN4QQfzg=="],
 
     "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@3.0.0", "", { "peerDependencies": { "ai": "^7.0.0", "zod": "^3.25.76 || ^4.1.8" } }, "sha512-m9XTSWoODH2RM5OsZpaGiN7QRR8cdP5paBWq699Tu3JVmGPBKT8xF8XwV0ZBVVsjikD/JgWfak4VSsTR4wAVbg=="],
 

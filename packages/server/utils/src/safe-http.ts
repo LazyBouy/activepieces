@@ -45,9 +45,9 @@ function attachSsrfErrorInterceptor(instance: AxiosInstance): AxiosInstance {
     return instance
 }
 
-function createAxios(config?: AxiosRequestConfig, { httpsAgentOptions }: SafeAxiosOptions = {}): AxiosInstance {
+function createAxios(config?: AxiosRequestConfig, { httpsAgentOptions, extraAllowList = [] }: SafeAxiosOptions = {}): AxiosInstance {
     const { httpAgent, httpsAgent } = buildAgents({
-        allowList: parseAllowListFromEnv(),
+        allowList: [...parseAllowListFromEnv(), ...extraAllowList],
         httpsAgentOptions,
     })
     return attachSsrfErrorInterceptor(axios.create({
@@ -191,6 +191,7 @@ type ToPostFailureParams = {
 
 export type SafeAxiosOptions = {
     httpsAgentOptions?: https.AgentOptions
+    extraAllowList?: string[]
 }
 
 type BuildAgentsParams = {

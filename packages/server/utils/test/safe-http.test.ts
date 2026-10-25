@@ -61,6 +61,22 @@ describe('safeHttp end-to-end blocking', () => {
         })
     })
 
+    it('lets an extra allow list reach only the listed address', async () => {
+        const server = http.createServer((_req, res) => res.end('ok'))
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+        const address = server.address()
+        const port = typeof address === 'object' && address !== null ? address.port : 0
+        const instance = safeHttp.createAxios({ timeout: 2000 }, { extraAllowList: ['127.0.0.1'] })
+
+        const response = await instance.get(`http://127.0.0.1:${port}/`)
+
+        expect(response.data).toBe('ok')
+        await expect(instance.get('http://10.0.0.1/')).rejects.toMatchObject({
+            message: expect.stringMatching(/DNS lookup .* not allowed|IP .* not allowed|is not allowed/i),
+        })
+        await new Promise<void>((resolve) => server.close(() => resolve()))
+    })
+
     it('rewraps filter errors with the AP_SSRF_ALLOW_LIST remediation hint so operators know how to recover', async () => {
         const instance = safeHttp.createAxios({ timeout: 2000 })
         await expect(instance.get('http://10.0.0.1/')).rejects.toMatchObject({
