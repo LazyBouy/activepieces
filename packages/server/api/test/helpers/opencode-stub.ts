@@ -17,6 +17,9 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         busy: [],
         nextSessionId: 1,
         eventClients: new Set(),
+        mcpServers: [],
+        mcpStatus: 'connected',
+        disconnected: [],
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
@@ -92,6 +95,7 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
             title: typeof json['title'] === 'string' ? json['title'] : '',
             agent: typeof json['agent'] === 'string' ? json['agent'] : undefined,
             metadata: json['metadata'],
+            permission: Array.isArray(json['permission']) ? json['permission'] : [],
             messages: [],
             prompts: [],
             aborted: 0,
@@ -182,6 +186,28 @@ function route({ state, method, url, body, res }: RouteParams): void {
     }
     if (routeSession({ state, method, url, json, directory, res })) {
         return
+    }
+    if (key === 'POST /mcp') {
+        const name = String(json['name'])
+        state.mcpServers.push({ name, directory, config: json['config'] })
+        const status = state.mcpStatus === 'connected' ? { status: 'connected' } : { status: 'failed', error: state.mcpStatus }
+        return send({ res, value: { [name]: status } })
+    }
+    const disconnect = url.pathname.match(/^\/mcp\/([^/]+)\/disconnect$/)
+    if (method === 'POST' && disconnect !== null) {
+        state.disconnected.push(decodeURIComponent(disconnect[1]))
+        return send({ res, value: true })
+    }
+    const sessionPermissions = url.pathname.match(/^\/operator\/session\/([^/]+)\/permissions$/)
+    if (sessionPermissions !== null) {
+        const session = state.sessions.find((candidate) => candidate.id === sessionPermissions[1])
+        if (session === undefined) {
+            return send({ res, status: 404, value: { name: 'OperatorSessionPermissionsNotFoundError', data: { message: 'no such session' } } })
+        }
+        if (method === 'PUT') {
+            session.permission = Array.isArray(json['rules']) ? json['rules'] : []
+        }
+        return send({ res, value: { sessionID: session.id, agent: session.agent ?? 'flow', parent: false, rows: [], editable: { start: 0, end: 0 }, written: session.permission, deleted: [], forms: {} } })
     }
     if (key === 'GET /operator/namespaces') {
         return send({ res, value: state.namespaces.map((namespace) => summaryOf({ state, namespace })) })
@@ -320,6 +346,7 @@ type StubSession = {
     title: string
     agent: string | undefined
     metadata: unknown
+    permission: unknown[]
     messages: StubMessage[]
     prompts: Record<string, unknown>[]
     aborted: number
@@ -378,6 +405,9 @@ export type OpencodeStubState = {
     busy: string[]
     nextSessionId: number
     eventClients: Set<http.ServerResponse>
+    mcpServers: { name: string, directory: string, config: unknown }[]
+    mcpStatus: string
+    disconnected: string[]
 }
 
 export type OpencodeStub = {

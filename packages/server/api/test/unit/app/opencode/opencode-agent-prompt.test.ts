@@ -75,6 +75,7 @@ describe('opencodeAgentPrompt.progress', () => {
     it('marks the run in progress and dates a tool call that has not started from its message', () => {
         const progress = opencodeAgentPrompt.progress({
             request: REQUEST,
+            stepId: STEP.id,
             replies: [reply({ created: 7_000, parts: [toolPart({ callID: 'call_1', tool: 'bash', state: { status: 'pending', input: {}, raw: '' } })] })],
         })
 

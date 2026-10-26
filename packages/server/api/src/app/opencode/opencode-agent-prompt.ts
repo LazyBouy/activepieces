@@ -1,8 +1,9 @@
 import { isNil } from '@activepieces/core-utils'
-import { AgentOutputField, AgentOutputFieldType, AgentResult, AgentStepBlock, AgentTaskStatus, ContentBlockType, ExecutionToolStatus, ToolCallContentBlock, ToolCallStatus, ToolCallType } from '@activepieces/shared'
-import { Part, ToolPart } from '@opencode-ai/sdk/v2/client'
+import { AgentOutputField, AgentOutputFieldType, AgentResult, AgentStepBlock, AgentTaskStatus, AgentTool, AgentToolType, ContentBlockType, ExecutionToolStatus, ToolCallBase, ToolCallContentBlock, ToolCallStatus, ToolCallType } from '@activepieces/shared'
+import { Part, ToolPart, ToolState } from '@opencode-ai/sdk/v2/client'
 import { z } from 'zod'
 import { opencodeErrors } from './opencode-errors'
+import { opencodeMcpNames } from './opencode-mcp-names'
 import { BuiltPrompt, opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
 import { OpencodeReplyMessage, ReplySummary } from './opencode-reply'
 import { OpencodeStepRow } from './opencode-step.entity'
@@ -25,7 +26,7 @@ function answer({ request, step, replies, reply, summary, adminPanelUrl }: Answe
     }
     const result: OpencodeAgentResult = {
         prompt: request.instruction,
-        steps: stepsOf({ replies }),
+        steps: stepsOf({ replies, stepId: step.id, tools: request.tools ?? [] }),
         status: AgentTaskStatus.COMPLETED,
         ...(fields.length === 0 ? {} : { structuredOutput: restoreNames({ value: reply.structured, names: outputSchema({ fields }).names }) }),
         opencode: {
@@ -42,10 +43,10 @@ function answer({ request, step, replies, reply, summary, adminPanelUrl }: Answe
     return { output: result }
 }
 
-function progress({ request, replies }: { request: OpencodeAgentRequest, replies: OpencodeReplyMessage[] }): AgentResult {
+function progress({ request, replies, stepId }: { request: OpencodeAgentRequest, replies: OpencodeReplyMessage[], stepId: string }): AgentResult {
     return {
         prompt: request.instruction,
-        steps: stepsOf({ replies }),
+        steps: stepsOf({ replies, stepId, tools: request.tools ?? [] }),
         status: AgentTaskStatus.IN_PROGRESS,
     }
 }
@@ -57,39 +58,50 @@ function sessionLink({ adminPanelUrl, directory, sessionId }: { adminPanelUrl: s
     return `${adminPanelUrl.replace(/\/+$/, '')}/${Buffer.from(directory).toString('base64url')}/session/${sessionId}`
 }
 
-function stepsOf({ replies }: { replies: OpencodeReplyMessage[] }): AgentStepBlock[] {
-    return replies.flatMap(({ info, parts }) => parts.flatMap((part) => blocksOf({ part, startedAt: info.time.created })))
+function stepsOf({ replies, stepId, tools }: { replies: OpencodeReplyMessage[], stepId: string, tools: AgentTool[] }): AgentStepBlock[] {
+    return replies.flatMap(({ info, parts }) => parts.flatMap((part) => blocksOf({ part, startedAt: info.time.created, stepId, tools })))
 }
 
-function blocksOf({ part, startedAt }: { part: Part, startedAt: number }): AgentStepBlock[] {
+function blocksOf({ part, startedAt, stepId, tools }: { part: Part, startedAt: number, stepId: string, tools: AgentTool[] }): AgentStepBlock[] {
     if (part.type === 'text') {
         const text = part.synthetic === true || part.ignored === true ? '' : part.text.trim()
         return text.length === 0 ? [] : [{ type: ContentBlockType.MARKDOWN, markdown: text }]
     }
     if (part.type === 'tool' && part.tool !== STRUCTURED_OUTPUT_TOOL) {
-        return [toolBlock({ part, startedAt })]
+        return [toolBlock({ part, startedAt, stepId, tools })]
     }
     return []
 }
 
-function toolBlock({ part, startedAt }: { part: ToolPart, startedAt: number }): ToolCallContentBlock {
-    const state = part.state
-    const base: Pick<UnknownToolCall, 'type' | 'toolCallType' | 'toolName' | 'displayName' | 'toolCallId' | 'input'> = {
+function toolBlock({ part, startedAt, stepId, tools }: { part: ToolPart, startedAt: number, stepId: string, tools: AgentTool[] }): ToolCallContentBlock {
+    const common: ToolCallBase = {
         type: ContentBlockType.TOOL_CALL,
-        toolCallType: ToolCallType.UNKNOWN,
         toolName: part.tool,
-        displayName: part.tool,
         toolCallId: part.callID,
-        input: state.input,
+        input: part.state.input,
+        ...progressOf({ state: part.state, startedAt }),
     }
+    const tool = opencodeMcpNames.toolOfCall({ stepId, callName: part.tool, tools })
+    switch (tool?.type) {
+        case AgentToolType.PIECE:
+            return { ...common, toolCallType: ToolCallType.PIECE, pieceName: tool.pieceMetadata.pieceName, pieceVersion: tool.pieceMetadata.pieceVersion, actionName: tool.pieceMetadata.actionName }
+        case AgentToolType.FLOW:
+            return { ...common, toolCallType: ToolCallType.FLOW, displayName: tool.flowDisplayName ?? tool.toolName, externalFlowId: tool.externalFlowId }
+        case AgentToolType.MCP:
+            return { ...common, toolCallType: ToolCallType.MCP, displayName: tool.toolName, serverUrl: tool.serverUrl }
+        default:
+            return { ...common, toolCallType: ToolCallType.UNKNOWN, displayName: part.tool }
+    }
+}
+
+function progressOf({ state, startedAt }: { state: ToolState, startedAt: number }): Pick<ToolCallBase, 'status' | 'output' | 'startTime' | 'endTime'> {
     switch (state.status) {
         case 'pending':
-            return { ...base, status: ToolCallStatus.IN_PROGRESS, startTime: isoOf({ ms: startedAt }) }
+            return { status: ToolCallStatus.IN_PROGRESS, startTime: isoOf({ ms: startedAt }) }
         case 'running':
-            return { ...base, status: ToolCallStatus.IN_PROGRESS, startTime: isoOf({ ms: state.time.start }) }
+            return { status: ToolCallStatus.IN_PROGRESS, startTime: isoOf({ ms: state.time.start }) }
         case 'completed':
             return {
-                ...base,
                 status: ToolCallStatus.COMPLETED,
                 output: { status: ExecutionToolStatus.SUCCESS, output: state.output, resolvedInput: {} },
                 startTime: isoOf({ ms: state.time.start }),
@@ -97,7 +109,6 @@ function toolBlock({ part, startedAt }: { part: ToolPart, startedAt: number }): 
             }
         case 'error':
             return {
-                ...base,
                 status: ToolCallStatus.COMPLETED,
                 output: { status: ExecutionToolStatus.FAILED, output: null, resolvedInput: {}, errorMessage: state.error },
                 startTime: isoOf({ ms: state.time.start }),
@@ -147,6 +158,7 @@ export const OpencodeAgentRequest = z.object({
     action: z.literal(OPENCODE_RUN_AGENT),
     instruction: z.string(),
     structuredOutput: z.array(AgentOutputField).optional(),
+    tools: z.array(AgentTool).optional(),
     provider: z.string().optional(),
     providerConfigId: z.string().optional(),
     modelId: z.string().optional(),
@@ -180,8 +192,6 @@ type AnswerParams = {
     summary: ReplySummary
     adminPanelUrl: string
 }
-
-type UnknownToolCall = Extract<ToolCallContentBlock, { toolCallType: ToolCallType.UNKNOWN }>
 
 type OutputSchema = {
     jsonSchema: Record<string, unknown>

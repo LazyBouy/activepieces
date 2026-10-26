@@ -53,8 +53,12 @@ function knowledgeBaseTools(): string {
     return 'Knowledge-base tools are not supported when AI runs on OpenCode.'
 }
 
-function toolsNotBridged(): string {
-    return 'Activepieces tools on an OpenCode agent step are not available yet. Remove the tools from this step to run it on OpenCode.'
+function callbackUnreachable({ url }: { url: string }): string {
+    return `OpenCode could not reach Activepieces at ${url} to use this step's tools.`
+}
+
+function mcpServerUnreachable({ url, reason }: { url: string, reason: string }): string {
+    return `OpenCode could not connect to the MCP server ${url}: ${reason}.`
 }
 
 export class OpencodeRequestError extends Error {
@@ -63,6 +67,12 @@ export class OpencodeRequestError extends Error {
     constructor({ status, message }: { status: number | undefined, message: string }) {
         super(message)
         this.status = status
+    }
+}
+
+export class OpencodeToolsError extends Error {
+    constructor({ message }: { message: string }) {
+        super(message)
     }
 }
 
@@ -75,5 +85,6 @@ export const opencodeErrors = {
     sessionError,
     savedAgent,
     knowledgeBaseTools,
-    toolsNotBridged,
+    callbackUnreachable,
+    mcpServerUnreachable,
 }

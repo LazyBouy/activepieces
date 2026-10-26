@@ -44,7 +44,7 @@ export const opencodeProgress = (log: FastifyBaseLogger) => ({
                 request: {
                     projectId: step.projectId,
                     runId: step.flowRunId,
-                    output: opencodeAgentPrompt.progress({ request: stored.request, replies }),
+                    output: opencodeAgentPrompt.progress({ request: stored.request, replies, stepId: step.id }),
                     sequence: Date.now(),
                 },
             })

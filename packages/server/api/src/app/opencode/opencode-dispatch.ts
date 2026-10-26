@@ -10,8 +10,9 @@ import { rejectedPromiseHandler } from '../helper/promise-handler'
 import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
 import { opencodeCompletion } from './opencode-completion'
 import { opencodeConnectionService } from './opencode-connection.service'
-import { opencodeErrors, OpencodeRequestError } from './opencode-errors'
+import { opencodeErrors, OpencodeRequestError, OpencodeToolsError } from './opencode-errors'
 import { opencodeIds } from './opencode-ids'
+import { opencodeMcpBridge } from './opencode-mcp-bridge'
 import { opencodeModelKeys } from './opencode-models'
 import { BuiltPrompt, OpencodeAiRequest, OpencodeInputFile, opencodePrompts } from './opencode-prompts'
 import { opencodeProvisioning } from './opencode-provisioning'
@@ -111,6 +112,9 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
         await markDispatched({ step: ready })
         return
     }
+    if (stored.request.action === OPENCODE_RUN_AGENT) {
+        await opencodeMcpBridge(log).attach({ step: ready, client, tools: stored.request.tools ?? [] })
+    }
     const prompt = await promptOf({ step: ready, request: stored.request, log })
     const sent = await client.session.promptAsync({
         sessionID: outcome.sessionId,
@@ -203,6 +207,9 @@ async function failureOf({ error, step, log }: { error: unknown, step: OpencodeS
     if (isAxiosError(error)) {
         const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
         return opencodeErrors.unreachable({ serverUrl: connection.serverUrl, error })
+    }
+    if (error instanceof OpencodeToolsError) {
+        return error.message
     }
     if (error instanceof OpencodeRequestError) {
         return opencodeErrors.sessionError({ message: error.message })

@@ -212,18 +212,16 @@ describe('Run Agent on OpenCode', () => {
         expect(await resumedBody({ waitpointId })).toEqual({ failure: 'The model did not return the requested structured output.' })
     })
 
-    it('refuses saved agents, knowledge-base tools and, for now, Activepieces tools', async () => {
+    it('refuses saved agents and knowledge-base tools', async () => {
         const setup = await routedFlow({ steps: [{ name: 'step_1', actionName: 'run_agent' }] })
         const waitpointId = await waitpointFor({ setup, stepName: 'step_1' })
 
         const saved = await runAgent({ setup, body: { waitpointId, instruction: 'Go', agentId: apId() } })
         const knowledge = await runAgent({ setup, body: { waitpointId, instruction: 'Go', tools: [{ type: 'KNOWLEDGE_BASE', toolName: 'docs', sourceType: 'FILE', sourceId: apId(), sourceName: 'Docs' }] } })
-        const piece = await runAgent({ setup, body: { waitpointId, instruction: 'Go', tools: [{ type: 'PIECE', toolName: 'send', pieceMetadata: { pieceName: '@activepieces/piece-slack', pieceVersion: '0.1.0', actionName: 'send_message' } }] } })
 
         expect(saved.statusCode).toBe(StatusCodes.CONFLICT)
         expect(saved.json()).toMatchObject({ params: { message: 'Saved agents are not supported when AI runs on OpenCode. Pick an OpenCode agent in the step\'s OpenCode section.' } })
         expect(knowledge.json()).toMatchObject({ params: { message: 'Knowledge-base tools are not supported when AI runs on OpenCode.' } })
-        expect(piece.json()).toMatchObject({ params: { message: 'Activepieces tools on an OpenCode agent step are not available yet. Remove the tools from this step to run it on OpenCode.' } })
         expect(await db.findBy('opencode_step', { waitpointId })).toEqual([])
     })
 

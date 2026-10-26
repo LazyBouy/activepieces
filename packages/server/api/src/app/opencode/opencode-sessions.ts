@@ -8,6 +8,7 @@ import { projectService } from '../project/project-service'
 import { opencodeAllowlist } from './opencode-allowlist'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors, OpencodeRequestError } from './opencode-errors'
+import { opencodeMcpNames } from './opencode-mcp-names'
 import { FLOW_AGENT_NAME, opencodeProvisioning } from './opencode-provisioning'
 import { OpencodeRunSessionEntity, OpencodeRunSessionRow } from './opencode-run-session.entity'
 import { OpencodeStepEntity, OpencodeStepRow } from './opencode-step.entity'
@@ -85,6 +86,7 @@ export const opencodeSessions = (log: FastifyBaseLogger) => ({
             title,
             agent: step.agent ?? undefined,
             metadata,
+            permission: [opencodeMcpNames.denyAllLine()],
         })
         if (isNil(result.data)) {
             throw new OpencodeRequestError({ status: result.response?.status, message: opencodeErrors.describe({ error: result.error }) })

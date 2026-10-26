@@ -7,6 +7,7 @@ import { engineResponseWatcher } from '../workers/engine-response-watcher'
 import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
+import { opencodeMcpBridge } from './opencode-mcp-bridge'
 import { opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
 import { opencodeReply, ReplyState } from './opencode-reply'
 import { opencodeSessions } from './opencode-sessions'
@@ -75,6 +76,7 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
     },
 
     async settle({ step, failed }: { step: OpencodeStepRow, failed: boolean }): Promise<CompletionResult> {
+        await detachTools({ step, log })
         await stepRepo().update({ id: step.id }, {
             status: failed ? 'FAILED' : 'COMPLETED',
             request: null,
@@ -117,6 +119,18 @@ async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Ex
         summary: state.summary,
         adminPanelUrl: connection.adminPanelUrl,
     })
+}
+
+async function detachTools({ step, log }: { step: OpencodeStepRow, log: FastifyBaseLogger }): Promise<void> {
+    const stored = opencodeStoredRequest.parse(step.request)
+    if (isNil(stored) || stored.request.action !== OPENCODE_RUN_AGENT || (stored.request.tools ?? []).length === 0) {
+        return
+    }
+    const tools = stored.request.tools ?? []
+    const { error } = await tryCatch(async () => opencodeMcpBridge(log).detach({ step, client: await opencodeConnectionService(log).client({ platformId: step.platformId }), tools }))
+    if (!isNil(error)) {
+        log.warn({ opencodeStep: { id: step.id }, error }, '[opencodeCompletion] Could not remove the step\'s tools from OpenCode')
+    }
 }
 
 function resumeBodyOf({ step, answer }: { step: OpencodeStepRow, answer: OpencodeStepAnswer }): unknown {

@@ -22,6 +22,7 @@ export const opencodeAgentRuns = (log: FastifyBaseLogger) => ({
                     action: OPENCODE_RUN_AGENT,
                     instruction: body.instruction,
                     structuredOutput: body.structuredOutput ?? [],
+                    tools: body.tools ?? [],
                     ...(isNil(body.provider) ? {} : { provider: body.provider }),
                     ...(isNil(body.providerConfigId) ? {} : { providerConfigId: body.providerConfigId }),
                     ...(isNil(body.modelName) ? {} : { modelId: body.modelName }),
@@ -40,9 +41,6 @@ function assertRunnable({ body }: { body: OpencodeAgentRunBody }): void {
     const tools = body.tools ?? []
     if (tools.some((tool) => tool.type === AgentToolType.KNOWLEDGE_BASE)) {
         throw invalid({ message: opencodeErrors.knowledgeBaseTools() })
-    }
-    if (tools.length > 0) {
-        throw invalid({ message: opencodeErrors.toolsNotBridged() })
     }
 }
 
