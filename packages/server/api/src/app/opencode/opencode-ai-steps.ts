@@ -6,12 +6,12 @@ import { AppSystemProp } from '../helper/system/system-props'
 import { OpencodeAiCall, opencodeDispatch } from './opencode-dispatch'
 
 export const opencodeAiSteps = (log: FastifyBaseLogger) => ({
-    async execute({ platformId, projectId, call }: ExecuteParams): Promise<OpencodeAiStepResponse> {
+    async execute({ platformId, projectId, call, timeoutMs }: ExecuteParams): Promise<OpencodeAiStepResponse> {
         const requestId = apId()
         const execution = aiExecution(log)
         const answerInThisRequest = isNil(call.waitpointId)
-        const timeoutMs = system.getNumberOrThrow(AppSystemProp.FLOW_TIMEOUT_SECONDS) * 1000
-        const answer = answerInThisRequest ? execution.waitForAnswer({ requestId, timeoutMs }) : undefined
+        const waitMs = timeoutMs ?? system.getNumberOrThrow(AppSystemProp.FLOW_TIMEOUT_SECONDS) * 1000
+        const answer = answerInThisRequest ? execution.waitForAnswer({ requestId, timeoutMs: waitMs }) : undefined
         const step = await opencodeDispatch(log).start({
             platformId,
             projectId,
@@ -35,4 +35,5 @@ type ExecuteParams = {
     platformId: string
     projectId: string
     call: OpencodeAiCall
+    timeoutMs?: number
 }

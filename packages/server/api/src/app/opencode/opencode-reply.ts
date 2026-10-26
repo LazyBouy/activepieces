@@ -1,5 +1,5 @@
 import { isNil } from '@activepieces/core-utils'
-import { AssistantMessage, OpencodeClient, Part } from '@opencode-ai/sdk/v2/client'
+import { AssistantMessage, Message, OpencodeClient, Part } from '@opencode-ai/sdk/v2/client'
 import { opencodeErrors, OpencodeRequestError } from './opencode-errors'
 import { OpencodeReply } from './opencode-prompts'
 
@@ -15,15 +15,13 @@ async function read({ client, sessionId, messageId, directory }: ReadParams): Pr
     if (!sent) {
         return { kind: 'not-sent' }
     }
-    const replies = result.data
-        .filter((message): message is { info: AssistantMessage, parts: Part[] } => message.info.role === 'assistant' && message.info.parentID === messageId)
-        .sort((left, right) => left.info.id.localeCompare(right.info.id))
+    const replies = repliesTo({ messages: result.data, messageId })
     const last = replies[replies.length - 1]
     if (isNil(last)) {
         return { kind: 'pending' }
     }
     if (!isNil(last.info.error)) {
-        return { kind: 'done', reply: { text: '', structured: undefined, error: opencodeErrors.describe({ error: last.info.error }) }, summary: summaryOf({ replies }) }
+        return { kind: 'done', reply: { text: '', structured: undefined, error: opencodeErrors.describe({ error: last.info.error }) }, summary: summaryOf({ replies }), replies }
     }
     if (isNil(last.info.time.completed)) {
         return { kind: 'pending' }
@@ -35,7 +33,22 @@ async function read({ client, sessionId, messageId, directory }: ReadParams): Pr
         kind: 'done',
         reply: { text: textOf({ parts: last.parts }), structured: last.info.structured },
         summary: summaryOf({ replies }),
+        replies,
     }
+}
+
+async function transcript({ client, sessionId, messageId, directory }: ReadParams): Promise<OpencodeReplyMessage[] | null> {
+    const result = await client.session.messages({ sessionID: sessionId, directory })
+    if (isNil(result.data)) {
+        return null
+    }
+    return repliesTo({ messages: result.data, messageId })
+}
+
+function repliesTo({ messages, messageId }: { messages: { info: Message, parts: Part[] }[], messageId: string }): OpencodeReplyMessage[] {
+    return messages
+        .filter((message): message is OpencodeReplyMessage => message.info.role === 'assistant' && message.info.parentID === messageId)
+        .sort((left, right) => left.info.id.localeCompare(right.info.id))
 }
 
 async function isBusy({ client, sessionId, directory }: { client: OpencodeClient, sessionId: string, directory: string | undefined }): Promise<boolean> {
@@ -54,7 +67,7 @@ function textOf({ parts }: { parts: Part[] }): string {
         .trim()
 }
 
-function summaryOf({ replies }: { replies: { info: AssistantMessage }[] }): ReplySummary {
+function summaryOf({ replies }: { replies: OpencodeReplyMessage[] }): ReplySummary {
     const last = replies[replies.length - 1]
     return {
         model: isNil(last) ? null : { providerID: last.info.providerID, modelID: last.info.modelID },
@@ -75,6 +88,12 @@ const IDLE = 'idle'
 
 export const opencodeReply = {
     read,
+    transcript,
+}
+
+export type OpencodeReplyMessage = {
+    info: AssistantMessage
+    parts: Part[]
 }
 
 export type ReplySummary = {
@@ -86,7 +105,7 @@ export type ReplyState =
     | { kind: 'pending' }
     | { kind: 'gone' }
     | { kind: 'not-sent' }
-    | { kind: 'done', reply: OpencodeReply, summary: ReplySummary }
+    | { kind: 'done', reply: OpencodeReply, summary: ReplySummary, replies: OpencodeReplyMessage[] }
 
 type ReadParams = {
     client: OpencodeClient

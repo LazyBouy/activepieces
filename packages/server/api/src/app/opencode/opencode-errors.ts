@@ -45,6 +45,18 @@ function sessionError({ message }: { message: string }): string {
     return `OpenCode stopped with an error: ${message}.`
 }
 
+function savedAgent(): string {
+    return 'Saved agents are not supported when AI runs on OpenCode. Pick an OpenCode agent in the step\'s OpenCode section.'
+}
+
+function knowledgeBaseTools(): string {
+    return 'Knowledge-base tools are not supported when AI runs on OpenCode.'
+}
+
+function toolsNotBridged(): string {
+    return 'Activepieces tools on an OpenCode agent step are not available yet. Remove the tools from this step to run it on OpenCode.'
+}
+
 export class OpencodeRequestError extends Error {
     readonly status: number | undefined
 
@@ -61,4 +73,7 @@ export const opencodeErrors = {
     notAllowlisted,
     sessionGone,
     sessionError,
+    savedAgent,
+    knowledgeBaseTools,
+    toolsNotBridged,
 }

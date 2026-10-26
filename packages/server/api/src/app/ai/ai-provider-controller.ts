@@ -12,11 +12,12 @@ import { aiProviderService } from './ai-provider-service'
 
 export const aiProviderController: FastifyPluginAsyncZod = async (app) => {
     app.get('/', ListAIProvidersForProject, async (request) => {
-        const providers = await aiProviderService(app.log).listForProject({
+        const listing = await opencodeListingFor({ principalType: request.principal.type, platformId: request.principal.platform.id, forFlowStep: request.query.forFlowStep })
+        const providers = listing === 'FLOW_STEP' ? [] : await aiProviderService(app.log).listForProject({
             platformId: request.principal.platform.id,
             projectId: request.projectId,
         })
-        if (!await routesToOpencode({ principalType: request.principal.type, platformId: request.principal.platform.id })) {
+        if (listing === 'NONE') {
             return providers
         }
         const opencode = await opencodeModels(app.log).providerEntry({ platformId: request.principal.platform.id, projectId: request.projectId })
@@ -37,10 +38,13 @@ export const aiProviderController: FastifyPluginAsyncZod = async (app) => {
     }))
     app.get('/:provider/models', ListModels, async (request) => {
         const platformId = request.principal.platform.id
-        const routed = await routesToOpencode({ principalType: request.principal.type, platformId })
+        const listing = await opencodeListingFor({ principalType: request.principal.type, platformId, forFlowStep: request.query.forFlowStep })
         const opencodeKey = opencodeModelKeys.keyOf({ configId: request.query.configId })
-        if (routed && !isNil(opencodeKey)) {
+        if (listing !== 'NONE' && !isNil(opencodeKey)) {
             return opencodeModels(app.log).models({ platformId, projectId: request.projectId, configId: opencodeKey })
+        }
+        if (listing === 'FLOW_STEP') {
+            return []
         }
         const models = await aiProviderService(app.log).listModels({
             platformId,
@@ -48,7 +52,7 @@ export const aiProviderController: FastifyPluginAsyncZod = async (app) => {
             scope: { type: 'project', projectId: request.projectId },
             ...spreadIfDefined('configId', request.query.configId),
         })
-        return routed ? models.filter((model) => model.type === AIProviderModelType.IMAGE) : models
+        return listing === 'ENGINE' ? models.filter((model) => model.type === AIProviderModelType.IMAGE) : models
     })
     app.post('/', CreateAIProvider, async (request) => {
         const platformId = request.principal.platform.id
@@ -72,9 +76,17 @@ export const aiProviderController: FastifyPluginAsyncZod = async (app) => {
     })
 }
 
-async function routesToOpencode({ principalType, platformId }: { principalType: PrincipalType, platformId: string }): Promise<boolean> {
-    return principalType === PrincipalType.ENGINE && opencodeRouting.isOn({ platformId })
+async function opencodeListingFor({ principalType, platformId, forFlowStep }: OpencodeListingParams): Promise<OpencodeListing> {
+    if (principalType !== PrincipalType.ENGINE && forFlowStep !== 'true') {
+        return 'NONE'
+    }
+    if (!await opencodeRouting.isOn({ platformId })) {
+        return 'NONE'
+    }
+    return principalType === PrincipalType.ENGINE ? 'ENGINE' : 'FLOW_STEP'
 }
+
+const ForFlowStepQuery = z.enum(['true', 'false']).optional()
 
 const ListAIProvidersForProject = {
     config: {
@@ -83,6 +95,7 @@ const ListAIProvidersForProject = {
     schema: {
         querystring: z.object({
             projectId: z.string().optional(),
+            forFlowStep: ForFlowStepQuery,
         }),
     },
 }
@@ -141,6 +154,7 @@ const ListModels = {
         querystring: z.object({
             projectId: z.string().optional(),
             configId: z.string().optional(),
+            forFlowStep: ForFlowStepQuery,
         }),
         response: {
             [StatusCodes.OK]: z.array(AIProviderModel),
@@ -194,4 +208,12 @@ const DeleteAIProvider = {
             id: z.string(),
         }),
     },
+}
+
+type OpencodeListing = 'NONE' | 'ENGINE' | 'FLOW_STEP'
+
+type OpencodeListingParams = {
+    principalType: PrincipalType
+    platformId: string
+    forFlowStep: 'true' | 'false' | undefined
 }

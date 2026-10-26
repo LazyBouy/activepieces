@@ -1,4 +1,5 @@
 import { AiStepAction } from '@activepieces/core-utils'
+import { AiRouterMatchMode } from '@activepieces/shared'
 import { opencodeIds } from '../../../../src/app/opencode/opencode-ids'
 import { opencodePrompts } from '../../../../src/app/opencode/opencode-prompts'
 
@@ -73,6 +74,61 @@ describe('opencodePrompts.mapReply', () => {
         })
 
         expect(answer).toEqual({ output: { answer: { total: 12 } } })
+    })
+})
+
+describe('opencodePrompts router answers', () => {
+    const options = { Billing: 'Payments', Technical: 'Bugs', Sales: 'New customers' }
+
+    it('matches every route at 0.5 or above, clamps the probabilities and skips routes the model left out', () => {
+        const answer = opencodePrompts.mapReply({
+            request: { action: AiStepAction.ROUTE, options, matchMode: AiRouterMatchMode.ALL_MATCHES },
+            reply: { text: '', structured: { probabilities: { r0: 0.5, r1: -0.3, r9: 0.9 } } },
+        })
+
+        expect(answer).toEqual({ output: { matched: ['Billing'], probabilities: { Billing: 0.5, Technical: 0 } } })
+    })
+
+    it('fails an all-matches answer that rates no known route', () => {
+        const answer = opencodePrompts.mapReply({
+            request: { action: AiStepAction.ROUTE, options, matchMode: AiRouterMatchMode.ALL_MATCHES },
+            reply: { text: '', structured: { probabilities: { r9: 0.9 } } },
+        })
+
+        expect(answer).toEqual({ failure: 'The routing model did not answer the routing question' })
+    })
+
+    it('fails a best-match answer that carries no structured output', () => {
+        const answer = opencodePrompts.mapReply({
+            request: { action: AiStepAction.ROUTE, options, matchMode: AiRouterMatchMode.BEST_MATCH },
+            reply: { text: 'Billing', structured: undefined },
+        })
+
+        expect(answer).toEqual({ failure: 'The model did not return the requested structured output.' })
+    })
+
+    it('asks an all-matches router for one probability per route, several of which can apply', () => {
+        const built = opencodePrompts.build({ request: { action: AiStepAction.ROUTE, question: 'Who?', state: 'Hi', options: { A: 'a' }, matchMode: AiRouterMatchMode.ALL_MATCHES }, files: [] })
+
+        expect(built).toEqual({
+            parts: [{ type: 'text', text: 'Who?\n\nRoutes:\nr0: A — a\n\nGive each route the probability (0 to 1) that it applies to the input. More than one route can apply.\n\nInput:\nHi' }],
+            format: {
+                type: 'json_schema',
+                schema: {
+                    type: 'object',
+                    properties: {
+                        probabilities: {
+                            type: 'object',
+                            properties: { r0: { type: 'number', description: 'Probability from 0 to 1 for A' } },
+                            required: ['r0'],
+                            additionalProperties: false,
+                        },
+                    },
+                    required: ['probabilities'],
+                    additionalProperties: false,
+                },
+            },
+        })
     })
 })
 

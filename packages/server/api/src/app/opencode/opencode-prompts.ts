@@ -1,5 +1,5 @@
 import { AiStepAction, isNil } from '@activepieces/core-utils'
-import { AiStepFile, AiStepSchema } from '@activepieces/shared'
+import { AiRouterMatchMode, AiStepFile, AiStepSchema } from '@activepieces/shared'
 import { z } from 'zod'
 import { opencodeErrors } from './opencode-errors'
 
@@ -19,8 +19,12 @@ function build({ request, files }: BuildParams): BuiltPrompt {
                 parts: [textPart({ text: extractText({ request }) }), ...files.filter(isExtractable).map(filePart)],
                 format: jsonSchemaFormat({ schema: extractSchema({ schema: request.schema }).jsonSchema }),
             }
-        case AiStepAction.GENERATE_IMAGE:
         case AiStepAction.ROUTE:
+            return {
+                parts: [textPart({ text: routeText({ request }) })],
+                format: jsonSchemaFormat({ schema: routeSchema({ request }) }),
+            }
+        case AiStepAction.GENERATE_IMAGE:
             throw new Error(`${request.action} does not run on OpenCode`)
     }
 }
@@ -51,8 +55,9 @@ function mapReply({ request, reply }: MapReplyParams): OpencodeStepAnswer {
             const { sanitizedNameMap } = extractSchema({ schema: request.schema })
             return { output: { answer: restoreFieldNames({ extracted: reply.structured, sanitizedNameMap }) } }
         }
-        case AiStepAction.GENERATE_IMAGE:
         case AiStepAction.ROUTE:
+            return routeAnswer({ request, structured: reply.structured })
+        case AiStepAction.GENERATE_IMAGE:
             return { failure: `${request.action} does not run on OpenCode` }
     }
 }
@@ -150,6 +155,75 @@ function restoreFieldNames({ extracted, sanitizedNameMap }: { extracted: unknown
     return Object.fromEntries(Object.entries(extracted).map(([key, value]) => [sanitizedNameMap[key] ?? key, value]))
 }
 
+function routeText({ request }: { request: OpencodeAiRequest }): string {
+    const guide = isBestMatch({ request })
+        ? 'Pick the one route that fits the input best, and give each route the probability (0 to 1) that it is the right one.'
+        : 'Give each route the probability (0 to 1) that it applies to the input. More than one route can apply.'
+    return [
+        request.question ?? '',
+        '',
+        'Routes:',
+        ...routeKeys({ request }).map(({ key, route, criterion }) => `${key}: ${route} — ${criterion}`),
+        '',
+        guide,
+        '',
+        'Input:',
+        request.state ?? '',
+    ].join('\n')
+}
+
+function routeSchema({ request }: { request: OpencodeAiRequest }): Record<string, unknown> {
+    const routes = routeKeys({ request })
+    const probabilities = {
+        type: 'object',
+        properties: Object.fromEntries(routes.map(({ key, route }) => [key, { type: 'number', description: `Probability from 0 to 1 for ${route}` }])),
+        required: routes.map(({ key }) => key),
+        additionalProperties: false,
+    }
+    if (!isBestMatch({ request })) {
+        return { type: 'object', properties: { probabilities }, required: ['probabilities'], additionalProperties: false }
+    }
+    return {
+        type: 'object',
+        properties: { route: { type: 'string', enum: routes.map(({ key }) => key) }, probabilities },
+        required: ['route', 'probabilities'],
+        additionalProperties: false,
+    }
+}
+
+function routeAnswer({ request, structured }: { request: OpencodeAiRequest, structured: unknown }): OpencodeStepAnswer {
+    const parsed = RouteAnswer.safeParse(structured)
+    if (!parsed.success) {
+        return { failure: NO_STRUCTURED_OUTPUT }
+    }
+    const routes = routeKeys({ request })
+    const probabilities = Object.fromEntries(routes.flatMap(({ key, route }) => {
+        const probability = parsed.data.probabilities[key]
+        return isNil(probability) ? [] : [[route, Math.min(1, Math.max(0, probability))]]
+    }))
+    if (isBestMatch({ request })) {
+        const chosen = routes.find(({ key }) => key === parsed.data.route)
+        return isNil(chosen) ? { failure: NO_ROUTE } : { output: { matched: [chosen.route], probabilities } }
+    }
+    if (Object.keys(probabilities).length === 0) {
+        return { failure: NO_ROUTE }
+    }
+    return {
+        output: {
+            matched: Object.entries(probabilities).filter(([, probability]) => probability >= ROUTE_APPLIES_THRESHOLD).map(([route]) => route),
+            probabilities,
+        },
+    }
+}
+
+function routeKeys({ request }: { request: OpencodeAiRequest }): RouteKey[] {
+    return Object.entries(request.options ?? {}).map(([route, criterion], index) => ({ key: `r${index}`, route, criterion }))
+}
+
+function isBestMatch({ request }: { request: OpencodeAiRequest }): boolean {
+    return request.matchMode !== AiRouterMatchMode.ALL_MATCHES
+}
+
 function isExtractable(file: OpencodeInputFile): boolean {
     return file.mime.startsWith('image/') || file.mime.startsWith('application/pdf') || file.mime.startsWith('text/')
 }
@@ -172,6 +246,15 @@ function jsonSchemaFormat({ schema }: { schema: Record<string, unknown> }): Open
 }
 
 const NO_STRUCTURED_OUTPUT = 'The model did not return the requested structured output.'
+
+const NO_ROUTE = 'The routing model did not answer the routing question'
+
+const ROUTE_APPLIES_THRESHOLD = 0.5
+
+const RouteAnswer = z.object({
+    route: z.string().optional(),
+    probabilities: z.record(z.string(), z.number()),
+})
 
 const ClassifyAnswer = z.object({ category: z.string() })
 
@@ -198,6 +281,10 @@ export const OpencodeAiRequest = z.object({
     files: z.array(AiStepFile).optional(),
     schema: AiStepSchema.optional(),
     conversation: z.array(z.record(z.string(), z.unknown())).optional(),
+    state: z.string().optional(),
+    question: z.string().optional(),
+    options: z.record(z.string(), z.string()).optional(),
+    matchMode: z.enum(AiRouterMatchMode).optional(),
 })
 export type OpencodeAiRequest = z.infer<typeof OpencodeAiRequest>
 
@@ -259,4 +346,10 @@ type MapReplyParams = {
 type ExtractSchema = {
     jsonSchema: Record<string, unknown>
     sanitizedNameMap: Record<string, string>
+}
+
+type RouteKey = {
+    key: string
+    route: string
+    criterion: string
 }

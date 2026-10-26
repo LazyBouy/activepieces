@@ -7,7 +7,7 @@ import { waitpointService } from '../waitpoints/waitpoint-service'
 
 async function resolve({ projectId, flowRunId, waitpointId, log }: ResolveParams): Promise<OpencodeStepContext> {
     const flowRun = await flowRunService(log).getOne({ id: flowRunId, projectId })
-    const stepName = await stepNameOf({ projectId, flowRunId, waitpointId, log })
+    const stepName = await stepNameOf({ projectId, flowRunId, waitpointId, log }) ?? flowRun?.stepNameToTest ?? null
     if (isNil(flowRun)) {
         return { flowVersionId: null, flowName: null, stepName, settings: undefined, defaults: undefined }
     }

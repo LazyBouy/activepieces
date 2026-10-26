@@ -1,29 +1,17 @@
 import { AIProviderName, AiStepAction, apId } from '@activepieces/core-utils'
-import {
-    FlowActionType,
-    FlowRunStatus,
-    FlowStatus,
-    FlowTriggerType,
-    FlowVersionState,
-    OpencodeDefaults,
-    OpencodeStepSettings,
-    PrincipalType,
-    RunEnvironment,
-} from '@activepieces/shared'
+import { FlowRunStatus } from '@activepieces/shared'
 import { FastifyInstance } from 'fastify'
 import { StatusCodes } from 'http-status-codes'
-import { z } from 'zod'
 import { opencodeBridge } from '../../../../src/app/opencode/opencode-bridge'
 import { opencodeSweep } from '../../../../src/app/opencode/opencode-sweep'
-import { generateMockToken } from '../../../helpers/auth'
 import { db } from '../../../helpers/db'
-import { createMockFlow, createMockFlowRun, createMockFlowVersion } from '../../../helpers/mocks'
+import { opencodeStepFixtures, RoutedSetup } from '../../../helpers/opencode-steps'
 import { OpencodeStub, startOpencodeStub } from '../../../helpers/opencode-stub'
-import { createTestContext, TestContext } from '../../../helpers/test-context'
 import { setupTestEnvironment, teardownTestEnvironment } from '../../../helpers/test-setup'
 
 let app: FastifyInstance | null = null
 let stub: OpencodeStub
+const { routedFlow, waitpointFor, engineToken, stepRow, resumedBody, sessionOf, seedNamespace, idleEvent, statusIdleEvent, waitFor } = opencodeStepFixtures({ app: () => app!, stub: () => stub })
 
 beforeAll(async () => {
     stub = await startOpencodeStub()
@@ -385,86 +373,6 @@ describe('OpenCode models for AI steps', () => {
     })
 })
 
-async function routedFlow({ steps, defaults = {} }: { steps: StepSpec[], defaults?: OpencodeDefaults }): Promise<RoutedSetup> {
-    const ctx = await createTestContext(app!)
-    await ctx.get('/v1/opencode/connection')
-    const flow = createMockFlow({ projectId: ctx.project.id, status: FlowStatus.DISABLED })
-    await db.save('flow', flow)
-    const version = createMockFlowVersion({
-        flowId: flow.id,
-        displayName: 'Routed flow',
-        state: FlowVersionState.DRAFT,
-        opencodeDefaults: defaults,
-        trigger: {
-            name: 'trigger',
-            type: FlowTriggerType.EMPTY,
-            valid: true,
-            displayName: 'Trigger',
-            lastUpdatedDate: new Date().toISOString(),
-            settings: {},
-            nextAction: chain({ steps }),
-        },
-    })
-    await db.save('flow_version', version)
-    const run = createMockFlowRun({
-        projectId: ctx.project.id,
-        flowId: flow.id,
-        flowVersionId: version.id,
-        status: FlowRunStatus.RUNNING,
-        environment: RunEnvironment.TESTING,
-    })
-    await db.save('flow_run', run)
-    return { ctx, flow, run }
-}
-
-function chain({ steps }: { steps: StepSpec[] }): Record<string, unknown> | undefined {
-    const [head, ...rest] = steps
-    if (head === undefined) {
-        return undefined
-    }
-    return {
-        name: head.name,
-        type: FlowActionType.PIECE,
-        valid: true,
-        displayName: head.name,
-        lastUpdatedDate: new Date().toISOString(),
-        settings: {
-            pieceName: '@activepieces/piece-ai',
-            pieceVersion: '0.11.0',
-            actionName: head.actionName ?? 'askAi',
-            input: {},
-            propertySettings: {},
-            ...(head.opencode === undefined ? {} : { opencode: head.opencode }),
-        },
-        nextAction: chain({ steps: rest }),
-    }
-}
-
-async function waitpointFor({ setup, stepName }: { setup: RoutedSetup, stepName: string }): Promise<string> {
-    const id = apId()
-    await db.save('waitpoint', {
-        id,
-        flowRunId: setup.run.id,
-        projectId: setup.ctx.project.id,
-        stepName,
-        type: 'WEBHOOK',
-        status: 'PENDING',
-        resumeDateTime: new Date(Date.now() + 3_600_000).toISOString(),
-        httpRequestId: null,
-        workerHandlerId: null,
-    })
-    return id
-}
-
-async function engineToken({ setup }: { setup: RoutedSetup }): Promise<string> {
-    return generateMockToken({
-        type: PrincipalType.ENGINE,
-        id: apId(),
-        projectId: setup.ctx.project.id,
-        platform: { id: setup.ctx.platform.id },
-    })
-}
-
 async function execute({ setup, waitpointId, body }: { setup: RoutedSetup, waitpointId: string | undefined, body: Record<string, unknown> }) {
     return app!.inject({
         method: 'POST',
@@ -480,76 +388,3 @@ async function execute({ setup, waitpointId, body }: { setup: RoutedSetup, waitp
         },
     })
 }
-
-async function stepRow({ waitpointId }: { waitpointId: string }): Promise<StepRowView> {
-    return StepRowView.parse(await db.findOneBy('opencode_step', { waitpointId }))
-}
-
-async function resumedBody({ waitpointId }: { waitpointId: string }): Promise<unknown> {
-    await waitFor(async () => ResumedWaitpoint.safeParse(await db.findOneBy('waitpoint', { id: waitpointId })).success)
-    return ResumedWaitpoint.parse(await db.findOneBy('waitpoint', { id: waitpointId })).resumePayload.body
-}
-
-function sessionOf({ id }: { id: string | null }): OpencodeStub['state']['sessions'][number] {
-    const session = stub.state.sessions.find((candidate) => candidate.id === id)
-    if (session === undefined) {
-        throw new Error(`the stub has no session ${id}`)
-    }
-    return session
-}
-
-function seedNamespace({ id, projects }: { id: string, projects: string[] }): void {
-    const folder = `/root/opencode-home/${id}`
-    if (!stub.state.namespaces.some((namespace) => namespace.id === id)) {
-        stub.state.namespaces.push({ id, name: id, folder })
-    }
-    for (const project of projects) {
-        if (!stub.state.projects.some((candidate) => candidate.id === project)) {
-            stub.state.projects.push({ key: `${folder}/${project}`, id: project, name: project, namespace: id, git: true })
-        }
-    }
-}
-
-function idleEvent({ sessionId }: { sessionId: string | null }): Record<string, unknown> {
-    return { directory: '/x', payload: { id: 'evt_1', type: 'session.idle', properties: { sessionID: sessionId } } }
-}
-
-function statusIdleEvent({ sessionId }: { sessionId: string | null }): Record<string, unknown> {
-    return { directory: '/x', payload: { id: 'evt_2', type: 'session.status', properties: { sessionID: sessionId, status: { type: 'idle' } } } }
-}
-
-async function waitFor(check: () => Promise<boolean>): Promise<void> {
-    for (let attempt = 0; attempt < 100; attempt++) {
-        if (await check()) {
-            return
-        }
-        await new Promise((resolve) => setTimeout(resolve, 50))
-    }
-    throw new Error('condition was not met in time')
-}
-
-type StepSpec = {
-    name: string
-    actionName?: string
-    opencode?: OpencodeStepSettings
-}
-
-type RoutedSetup = {
-    ctx: TestContext
-    flow: { id: string }
-    run: { id: string }
-}
-
-const StepRowView = z.object({
-    id: z.string(),
-    status: z.string(),
-    sessionId: z.string().nullable(),
-    messageId: z.string(),
-    sessionMode: z.string(),
-}).passthrough()
-type StepRowView = z.infer<typeof StepRowView>
-
-const ResumedWaitpoint = z.object({
-    status: z.enum(['COMPLETED', 'CONSUMED']),
-    resumePayload: z.object({ body: z.unknown() }),
-})

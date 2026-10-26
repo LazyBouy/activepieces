@@ -56,17 +56,27 @@ function getAllowedModelsForProvider({
 }
 
 export const aiModelHooks = {
-  useListProviders: () => {
+  useListProviders: ({ forFlowStep }: { forFlowStep: boolean }) => {
     const projectId = authenticationSession.getProjectId();
     return useQuery({
-      queryKey: ['ai-providers', projectId],
+      queryKey: ['ai-providers', projectId, forFlowStep],
       enabled: !isNil(projectId),
       queryFn: () =>
-        isNil(projectId) ? [] : aiProviderApi.listForProject(projectId),
+        isNil(projectId)
+          ? []
+          : aiProviderApi.listForProject(projectId, { forFlowStep }),
     });
   },
 
-  useGetModelsForProvider: (provider?: AIProviderName, configId?: string) => {
+  useGetModelsForProvider: ({
+    provider,
+    configId,
+    forFlowStep,
+  }: {
+    provider?: AIProviderName;
+    configId?: string;
+    forFlowStep: boolean;
+  }) => {
     const projectId = authenticationSession.getProjectId();
     const { tiers: flowTiers } = aiProviderQueries.useModelTiers('flow');
     const select = useCallback(
@@ -82,14 +92,16 @@ export const aiModelHooks = {
       [provider, flowTiers],
     );
     return useQuery({
-      queryKey: ['ai-models', provider, configId, projectId],
+      queryKey: ['ai-models', provider, configId, projectId, forFlowStep],
       enabled: !isNil(provider) && !isNil(projectId),
       queryFn: () =>
         isNil(provider) ||
         isNil(projectId) ||
         provider === AIProviderName.ACTIVEPIECES
           ? []
-          : aiProviderApi.listModelsForProvider(provider, projectId, configId),
+          : aiProviderApi.listModelsForProvider(provider, projectId, configId, {
+              forFlowStep,
+            }),
       select,
     });
   },

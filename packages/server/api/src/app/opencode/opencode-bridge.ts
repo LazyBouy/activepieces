@@ -9,6 +9,7 @@ import { OpencodeConnectionEntity } from './opencode-connection.entity'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeDispatch } from './opencode-dispatch'
 import { opencodeErrors } from './opencode-errors'
+import { opencodeProgress } from './opencode-progress'
 import { OpencodeStepEntity } from './opencode-step.entity'
 import { opencodeSweep } from './opencode-sweep'
 
@@ -31,6 +32,7 @@ export const opencodeBridge = (log: FastifyBaseLogger) => ({
         }
         state.running.forEach((controller) => controller.abort())
         state.running.clear()
+        opencodeProgress(log).stop()
     },
 
     async reconcile(): Promise<void> {
@@ -106,6 +108,10 @@ export const opencodeBridge = (log: FastifyBaseLogger) => ({
             case 'session.deleted':
                 await failSession({ platformId, sessionId: payload.properties.sessionID, failure: opencodeErrors.sessionGone({ sessionId: payload.properties.sessionID }), log })
                 return
+            case 'message.part.updated':
+            case 'message.part.delta':
+                opencodeProgress(log).notify({ platformId, sessionId: payload.properties.sessionID })
+                return
         }
     },
 })
@@ -156,6 +162,8 @@ const BridgeEvent = z.object({
         z.object({ type: z.literal('session.status'), properties: z.object({ sessionID: z.string(), status: z.object({ type: z.string() }) }) }),
         z.object({ type: z.literal('session.error'), properties: z.object({ sessionID: z.string().optional(), error: z.unknown().optional() }) }),
         z.object({ type: z.literal('session.deleted'), properties: z.object({ sessionID: z.string() }) }),
+        z.object({ type: z.literal('message.part.updated'), properties: z.object({ sessionID: z.string() }) }),
+        z.object({ type: z.literal('message.part.delta'), properties: z.object({ sessionID: z.string() }) }),
     ]),
 })
 

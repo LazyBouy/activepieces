@@ -1,12 +1,17 @@
 import { ActivepiecesError, AIProviderName, apId, ErrorCode, isNil, tryCatch } from '@activepieces/core-utils'
 import { AiStepAction, ChooseAiRouteRequest, ChooseAiRouteResponse, ExecuteAiJobData, LATEST_JOB_DATA_SCHEMA_VERSION, StartAiRouteResponse, WorkerJobType } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
+import { opencodeRouter } from '../opencode/opencode-router'
+import { opencodeRouting } from '../opencode/opencode-routing'
 import { assertCreditsAndAppSumoNotExceeded } from '../platform/billing-provider'
 import { aiExecution } from './ai-execution'
 import { aiProviderService } from './ai-provider-service'
 
 export const aiRouterService = (log: FastifyBaseLogger) => ({
     async start({ platformId, projectId, waitpointId, ...request }: StartParams): Promise<StartAiRouteResponse> {
+        if (await opencodeRouting.isOn({ platformId })) {
+            return opencodeRouter(log).start({ platformId, projectId, waitpointId, request })
+        }
         const provider = await pickProvider({ platformId, projectId, log })
         await assertHasCredits({ platformId, log })
         const requestId = apId()
@@ -16,6 +21,9 @@ export const aiRouterService = (log: FastifyBaseLogger) => ({
     },
 
     async choose({ platformId, projectId, ...request }: ChooseParams): Promise<ChooseAiRouteResponse> {
+        if (await opencodeRouting.isOn({ platformId })) {
+            return opencodeRouter(log).choose({ platformId, projectId, request })
+        }
         const provider = await pickProvider({ platformId, projectId, log })
         await assertHasCredits({ platformId, log })
 

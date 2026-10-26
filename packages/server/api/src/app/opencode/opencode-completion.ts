@@ -4,10 +4,11 @@ import { FastifyBaseLogger } from 'fastify'
 import { repoFactory } from '../core/db/repo-factory'
 import { resumeService } from '../waitpoints/resume-service'
 import { engineResponseWatcher } from '../workers/engine-response-watcher'
+import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
 import { opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
-import { opencodeReply } from './opencode-reply'
+import { opencodeReply, ReplyState } from './opencode-reply'
 import { opencodeSessions } from './opencode-sessions'
 import { OpencodeStepEntity, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
 import { opencodeStoredRequest } from './opencode-stored-request'
@@ -32,13 +33,8 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
                 return { finished: false, nextStepId: null }
             case 'gone':
                 return this.finish({ step, answer: { failure: opencodeErrors.sessionGone({ sessionId: step.sessionId }) } })
-            case 'done': {
-                const stored = opencodeStoredRequest.parse(step.request)
-                if (isNil(stored)) {
-                    return this.finish({ step, answer: { failure: 'The step request could not be read back.' } })
-                }
-                return this.finish({ step, answer: opencodePrompts.mapReply({ request: stored.request, reply: state.reply }) })
-            }
+            case 'done':
+                return this.finish({ step, answer: await answerOf({ step, state, log }) })
         }
     },
 
@@ -90,14 +86,13 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
 })
 
 async function answerFromReply({ step, log }: { step: OpencodeStepRow, log: FastifyBaseLogger }): Promise<OpencodeStepAnswer> {
-    const stored = opencodeStoredRequest.parse(step.request)
-    if (isNil(step.sessionId) || isNil(stored)) {
-        return { failure: 'The step request could not be read back.' }
+    if (isNil(step.sessionId)) {
+        return { failure: UNREADABLE_REQUEST }
     }
     const client = await opencodeConnectionService(log).client({ platformId: step.platformId })
     const state = await opencodeReply.read({ client, sessionId: step.sessionId, messageId: step.messageId, directory: step.directory ?? undefined })
     if (state.kind === 'done') {
-        return opencodePrompts.mapReply({ request: stored.request, reply: state.reply })
+        return answerOf({ step, state, log })
     }
     if (state.kind === 'gone') {
         return { failure: opencodeErrors.sessionGone({ sessionId: step.sessionId }) }
@@ -105,12 +100,35 @@ async function answerFromReply({ step, log }: { step: OpencodeStepRow, log: Fast
     return { failure: 'OpenCode has no answer for this step.' }
 }
 
+async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Extract<ReplyState, { kind: 'done' }>, log: FastifyBaseLogger }): Promise<OpencodeStepAnswer> {
+    const stored = opencodeStoredRequest.parse(step.request)
+    if (isNil(stored)) {
+        return { failure: UNREADABLE_REQUEST }
+    }
+    if (stored.request.action !== OPENCODE_RUN_AGENT) {
+        return opencodePrompts.mapReply({ request: stored.request, reply: state.reply })
+    }
+    const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
+    return opencodeAgentPrompt.answer({
+        request: stored.request,
+        step,
+        replies: state.replies,
+        reply: state.reply,
+        summary: state.summary,
+        adminPanelUrl: connection.adminPanelUrl,
+    })
+}
+
+function resumeBodyOf({ step, answer }: { step: OpencodeStepRow, answer: OpencodeStepAnswer }): unknown {
+    return step.action === OPENCODE_RUN_AGENT && isNil(answer.failure) ? answer.output : answer
+}
+
 async function deliver({ step, answer, log }: { step: OpencodeStepRow, answer: OpencodeStepAnswer, log: FastifyBaseLogger }): Promise<void> {
     if (!isNil(step.waitpointId)) {
         const { error } = await tryCatch(() => resumeService(log).resumeFromWaitpoint({
             flowRunId: step.flowRunId,
             waitpointId: step.waitpointId ?? '',
-            resumePayload: { body: sanitizeObjectForPostgresql(answer), headers: {}, queryParams: {} },
+            resumePayload: { body: sanitizeObjectForPostgresql(resumeBodyOf({ step, answer })), headers: {}, queryParams: {} },
         }))
         if (!isNil(error) && !isFlowRunGone({ error })) {
             throw error
@@ -135,6 +153,8 @@ function isFlowRunGone({ error }: { error: unknown }): boolean {
         && error.error.code === ErrorCode.ENTITY_NOT_FOUND
         && error.error.params.entityType === FLOW_RUN_ENTITY_TYPE
 }
+
+const UNREADABLE_REQUEST = 'The step request could not be read back.'
 
 const OPEN_STATUSES: OpencodeStepStatus[] = ['PENDING', 'QUEUED', 'DISPATCHED']
 

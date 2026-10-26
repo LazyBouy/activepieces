@@ -168,6 +168,7 @@ const selectAgentFormComponentForProperty = (
           defaultConfigId={configId}
           onChange={field.onChange}
           disabled={disabled}
+          forFlowStep
         />
       );
     }

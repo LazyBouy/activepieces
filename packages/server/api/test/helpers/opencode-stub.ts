@@ -40,7 +40,7 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
     }
 }
 
-function answer({ state, sessionId, text = '', structured, error, finish = 'stop' }: AnswerParams & { state: OpencodeStubState }): void {
+function answer({ state, sessionId, text = '', structured, error, finish = 'stop', parts, completed = true }: AnswerParams & { state: OpencodeStubState }): void {
     const session = state.sessions.find((candidate) => candidate.id === sessionId)
     if (session === undefined || sessionId === null) {
         throw new Error(`the stub has no session ${sessionId}`)
@@ -57,7 +57,7 @@ function answer({ state, sessionId, text = '', structured, error, finish = 'stop
             sessionID: sessionId,
             role: 'assistant',
             parentID: prompt.info['id'],
-            time: { created: Date.now(), completed: Date.now() },
+            time: completed ? { created: Date.now(), completed: Date.now() } : { created: Date.now() },
             modelID: 'stub-model',
             providerID: 'stub',
             mode: 'flow',
@@ -69,7 +69,7 @@ function answer({ state, sessionId, text = '', structured, error, finish = 'stop
             ...(structured === undefined ? {} : { structured }),
             ...(error === undefined ? {} : { error }),
         },
-        parts: [{ id: `${id}_p1`, sessionID: sessionId, messageID: id, type: 'text', text }],
+        parts: parts ?? [{ id: `${id}_p1`, sessionID: sessionId, messageID: id, type: 'text', text }],
     })
 }
 
@@ -351,6 +351,8 @@ type AnswerParams = {
     structured?: unknown
     error?: Record<string, unknown>
     finish?: string
+    parts?: Record<string, unknown>[]
+    completed?: boolean
 }
 
 type StubCall = {

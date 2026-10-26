@@ -7,17 +7,18 @@ import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
 import { fileService } from '../file/file.service'
 import { rejectedPromiseHandler } from '../helper/promise-handler'
+import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
 import { opencodeCompletion } from './opencode-completion'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors, OpencodeRequestError } from './opencode-errors'
 import { opencodeIds } from './opencode-ids'
 import { opencodeModelKeys } from './opencode-models'
-import { OpencodeAiRequest, OpencodeInputFile, opencodePrompts } from './opencode-prompts'
+import { BuiltPrompt, OpencodeAiRequest, OpencodeInputFile, opencodePrompts } from './opencode-prompts'
 import { opencodeProvisioning } from './opencode-provisioning'
 import { opencodeSessions, SessionOutcome } from './opencode-sessions'
 import { opencodeStepContext } from './opencode-step-context'
 import { OpencodeStepEntity, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
-import { OpencodeStoredRequest } from './opencode-stored-request'
+import { OpencodeStepRequest, OpencodeStoredRequest } from './opencode-stored-request'
 
 const stepRepo = repoFactory(OpencodeStepEntity)
 
@@ -110,8 +111,7 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
         await markDispatched({ step: ready })
         return
     }
-    const files = await readInputFiles({ step: ready, request: stored.request, log })
-    const prompt = opencodePrompts.build({ request: stored.request, files })
+    const prompt = await promptOf({ step: ready, request: stored.request, log })
     const sent = await client.session.promptAsync({
         sessionID: outcome.sessionId,
         directory: ready.directory ?? undefined,
@@ -171,6 +171,14 @@ async function markDispatched({ step }: { step: OpencodeStepRow }): Promise<void
     await stepRepo().update({ id: step.id }, { status: 'DISPATCHED', sessionId: step.sessionId, dispatchedAt: new Date().toISOString() })
 }
 
+async function promptOf({ step, request, log }: { step: OpencodeStepRow, request: OpencodeStepRequest, log: FastifyBaseLogger }): Promise<BuiltPrompt> {
+    if (request.action === OPENCODE_RUN_AGENT) {
+        return opencodeAgentPrompt.build({ request })
+    }
+    const files = await readInputFiles({ step, request, log })
+    return opencodePrompts.build({ request, files })
+}
+
 async function readInputFiles({ step, request, log }: { step: OpencodeStepRow, request: OpencodeAiRequest, log: FastifyBaseLogger }): Promise<OpencodeInputFile[]> {
     if (request.action !== AiStepAction.EXTRACT_STRUCTURED_DATA) {
         return []
@@ -216,7 +224,7 @@ export type OpencodeAiCall = {
     flowId: string
     flowRunId: string
     waitpointId?: string
-    request: OpencodeAiRequest
+    request: OpencodeStepRequest
 }
 
 type StartParams = {

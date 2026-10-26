@@ -1,5 +1,6 @@
 import { OpencodeStepSettings } from '@activepieces/shared'
 import { z } from 'zod'
+import { OpencodeAgentRequest } from './opencode-agent-prompt'
 import { OpencodeAiRequest } from './opencode-prompts'
 
 function parse(value: unknown): OpencodeStoredRequest | null {
@@ -7,8 +8,11 @@ function parse(value: unknown): OpencodeStoredRequest | null {
     return parsed.success ? parsed.data : null
 }
 
+export const OpencodeStepRequest = z.union([OpencodeAiRequest, OpencodeAgentRequest])
+export type OpencodeStepRequest = z.infer<typeof OpencodeStepRequest>
+
 export const OpencodeStoredRequest = z.object({
-    request: OpencodeAiRequest,
+    request: OpencodeStepRequest,
     flowName: z.string().nullable(),
     settings: OpencodeStepSettings.nullable(),
 })

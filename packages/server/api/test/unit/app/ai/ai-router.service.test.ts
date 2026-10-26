@@ -2,11 +2,14 @@ import { ActivepiecesError, AIProviderName, ErrorCode, PlatformUsageMetric } fro
 import { AiRouterMatchMode, AiStepAction } from '@activepieces/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { enqueue, waitForAnswer, listForProject, assertCredits } = vi.hoisted(() => ({
+const { enqueue, waitForAnswer, listForProject, assertCredits, opencodeIsOn, opencodeChoose, opencodeStart } = vi.hoisted(() => ({
     enqueue: vi.fn(),
     waitForAnswer: vi.fn(),
     listForProject: vi.fn(),
     assertCredits: vi.fn(),
+    opencodeIsOn: vi.fn(),
+    opencodeChoose: vi.fn(),
+    opencodeStart: vi.fn(),
 }))
 
 vi.mock('../../../../src/app/ai/ai-execution', () => ({
@@ -19,6 +22,14 @@ vi.mock('../../../../src/app/ai/ai-provider-service', () => ({
 
 vi.mock('../../../../src/app/platform/billing-provider', () => ({
     assertCreditsAndAppSumoNotExceeded: assertCredits,
+}))
+
+vi.mock('../../../../src/app/opencode/opencode-routing', () => ({
+    opencodeRouting: { isOn: opencodeIsOn },
+}))
+
+vi.mock('../../../../src/app/opencode/opencode-router', () => ({
+    opencodeRouter: () => ({ choose: opencodeChoose, start: opencodeStart }),
 }))
 
 const { aiRouterService } = await import('../../../../src/app/ai/ai-router.service')
@@ -48,6 +59,7 @@ beforeEach(() => {
     listForProject.mockResolvedValue([provider(AIProviderName.OPENROUTER), provider(AIProviderName.ACTIVEPIECES)])
     assertCredits.mockResolvedValue(undefined)
     enqueue.mockResolvedValue(undefined)
+    opencodeIsOn.mockResolvedValue(false)
     waitForAnswer.mockResolvedValue({ output: { matched: ['Billing'], probabilities: { Billing: 0.9, Technical: 0.1 } } })
 })
 
@@ -137,5 +149,36 @@ describe('aiRouterService runs the decision as a worker AI job', () => {
         waitForAnswer.mockResolvedValue({ output: { chosen: 'Billing' } })
 
         await expect(service().choose(REQUEST)).rejects.toMatchObject({ error: { code: ErrorCode.ENGINE_OPERATION_FAILURE } })
+    })
+})
+
+describe('aiRouterService with Run AI on OpenCode switched on', () => {
+    beforeEach(() => {
+        opencodeIsOn.mockResolvedValue(true)
+        opencodeChoose.mockResolvedValue({ matched: ['Technical'], probabilities: { Billing: 0.2, Technical: 0.8 } })
+        opencodeStart.mockResolvedValue({ requestId: 'request-1' })
+    })
+
+    it('asks OpenCode for the decision and never touches providers, credits or the worker', async () => {
+        const answer = await service().choose(REQUEST)
+
+        expect(opencodeIsOn).toHaveBeenCalledWith({ platformId: 'platform-1' })
+        expect(opencodeChoose).toHaveBeenCalledWith({
+            platformId: 'platform-1',
+            projectId: 'project-1',
+            request: { flowId: 'flow-1', flowRunId: 'run-1', state: 'charged twice', question: 'Which team?', options: { Billing: 'Payments', Technical: 'Bugs' }, matchMode: AiRouterMatchMode.BEST_MATCH },
+        })
+        expect(answer).toEqual({ matched: ['Technical'], probabilities: { Billing: 0.2, Technical: 0.8 } })
+        expect(listForProject).not.toHaveBeenCalled()
+        expect(assertCredits).not.toHaveBeenCalled()
+        expect(enqueue).not.toHaveBeenCalled()
+    })
+
+    it('starts a paused decision on OpenCode with the waitpoint', async () => {
+        const started = await service().start({ ...REQUEST, waitpointId: 'wp-1' })
+
+        expect(opencodeStart).toHaveBeenCalledWith(expect.objectContaining({ waitpointId: 'wp-1', platformId: 'platform-1', projectId: 'project-1' }))
+        expect(started).toEqual({ requestId: 'request-1' })
+        expect(enqueue).not.toHaveBeenCalled()
     })
 })

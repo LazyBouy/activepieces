@@ -9,9 +9,16 @@ import {
 
 import { api } from '@/lib/api';
 
+function flowStepQuery(options?: FlowStepListing): { forFlowStep?: 'true' } {
+  return options?.forFlowStep === true ? { forFlowStep: 'true' } : {};
+}
+
 export const aiProviderApi = {
-  listForProject(projectId: string) {
-    return api.get<ProjectAIProvider[]>('/v1/ai-providers', { projectId });
+  listForProject(projectId: string, options?: FlowStepListing) {
+    return api.get<ProjectAIProvider[]>('/v1/ai-providers', {
+      projectId,
+      ...flowStepQuery(options),
+    });
   },
   listConfigs() {
     return api.get<AIProviderWithoutSensitiveData[]>(
@@ -22,10 +29,12 @@ export const aiProviderApi = {
     provider: string,
     projectId: string,
     configId?: string,
+    options?: FlowStepListing,
   ) {
     return api.get<AIProviderModel[]>(`/v1/ai-providers/${provider}/models`, {
       projectId,
       ...(configId === undefined ? {} : { configId }),
+      ...flowStepQuery(options),
     });
   },
   listModelsForConfig(configId: string) {
@@ -57,6 +66,10 @@ export const aiProviderApi = {
 };
 
 export type ModelTierSurface = 'chat' | 'flow';
+
+type FlowStepListing = {
+  forFlowStep?: boolean;
+};
 
 export type ModelTier = {
   id: string;

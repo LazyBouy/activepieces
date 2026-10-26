@@ -19,8 +19,8 @@ const listModelsForProvider = vi.fn();
 vi.mock('@/features/platform-admin/api/ai-provider-api', () => ({
   aiProviderApi: {
     listModelTiers: () => listModelTiers(),
-    listModelsForProvider: (provider: string) =>
-      listModelsForProvider(provider),
+    listModelsForProvider: (...args: unknown[]) =>
+      listModelsForProvider(...args),
   },
 }));
 
@@ -117,13 +117,49 @@ describe('aiModelHooks.useGetModelsForProvider', () => {
     );
   });
 
-  function renderModels(provider: AIProviderName) {
+  it('asks for the flow-step listing when the picker sits on a flow step', async () => {
+    listModelTiers.mockResolvedValue(PUBLISHED);
+    listModelsForProvider.mockResolvedValue([
+      model({ id: 'default', name: 'Default' }),
+    ]);
+
+    const { result } = renderModels(AIProviderName.CUSTOM, {
+      configId: 'opencode:default',
+      forFlowStep: true,
+    });
+
+    await waitFor(() =>
+      expect(result.current.data?.map((model) => model.id)).toEqual([
+        'default',
+      ]),
+    );
+    expect(listModelsForProvider).toHaveBeenCalledWith(
+      AIProviderName.CUSTOM,
+      'project-1',
+      'opencode:default',
+      { forFlowStep: true },
+    );
+  });
+
+  function renderModels(
+    provider: AIProviderName,
+    {
+      configId,
+      forFlowStep = false,
+    }: { configId?: string; forFlowStep?: boolean } = {},
+  ) {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-    return renderHook(() => aiModelHooks.useGetModelsForProvider(provider), {
-      wrapper,
-    });
+    return renderHook(
+      () =>
+        aiModelHooks.useGetModelsForProvider({
+          provider,
+          configId,
+          forFlowStep,
+        }),
+      { wrapper },
+    );
   }
 });
 

@@ -119,23 +119,16 @@ export const TestSampleDataViewer = React.memo(
           )
         }
       >
-        {isTesting ? (
+        {isTesting && !showAgentView ? (
           <div className="flex flex-col gap-3 px-3 py-2">
             <JsonTreeSkeleton />
-            {!hideCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                className="self-start"
-                onClick={onCancelTesting}
-              >
-                <Loader2 className="animate-spin" />
-                {t('Cancel Testing')}
-              </Button>
-            )}
+            {!hideCancel && <CancelTestingButton onClick={onCancelTesting} />}
           </div>
         ) : showAgentView ? (
-          <div className="px-3 py-2">
+          <div className="flex flex-col gap-3 px-3 py-2">
+            {isTesting && !hideCancel && (
+              <CancelTestingButton onClick={onCancelTesting} />
+            )}
             <AgentTestStep
               agentResult={getAgentResult(sampleData)}
               errorMessage={errorMessage}
@@ -188,6 +181,20 @@ export const TestSampleDataViewer = React.memo(
 );
 
 TestSampleDataViewer.displayName = 'TestSampleDataViewer';
+
+function CancelTestingButton({ onClick }: { onClick?: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="self-start"
+      onClick={onClick}
+    >
+      <Loader2 className="animate-spin" />
+      {t('Cancel Testing')}
+    </Button>
+  );
+}
 
 function getAgentResult(sampleData: unknown): AgentResult | undefined {
   return isAgentResult(sampleData) ? sampleData : undefined;

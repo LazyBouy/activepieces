@@ -42,6 +42,7 @@ type AIModelSelectorProps = {
   defaultModel?: string;
   defaultConfigId?: string;
   disabled?: boolean;
+  forFlowStep?: boolean;
   onChange: (value: {
     provider?: string;
     model?: string;
@@ -66,6 +67,7 @@ export function AIModelSelector({
   defaultModel,
   defaultConfigId,
   disabled = false,
+  forFlowStep = false,
   onChange,
 }: AIModelSelectorProps) {
   const [providerOpen, setProviderOpen] = React.useState(false);
@@ -81,9 +83,13 @@ export function AIModelSelector({
   >(defaultConfigId);
 
   const { data: providers = [], isLoading: providersLoading } =
-    aiModelHooks.useListProviders();
+    aiModelHooks.useListProviders({ forFlowStep });
   const { data: models = [], isLoading: modelsLoading } =
-    aiModelHooks.useGetModelsForProvider(selectedProvider, selectedConfigId);
+    aiModelHooks.useGetModelsForProvider({
+      provider: selectedProvider,
+      configId: selectedConfigId,
+      forFlowStep,
+    });
   const { status: modelTiersStatus } = useQuery(
     aiProviderQueries.modelTiersOptions(),
   );
