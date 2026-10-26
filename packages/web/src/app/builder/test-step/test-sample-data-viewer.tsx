@@ -5,6 +5,7 @@ import {
   FlowAction,
   FlowActionType,
   FlowTrigger,
+  opencodeStepUtil,
 } from '@activepieces/shared';
 import { t } from 'i18next';
 import { Loader2 } from 'lucide-react';
@@ -12,6 +13,7 @@ import React, { useMemo } from 'react';
 
 import type { OutputSchema } from '@/components/custom/smart-output-viewer/types';
 import { Button } from '@/components/ui/button';
+import { OpencodeStepAsks } from '@/features/opencode';
 import { formatUtils } from '@/lib/format-utils';
 
 import { ErrorExplanationContext } from '../data-display/explanation-prompt';
@@ -41,6 +43,7 @@ export const TestSampleDataViewer = React.memo(
       errorMessage,
       lastTestDate,
       currentStep,
+      flowVersionId,
       children,
       onCancelTesting,
       hideCancel,
@@ -77,6 +80,9 @@ export const TestSampleDataViewer = React.memo(
       [outputData, pieceSchema, errorMessage, currentStep?.name],
     );
     const showData = !isTesting && !showAgentView;
+    const opencodeTested =
+      !isNil(currentStep) &&
+      opencodeStepUtil.isOpencodeStep({ step: currentStep });
 
     return (
       <DataPane
@@ -119,6 +125,13 @@ export const TestSampleDataViewer = React.memo(
           )
         }
       >
+        {isTesting && opencodeTested && !isNil(flowVersionId) && (
+          <OpencodeStepAsks
+            flowVersionId={flowVersionId}
+            stepName={currentStep?.name ?? ''}
+            enabled={true}
+          />
+        )}
         {isTesting && !showAgentView ? (
           <div className="flex flex-col gap-3 px-3 py-2">
             <JsonTreeSkeleton />
@@ -212,6 +225,7 @@ function isAgentResult(value: unknown): value is AgentResult {
 
 type TestSampleDataViewerProps = {
   currentStep?: FlowAction | FlowTrigger;
+  flowVersionId?: string;
   isTesting: boolean;
   sampleData?: unknown;
   sampleDataInput?: unknown | null;

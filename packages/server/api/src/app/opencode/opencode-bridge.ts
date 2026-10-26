@@ -1,9 +1,11 @@
 import { isNil, tryCatch } from '@activepieces/core-utils'
+import { OpencodeAskKind, OpencodeQuestion } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
 import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
 import { rejectedPromiseHandler } from '../helper/promise-handler'
+import { opencodeAsks } from './opencode-asks'
 import { opencodeCompletion } from './opencode-completion'
 import { OpencodeConnectionEntity } from './opencode-connection.entity'
 import { opencodeConnectionService } from './opencode-connection.service'
@@ -80,6 +82,7 @@ export const opencodeBridge = (log: FastifyBaseLogger) => ({
             onSseError: (error) => log.warn({ platform: { id: platformId }, error }, '[opencodeBridge] The OpenCode event stream failed'),
         })
         rejectedPromiseHandler(opencodeSweep(log).checkDispatched({ platformId }).then(() => undefined), log)
+        rejectedPromiseHandler(opencodeAsks(log).reconcile({ platformId }), log)
         for await (const event of stream) {
             rejectedPromiseHandler(this.handleEvent({ platformId, event }), log)
         }
@@ -111,6 +114,30 @@ export const opencodeBridge = (log: FastifyBaseLogger) => ({
             case 'message.part.updated':
             case 'message.part.delta':
                 opencodeProgress(log).notify({ platformId, sessionId: payload.properties.sessionID })
+                return
+            case 'permission.asked':
+                await opencodeAsks(log).open({
+                    platformId,
+                    directory: parsed.data.directory,
+                    request: {
+                        kind: OpencodeAskKind.PERMISSION,
+                        requestId: payload.properties.id,
+                        sessionId: payload.properties.sessionID,
+                        permission: { permission: payload.properties.permission, patterns: payload.properties.patterns, metadata: payload.properties.metadata },
+                    },
+                })
+                return
+            case 'question.asked':
+                await opencodeAsks(log).open({
+                    platformId,
+                    directory: parsed.data.directory,
+                    request: { kind: OpencodeAskKind.QUESTION, requestId: payload.properties.id, sessionId: payload.properties.sessionID, questions: payload.properties.questions },
+                })
+                return
+            case 'permission.replied':
+            case 'question.replied':
+            case 'question.rejected':
+                await opencodeAsks(log).closeAnsweredElsewhere({ platformId, requestId: payload.properties.requestID })
                 return
         }
     },
@@ -157,6 +184,7 @@ const RECONNECT_DELAY_MS = 2 * 1000
 const LEADER_LOCK_SECONDS = 30
 
 const BridgeEvent = z.object({
+    directory: z.string().optional(),
     payload: z.discriminatedUnion('type', [
         z.object({ type: z.literal('session.idle'), properties: z.object({ sessionID: z.string() }) }),
         z.object({ type: z.literal('session.status'), properties: z.object({ sessionID: z.string(), status: z.object({ type: z.string() }) }) }),
@@ -164,6 +192,14 @@ const BridgeEvent = z.object({
         z.object({ type: z.literal('session.deleted'), properties: z.object({ sessionID: z.string() }) }),
         z.object({ type: z.literal('message.part.updated'), properties: z.object({ sessionID: z.string() }) }),
         z.object({ type: z.literal('message.part.delta'), properties: z.object({ sessionID: z.string() }) }),
+        z.object({
+            type: z.literal('permission.asked'),
+            properties: z.object({ id: z.string(), sessionID: z.string(), permission: z.string(), patterns: z.array(z.string()), metadata: z.record(z.string(), z.unknown()) }),
+        }),
+        z.object({ type: z.literal('question.asked'), properties: z.object({ id: z.string(), sessionID: z.string(), questions: z.array(OpencodeQuestion) }) }),
+        z.object({ type: z.literal('permission.replied'), properties: z.object({ requestID: z.string() }) }),
+        z.object({ type: z.literal('question.replied'), properties: z.object({ requestID: z.string() }) }),
+        z.object({ type: z.literal('question.rejected'), properties: z.object({ requestID: z.string() }) }),
     ]),
 })
 

@@ -15,6 +15,7 @@ import {
   StepOutput,
   FlowAction,
   FlowTrigger,
+  opencodeStepUtil,
 } from '@activepieces/shared';
 import { t } from 'i18next';
 import { Download, Info, ShieldAlert } from 'lucide-react';
@@ -25,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AgentTimeline } from '@/features/agents';
 import { flowRunUtils } from '@/features/flow-runs';
+import { OpencodeStepAsks } from '@/features/opencode';
 import { piecesHooks } from '@/features/pieces';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { formatUtils } from '@/lib/format-utils';
@@ -192,6 +194,11 @@ const RunStepOutputPane = ({
         )
       }
     >
+      <OpencodeStepAsks
+        flowRunId={run.id}
+        stepName={selectedStep.name}
+        enabled={opencodeStepUtil.isOpencodeStep({ step: selectedStep })}
+      />
       {isRunning ? (
         <StepOutputSkeleton className="p-4" />
       ) : slicedOutputRef ? (

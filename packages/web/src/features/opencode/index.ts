@@ -1,5 +1,7 @@
 export { opencodeConnectionApi } from './api/opencode-connection-api';
 export { FlowAiSettingsDialog } from './components/flow-ai-settings-dialog';
+export { OpencodeAskNotices } from './components/opencode-ask-notices';
+export { OpencodeStepAsks } from './components/opencode-ask-card';
 export { OpencodeStepSection } from './components/opencode-step-section';
 export { opencodeOptionsApi } from './api/opencode-options-api';
 export {

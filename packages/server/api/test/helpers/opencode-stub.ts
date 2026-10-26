@@ -20,6 +20,12 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         mcpServers: [],
         mcpStatus: 'connected',
         disconnected: [],
+        decisions: [],
+        questionReplies: [],
+        pendingPermissions: [],
+        pendingQuestions: [],
+        goneRequests: [],
+        refusedRequests: [],
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
@@ -34,6 +40,11 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         state,
         callsTo: ({ method, path }) => state.calls.filter((call) => call.method === method && call.path === path),
         answer: (params) => answer({ state, ...params }),
+        createSession: async ({ directory, parentId }) => {
+            const id = `ses_${String(state.nextSessionId++).padStart(4, '0')}`
+            state.sessions.push({ id, directory, title: '', agent: undefined, metadata: {}, permission: [], parentId, messages: [], prompts: [], aborted: 0 })
+            return id
+        },
         emit: (payload) => emit({ state, payload }),
         close: async () => {
             state.eventClients.forEach((client) => client.end())
@@ -96,6 +107,7 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
             agent: typeof json['agent'] === 'string' ? json['agent'] : undefined,
             metadata: json['metadata'],
             permission: Array.isArray(json['permission']) ? json['permission'] : [],
+            parentId: typeof json['parentID'] === 'string' ? json['parentID'] : undefined,
             messages: [],
             prompts: [],
             aborted: 0,
@@ -134,7 +146,7 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
     }
     const rest = match[2] ?? ''
     if (method === 'GET' && rest === '') {
-        send({ res, value: { id: session.id, title: session.title, directory: session.directory } })
+        send({ res, value: { id: session.id, title: session.title, directory: session.directory, ...(session.parentId === undefined ? {} : { parentID: session.parentId }) } })
         return true
     }
     if (method === 'DELETE' && rest === '') {
@@ -197,6 +209,28 @@ function route({ state, method, url, body, res }: RouteParams): void {
     if (method === 'POST' && disconnect !== null) {
         state.disconnected.push(decodeURIComponent(disconnect[1]))
         return send({ res, value: true })
+    }
+    const decide = url.pathname.match(/^\/operator\/permission\/([^/]+)\/decide$/)
+    if (method === 'POST' && decide !== null) {
+        if (state.goneRequests.includes(decide[1])) {
+            return send({ res, status: 409, value: { name: 'OperatorPermissionGoneError', data: { message: 'That request is no longer waiting' } } })
+        }
+        if (state.refusedRequests.includes(decide[1])) {
+            return send({ res, status: 400, value: { name: 'OperatorPermissionRefusedError', data: { message: 'Give the rule a pattern' } } })
+        }
+        state.decisions.push({ requestId: decide[1], body: json, query: Object.fromEntries(url.searchParams) })
+        return send({ res, value: { rules: [], covered: [] } })
+    }
+    const question = url.pathname.match(/^\/question\/([^/]+)\/(reply|reject)$/)
+    if (method === 'POST' && question !== null) {
+        state.questionReplies.push({ requestId: question[1], kind: question[2], body: json })
+        return send({ res, value: true })
+    }
+    if (key === 'GET /permission') {
+        return send({ res, value: state.pendingPermissions })
+    }
+    if (key === 'GET /question') {
+        return send({ res, value: state.pendingQuestions })
     }
     const sessionPermissions = url.pathname.match(/^\/operator\/session\/([^/]+)\/permissions$/)
     if (sessionPermissions !== null) {
@@ -347,6 +381,7 @@ type StubSession = {
     agent: string | undefined
     metadata: unknown
     permission: unknown[]
+    parentId?: string
     messages: StubMessage[]
     prompts: Record<string, unknown>[]
     aborted: number
@@ -408,6 +443,12 @@ export type OpencodeStubState = {
     mcpServers: { name: string, directory: string, config: unknown }[]
     mcpStatus: string
     disconnected: string[]
+    decisions: { requestId: string, body: Record<string, unknown>, query: Record<string, string> }[]
+    questionReplies: { requestId: string, kind: string, body: Record<string, unknown> }[]
+    pendingPermissions: Record<string, unknown>[]
+    pendingQuestions: Record<string, unknown>[]
+    goneRequests: string[]
+    refusedRequests: string[]
 }
 
 export type OpencodeStub = {
@@ -415,6 +456,7 @@ export type OpencodeStub = {
     state: OpencodeStubState
     callsTo: (params: { method: string, path: string }) => StubCall[]
     answer: (params: AnswerParams) => void
+    createSession: (params: { directory: string, parentId?: string }) => Promise<string>
     emit: (payload: Record<string, unknown>) => void
     close: () => Promise<void>
 }

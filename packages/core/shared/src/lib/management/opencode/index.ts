@@ -30,6 +30,7 @@ export const OpencodeConnection = z.object({
     askCapMinutes: z.number(),
     allowlist: z.array(OpencodeAllowlistEntry),
     lastHealth: OpencodeHealth.nullable(),
+    emailNotices: z.boolean(),
 })
 export type OpencodeConnection = z.infer<typeof OpencodeConnection>
 
@@ -98,3 +99,109 @@ export const OpencodeAgentList = z.object({
     error: z.string().optional(),
 })
 export type OpencodeAgentList = z.infer<typeof OpencodeAgentList>
+
+export enum OpencodeAskKind {
+    PERMISSION = 'PERMISSION',
+    QUESTION = 'QUESTION',
+}
+
+export enum OpencodeAskStatus {
+    OPEN = 'OPEN',
+    ANSWERED = 'ANSWERED',
+    CLOSED = 'CLOSED',
+    EXPIRED = 'EXPIRED',
+}
+
+export enum OpencodePermissionDecision {
+    ALLOW_ONCE = 'allow',
+    ALLOW_RUN = 'allow-session',
+    ALLOW_AGENT = 'allow-agent',
+    DENY = 'deny',
+}
+
+export const OPENCODE_ASK_NOTE_MAX_LENGTH = 1000
+
+export const OpencodeQuestion = z.object({
+    question: z.string(),
+    header: z.string(),
+    options: z.array(z.object({ label: z.string(), description: z.string() })),
+    multiple: z.boolean().optional(),
+    custom: z.boolean().optional(),
+})
+export type OpencodeQuestion = z.infer<typeof OpencodeQuestion>
+
+export const OpencodeAskPermission = z.object({
+    permission: z.string(),
+    patterns: z.array(z.string()),
+    metadata: z.record(z.string(), z.unknown()),
+})
+export type OpencodeAskPermission = z.infer<typeof OpencodeAskPermission>
+
+export const OpencodeAskAnswer = z.object({
+    decision: z.enum(OpencodePermissionDecision).optional(),
+    note: z.string().optional(),
+    answers: z.array(z.array(z.string())).optional(),
+    dismissed: z.boolean().optional(),
+})
+export type OpencodeAskAnswer = z.infer<typeof OpencodeAskAnswer>
+
+export const OpencodeAsk = z.object({
+    id: z.string(),
+    created: z.string(),
+    flowId: z.string(),
+    flowRunId: z.string(),
+    flowVersionId: z.string().nullable(),
+    stepName: z.string(),
+    kind: z.enum(OpencodeAskKind),
+    status: z.enum(OpencodeAskStatus),
+    agent: z.string().nullable(),
+    permission: OpencodeAskPermission.nullable(),
+    questions: z.array(OpencodeQuestion).nullable(),
+    deadline: z.string(),
+    answer: OpencodeAskAnswer.nullable(),
+    answeredVia: z.string().nullable(),
+    answeredAt: z.string().nullable(),
+    adminPanelUrl: z.string().nullable(),
+})
+export type OpencodeAsk = z.infer<typeof OpencodeAsk>
+
+export const ListOpencodeAsksQuery = z.object({
+    flowRunId: z.string().optional(),
+    flowVersionId: z.string().optional(),
+    stepName: z.string().optional(),
+})
+export type ListOpencodeAsksQuery = z.infer<typeof ListOpencodeAsksQuery>
+
+export const AnswerOpencodeAskRequest = z.discriminatedUnion('type', [
+    z.object({
+        type: z.literal('permission'),
+        decision: z.enum(OpencodePermissionDecision),
+        note: z.string().max(OPENCODE_ASK_NOTE_MAX_LENGTH).optional(),
+    }),
+    z.object({
+        type: z.literal('question'),
+        answers: z.array(z.array(z.string())),
+    }),
+    z.object({
+        type: z.literal('dismiss'),
+    }),
+])
+export type AnswerOpencodeAskRequest = z.infer<typeof AnswerOpencodeAskRequest>
+
+export const OpencodeAskLink = z.object({
+    url: z.string(),
+})
+export type OpencodeAskLink = z.infer<typeof OpencodeAskLink>
+
+export const OpencodeAskEvent = z.object({
+    askId: z.string(),
+    flowId: z.string(),
+    flowRunId: z.string(),
+    flowVersionId: z.string().nullable(),
+    stepName: z.string(),
+    kind: z.enum(OpencodeAskKind),
+    state: z.enum(['opened', 'closed']),
+    title: z.string(),
+})
+export type OpencodeAskEvent = z.infer<typeof OpencodeAskEvent>
+

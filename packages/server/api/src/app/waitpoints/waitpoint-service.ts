@@ -1,5 +1,5 @@
 import { ActivepiecesError, apId, ErrorCode, isNil } from '@activepieces/core-utils'
-import { FlowRunStatus, PauseType } from '@activepieces/shared'
+import { FlowRunStatus, PauseType, RunEnvironment } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { EntityManager, Not } from 'typeorm'
@@ -169,6 +169,26 @@ export const waitpointService = (log: FastifyBaseLogger) => ({
         return waitpointRepo().findOneBy({ id: waitpointId, flowRunId, projectId })
     },
 
+    async extendDeadline({ waitpointId, flowRunId, projectId, notBefore }: ExtendDeadlineParams): Promise<string | null> {
+        const waitpoint = await waitpointRepo().findOneBy({ id: waitpointId, flowRunId, projectId, status: WaitpointStatus.PENDING })
+        const flowRun = await flowRunRepo().findOneBy({ id: flowRunId, projectId })
+        if (isNil(waitpoint) || isNil(waitpoint.resumeDateTime) || isNil(flowRun)) {
+            return null
+        }
+        const runDeadline = flowRun.environment === RunEnvironment.TESTING
+            ? dayjs(waitpoint.resumeDateTime)
+            : dayjs(flowRun.created).add(system.getNumberOrThrow(AppSystemProp.PAUSED_FLOW_TIMEOUT_DAYS), 'day')
+        const wanted = dayjs(notBefore).isAfter(runDeadline) ? runDeadline : dayjs(notBefore)
+        if (!wanted.isAfter(dayjs(waitpoint.resumeDateTime))) {
+            return waitpoint.resumeDateTime
+        }
+        const resumeDateTime = wanted.toISOString()
+        await waitpointRepo().update({ id: waitpoint.id, projectId, status: WaitpointStatus.PENDING }, { resumeDateTime })
+        await waitpointTimeoutJob.schedule({ flowRunId, projectId, waitpointId: waitpoint.id, resumeDateTime, log })
+        log.info({ waitpoint: { id: waitpoint.id }, flowRun: { id: flowRunId } }, '[waitpointService#extendDeadline] Moved the waitpoint deadline forward')
+        return resumeDateTime
+    },
+
     async findUndeliveredCompletedWaitpoint({ flowRunId, projectId }: FindUndeliveredCompletedWaitpointParams): Promise<Waitpoint | null> {
         const barrierPending = await this.hasPendingBarrier({ flowRunId, projectId })
         if (barrierPending) {
@@ -289,4 +309,11 @@ type FindUndeliveredCompletedWaitpointParams = {
 type FindSubflowWaitpointParams = {
     flowRunId: string
     projectId: string
+}
+
+type ExtendDeadlineParams = {
+    waitpointId: string
+    flowRunId: string
+    projectId: string
+    notBefore: string
 }

@@ -11,7 +11,7 @@ import { setupTestEnvironment, teardownTestEnvironment } from '../../../helpers/
 
 let app: FastifyInstance | null = null
 let stub: OpencodeStub
-const { routedFlow, waitpointFor, engineToken, stepRow, resumedBody, sessionOf, seedNamespace, idleEvent, waitFor } = opencodeStepFixtures({ app: () => app!, stub: () => stub })
+const { routedFlow, waitpointFor, engineToken, stepRow, resumedBody, sessionOf, seedNamespace, idleEvent, waitFor, captureEmits } = opencodeStepFixtures({ app: () => app!, stub: () => stub })
 
 beforeAll(async () => {
     stub = await startOpencodeStub()
@@ -331,25 +331,4 @@ async function runAgent({ setup, body }: { setup: RoutedSetup, body: Record<stri
         headers: { authorization: `Bearer ${await engineToken({ setup })}` },
         body: { flowRunId: setup.run.id, ...body },
     })
-}
-
-function captureEmits(): EmittedEvent[] {
-    const emitted: EmittedEvent[] = []
-    const io = app!.io
-    const realTo = io.to.bind(io)
-    vi.spyOn(io, 'to').mockImplementation((room) => {
-        const operator = realTo(room)
-        vi.spyOn(operator, 'emit').mockImplementation((event, ...args) => {
-            emitted.push({ room: String(room), event: String(event), payload: args[0] })
-            return true
-        })
-        return operator
-    })
-    return emitted
-}
-
-type EmittedEvent = {
-    room: string
-    event: string
-    payload: unknown
 }

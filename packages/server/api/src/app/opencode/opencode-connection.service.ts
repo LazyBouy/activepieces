@@ -8,6 +8,7 @@ import { domainHelper } from '../helper/domain-helper'
 import { encryptUtils } from '../helper/encryption'
 import { system } from '../helper/system/system'
 import { AppSystemProp } from '../helper/system/system-props'
+import { opencodeAskEmail } from './opencode-ask-notices'
 import { opencodeClient } from './opencode-client'
 import { OpencodeConnectionEntity, OpencodeConnectionRow } from './opencode-connection.entity'
 import { opencodeErrors } from './opencode-errors'
@@ -153,6 +154,7 @@ function toResponse({ row }: { row: OpencodeConnectionRow }): OpencodeConnection
         askCapMinutes: row.askCapMinutes,
         allowlist: row.allowlist,
         lastHealth: row.lastHealth,
+        emailNotices: opencodeAskEmail.emailConfigured(),
     }
 }
 

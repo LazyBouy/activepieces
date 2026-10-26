@@ -5,6 +5,7 @@ import { repoFactory } from '../core/db/repo-factory'
 import { resumeService } from '../waitpoints/resume-service'
 import { engineResponseWatcher } from '../workers/engine-response-watcher'
 import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
+import { opencodeAsks } from './opencode-asks'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
 import { opencodeMcpBridge } from './opencode-mcp-bridge'
@@ -77,6 +78,7 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
 
     async settle({ step, failed }: { step: OpencodeStepRow, failed: boolean }): Promise<CompletionResult> {
         await detachTools({ step, log })
+        await opencodeAsks(log).closeForStep({ stepId: step.id })
         await stepRepo().update({ id: step.id }, {
             status: failed ? 'FAILED' : 'COMPLETED',
             request: null,

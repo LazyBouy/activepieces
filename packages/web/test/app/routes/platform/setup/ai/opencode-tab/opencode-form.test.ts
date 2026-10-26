@@ -18,6 +18,7 @@ const connection: OpencodeConnection = {
   askCapMinutes: 1440,
   allowlist: ['iphi-flow'],
   lastHealth: null,
+  emailNotices: false,
 };
 
 describe('opencodeForm', () => {
@@ -43,12 +44,15 @@ describe('opencodeForm', () => {
   it('sends a new password, or null to remove the saved one', () => {
     const values = opencodeForm.toFormValues(connection);
 
-    expect(opencodeForm.toRequest({ ...values, password: 'new' }).password).toBe(
-      'new',
-    );
     expect(
-      opencodeForm.toRequest({ ...values, password: 'new', clearPassword: true })
-        .password,
+      opencodeForm.toRequest({ ...values, password: 'new' }).password,
+    ).toBe('new');
+    expect(
+      opencodeForm.toRequest({
+        ...values,
+        password: 'new',
+        clearPassword: true,
+      }).password,
     ).toBeNull();
   });
 
@@ -61,7 +65,10 @@ describe('opencodeForm', () => {
         projectsFolder: '  /root/projects/flows  ',
         askCapHours: 2,
       }),
-    ).toMatchObject({ projectsFolder: '/root/projects/flows', askCapMinutes: 120 });
+    ).toMatchObject({
+      projectsFolder: '/root/projects/flows',
+      askCapMinutes: 120,
+    });
   });
 
   it('rejects a URL without a scheme and hours outside 1 to 720', () => {

@@ -40,6 +40,7 @@ describe('OpenCode connection', () => {
             askCapMinutes: 1440,
             allowlist: ['iphi-flow'],
             lastHealth: { healthy: true, version: 'stub-1.0.0' },
+            emailNotices: false,
         })
         expect(typeof body.callbackUrl).toBe('string')
         expect(body).not.toHaveProperty('password')

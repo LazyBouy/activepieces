@@ -266,6 +266,18 @@ function OpencodeSettings({ connection }: { connection: OpencodeConnection }) {
               </FormItem>
             )}
           />
+          <p
+            className="text-xs text-gray-11"
+            data-testid="opencode-email-notices"
+          >
+            {connection.emailNotices
+              ? t(
+                  'Email notices are on: the flow owner and the platform admins get an email with an approval link.',
+                )
+              : t(
+                  'Email notices are off because SMTP is not configured. Requests still show on the run page and as in-app notices.',
+                )}
+          </p>
         </div>
 
         <div className="flex flex-col gap-4">

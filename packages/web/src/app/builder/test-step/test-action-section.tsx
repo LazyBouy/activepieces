@@ -25,6 +25,7 @@ import { TestButtonTooltip } from './test-step-tooltip';
 const TestStepSectionImplementation = React.memo(
   ({
     isSaving,
+    flowVersionId,
     currentStep,
   }: TestActionComponentProps & { currentStep: FlowAction }) => {
     const [
@@ -135,6 +136,7 @@ const TestStepSectionImplementation = React.memo(
     return (
       <TestSampleDataViewer
         currentStep={currentStep}
+        flowVersionId={flowVersionId}
         isTesting={isTesting}
         sampleData={sampleData}
         sampleDataInput={sampleDataInput ?? null}

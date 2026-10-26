@@ -120,6 +120,21 @@ export function opencodeStepFixtures({ app, stub }: { app: () => FastifyInstance
             return { directory: '/x', payload: { id: 'evt_2', type: 'session.status', properties: { sessionID: sessionId, status: { type: 'idle' } } } }
         },
 
+        captureEmits(): EmittedEvent[] {
+            const emitted: EmittedEvent[] = []
+            const io = app().io
+            const realTo = io.to.bind(io)
+            vi.spyOn(io, 'to').mockImplementation((room) => {
+                const operator = realTo(room)
+                vi.spyOn(operator, 'emit').mockImplementation((event, ...args) => {
+                    emitted.push({ room: String(room), event: String(event), payload: args[0] })
+                    return true
+                })
+                return operator
+            })
+            return emitted
+        },
+
         waitFor,
     }
 }
@@ -199,6 +214,12 @@ export type RoutedSetup = {
 }
 
 export type StepRowView = z.infer<typeof StepRowView>
+
+export type EmittedEvent = {
+    room: string
+    event: string
+    payload: unknown
+}
 
 type RoutedFlowParams = {
     steps: OpencodeStepSpec[]

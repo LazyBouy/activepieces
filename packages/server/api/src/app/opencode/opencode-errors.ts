@@ -61,6 +61,15 @@ function mcpServerUnreachable({ url, reason }: { url: string, reason: string }):
     return `OpenCode could not connect to the MCP server ${url}: ${reason}.`
 }
 
+function askCapPassed({ summary, capMinutes }: { summary: string, capMinutes: number }): string {
+    const cap = capMinutes % MINUTES_PER_HOUR === 0 ? `${capMinutes / MINUTES_PER_HOUR} h` : `${capMinutes} min`
+    return `Nobody answered OpenCode's ${summary} within ${cap}.`
+}
+
+function answerRefused({ reason }: { reason: string }): string {
+    return `OpenCode did not accept the answer: ${reason}`
+}
+
 export class OpencodeRequestError extends Error {
     readonly status: number | undefined
 
@@ -76,6 +85,8 @@ export class OpencodeToolsError extends Error {
     }
 }
 
+const MINUTES_PER_HOUR = 60
+
 export const opencodeErrors = {
     describe,
     nameOf,
@@ -87,4 +98,6 @@ export const opencodeErrors = {
     knowledgeBaseTools,
     callbackUnreachable,
     mcpServerUnreachable,
+    askCapPassed,
+    answerRefused,
 }

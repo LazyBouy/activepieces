@@ -9,6 +9,7 @@ import { system } from '../helper/system/system'
 import { AppSystemProp } from '../helper/system/system-props'
 import { waitpointService } from '../waitpoints/waitpoint-service'
 import { WaitpointStatus } from '../waitpoints/waitpoint-types'
+import { opencodeAsks } from './opencode-asks'
 import { CompletionResult, opencodeCompletion } from './opencode-completion'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeDispatch } from './opencode-dispatch'
@@ -19,13 +20,43 @@ const stepRepo = repoFactory(OpencodeStepEntity)
 
 export const opencodeSweep = (log: FastifyBaseLogger) => ({
     async run(): Promise<OpencodeSweepSummary> {
+        const expired = await this.expireAsks()
         const resent = await this.resendPending()
         const checked = await this.checkDispatched({ platformId: undefined })
         const redelivered = await this.redeliverCompleting()
         const released = await opencodeSessions(log).releaseStale({ limit: BATCH_SIZE })
         released.forEach((stepId) => opencodeDispatch(log).dispatchLater({ stepId }))
         const queued = await this.retryQueued()
-        return { resent, checked, redelivered, released: released.length, queued }
+        await this.reconcileAsks()
+        return { expired, resent, checked, redelivered, released: released.length, queued }
+    },
+
+    async expireAsks(): Promise<number> {
+        const expired = await opencodeAsks(log).expire()
+        for (const { stepId, failure } of expired) {
+            const step = await stepRepo().findOneBy({ id: stepId })
+            if (isNil(step)) {
+                continue
+            }
+            const client = await opencodeConnectionService(log).client({ platformId: step.platformId })
+            await opencodeSessions(log).abort({ step, client })
+            const { nextStepId } = await opencodeCompletion(log).fail({ stepId, failure })
+            opencodeDispatch(log).dispatchLater({ stepId: nextStepId })
+        }
+        return expired.length
+    },
+
+    async reconcileAsks(): Promise<void> {
+        const platforms = await stepRepo().createQueryBuilder('step')
+            .select('DISTINCT "step"."platformId"', 'platformId')
+            .where('"step"."status" = :status', { status: 'DISPATCHED' })
+            .getRawMany<{ platformId: string }>()
+        for (const { platformId } of platforms) {
+            const { error } = await tryCatch(() => opencodeAsks(log).reconcile({ platformId }))
+            if (!isNil(error)) {
+                log.warn({ platform: { id: platformId }, error }, '[opencodeSweep] Could not reconcile OpenCode asks')
+            }
+        }
     },
 
     async resendPending(): Promise<number> {
@@ -125,6 +156,7 @@ const FLOW_RUN_ENDED = 'The flow run ended before OpenCode answered.'
 const TIMED_OUT = 'The AI step timed out before OpenCode answered.'
 
 export type OpencodeSweepSummary = {
+    expired: number
     resent: number
     checked: number
     redelivered: number
