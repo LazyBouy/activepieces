@@ -36,14 +36,26 @@ export const opencodeProvisioning = (log: FastifyBaseLogger) => ({
     invalidate({ platformId, projectId }: { platformId: string, projectId: string }): void {
         provisionedCache.delete(`${platformId}:${projectId}`)
     },
+
+    async waitForReload({ directory }: { directory: string }): Promise<void> {
+        const wait = (reloadUntil.get(directory) ?? 0) - Date.now()
+        if (wait <= 0) {
+            reloadUntil.delete(directory)
+            return
+        }
+        await new Promise((resolve) => setTimeout(resolve, wait))
+    },
 })
 
 async function provision({ client, platformId, projectId, projectName, projectsFolder, log }: ProvisionParams): Promise<ProvisionedProject> {
-    const namespace = await ensureNamespace({ client })
+    const { summary: namespace, created: namespaceCreated } = await ensureNamespace({ client })
     const folder = projectsFolder ?? namespace.namespace.folder ?? namespace.target
     const directory = path.posix.join(folder, projectId)
-    const opencodeProjectId = await ensureRegistered({ client, directory, namespace: namespace.namespace.id, projectName, log })
-    await ensureFlowAgent({ client, directory })
+    const { opencodeProjectId, registered } = await ensureRegistered({ client, directory, namespace: namespace.namespace.id, projectName, log })
+    const agentCreated = await ensureFlowAgent({ client, directory })
+    if (namespaceCreated || registered || agentCreated) {
+        reloadUntil.set(directory, Date.now() + RELOAD_SETTLE_MS)
+    }
     await linkRepo().upsert({
         id: apId(),
         platformId,
@@ -55,10 +67,10 @@ async function provision({ client, platformId, projectId, projectName, projectsF
     return { namespace: namespace.namespace.id, directory, opencodeProjectId, agent: FLOW_AGENT_NAME }
 }
 
-async function ensureNamespace({ client }: { client: OpencodeClient }): Promise<OperatorNamespaceSummary> {
+async function ensureNamespace({ client }: { client: OpencodeClient }): Promise<{ summary: OperatorNamespaceSummary, created: boolean }> {
     const existing = await findNamespace({ client })
     if (!isNil(existing)) {
-        return existing
+        return { summary: existing, created: false }
     }
     const { error } = await tryCatch(() => client.operator.namespace.create({ name: OPENCODE_DEFAULT_NAMESPACE, purpose: NAMESPACE_PURPOSE }, { throwOnError: true }))
     if (!isNil(error)) {
@@ -71,7 +83,7 @@ async function ensureNamespace({ client }: { client: OpencodeClient }): Promise<
     if (isNil(created)) {
         throw new Error(`OpenCode did not list the namespace ${OPENCODE_DEFAULT_NAMESPACE} after creating it`)
     }
-    return created
+    return { summary: created, created: true }
 }
 
 async function findNamespace({ client }: { client: OpencodeClient }): Promise<OperatorNamespaceSummary | undefined> {
@@ -79,7 +91,7 @@ async function findNamespace({ client }: { client: OpencodeClient }): Promise<Op
     return data.find((summary) => summary.namespace.id === OPENCODE_DEFAULT_NAMESPACE)
 }
 
-async function ensureRegistered({ client, directory, namespace, projectName, log }: EnsureRegisteredParams): Promise<string> {
+async function ensureRegistered({ client, directory, namespace, projectName, log }: EnsureRegisteredParams): Promise<{ opencodeProjectId: string, registered: boolean }> {
     const { data: resolved } = await client.operator.projectSettings.resolve({ directory }, { throwOnError: true })
     if (!isNil(resolved.project) && resolved.project.key !== directory) {
         throw new Error(`${directory} is inside the OpenCode project ${resolved.project.key}`)
@@ -90,14 +102,14 @@ async function ensureRegistered({ client, directory, namespace, projectName, log
         const { data: registered } = await client.operator.projectSettings.register({ directory, namespace, git: !hasGit }, { throwOnError: true })
         lastRegisteredAt = Date.now()
         await describeProject({ client, directory, projectName, log })
-        return registered.project.id
+        return { opencodeProjectId: registered.project.id, registered: true }
     }
     const { data: projects } = await client.operator.projectSettings.list({ throwOnError: true })
     const project = projects.find((candidate) => candidate.key === directory)
     if (isNil(project)) {
         throw new Error(`OpenCode resolved ${directory} as a project but did not list it`)
     }
-    return project.id
+    return { opencodeProjectId: project.id, registered: false }
 }
 
 async function isGitRepository({ client, directory }: { client: OpencodeClient, directory: string }): Promise<boolean> {
@@ -112,10 +124,10 @@ async function describeProject({ client, directory, projectName, log }: Describe
     }
 }
 
-async function ensureFlowAgent({ client, directory }: { client: OpencodeClient, directory: string }): Promise<void> {
+async function ensureFlowAgent({ client, directory }: { client: OpencodeClient, directory: string }): Promise<boolean> {
     const { data: agents } = await client.operator.agent.list({ directory }, { throwOnError: true })
     if (agents.some((agent) => agent.name === FLOW_AGENT_NAME)) {
-        return
+        return false
     }
     await client.operator.agent.create({ directory, scope: 'project', name: FLOW_AGENT_NAME, mode: 'primary', description: FLOW_AGENT_DESCRIPTION }, { throwOnError: true })
     await client.operator.agentPermissions.save({ name: FLOW_AGENT_NAME, directory, scope: 'project', rules: FLOW_AGENT_RULES }, { throwOnError: true })
@@ -129,6 +141,7 @@ async function ensureFlowAgent({ client, directory }: { client: OpencodeClient, 
             layers: { [FLOW_LAYER_ID]: { type: 'role', text: FLOW_LAYER_TEXT } },
         },
     }, { throwOnError: true })
+    return true
 }
 
 async function waitForGitSpacing(): Promise<void> {
@@ -139,6 +152,10 @@ async function waitForGitSpacing(): Promise<void> {
 }
 
 let lastRegisteredAt = 0
+
+const reloadUntil = new Map<string, number>()
+
+const RELOAD_SETTLE_MS = 1500
 
 const provisionedCache = new Map<string, { version: string, project: ProvisionedProject, expiresAt: number }>()
 

@@ -29,7 +29,36 @@ function nameOf({ error }: { error: unknown }): string | undefined {
     return undefined
 }
 
+function unreachable({ serverUrl, error }: { serverUrl: string, error: unknown }): string {
+    return `OpenCode did not answer at ${serverUrl}: ${describe({ error })}.`
+}
+
+function notAllowlisted({ namespace, project }: { namespace: string, project: string }): string {
+    return `${namespace}/${project} is not allowlisted. A platform admin can add it in Platform → AI → OpenCode.`
+}
+
+function sessionGone({ sessionId }: { sessionId: string }): string {
+    return `The OpenCode session ${sessionId} no longer exists.`
+}
+
+function sessionError({ message }: { message: string }): string {
+    return `OpenCode stopped with an error: ${message}.`
+}
+
+export class OpencodeRequestError extends Error {
+    readonly status: number | undefined
+
+    constructor({ status, message }: { status: number | undefined, message: string }) {
+        super(message)
+        this.status = status
+    }
+}
+
 export const opencodeErrors = {
     describe,
     nameOf,
+    unreachable,
+    notAllowlisted,
+    sessionGone,
+    sessionError,
 }

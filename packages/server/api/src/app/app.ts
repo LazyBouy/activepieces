@@ -105,6 +105,8 @@ import { mcpActivityController } from './mcp/activity/mcp-activity-controller'
 import { mcpServerModule } from './mcp/mcp-module'
 import { mcpOAuthApproveController } from './mcp/oauth/code/mcp-oauth-approve.controller'
 import { mcpOAuthGrantsController } from './mcp/oauth/token/mcp-oauth-grants.controller'
+import { opencodeBridge } from './opencode/opencode-bridge'
+import { opencodeSweep } from './opencode/opencode-sweep'
 import { opencodeModule } from './opencode/opencode.module'
 import { communityPiecesModule } from './pieces/community-piece-module'
 import { startDevPieceWatcher } from './pieces/dev-piece-watcher'
@@ -320,6 +322,21 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
         },
     })
 
+    systemJobHandlers.registerJobHandler(SystemJobName.OPENCODE_STEP_SWEEP, async () => {
+        await opencodeSweep(app.log).run()
+    })
+    await systemJobsSchedule(app.log).upsertJob({
+        job: {
+            name: SystemJobName.OPENCODE_STEP_SWEEP,
+            data: {},
+            jobId: SystemJobName.OPENCODE_STEP_SWEEP,
+        },
+        schedule: {
+            type: 'repeated',
+            cron: '* * * * *',
+        },
+    })
+
     app.get(
         '/redirect',
         async (
@@ -450,6 +467,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
         await redisConnections.destroy()
         await distributedLock(app.log).destroy()
         await engineResponseWatcher(app.log).shutdown()
+        opencodeBridge(app.log).stop()
         await shutdownTelemetry()
     })
 
@@ -502,6 +520,7 @@ The application started on ${await domainHelper.getPublicApiUrl({ path: '' })}, 
         )
     }
     void startDevPieceWatcher(app)
+    opencodeBridge(app.log).start()
 }
 
 // Front-loads the release-read failure signal to boot time. Without this the only alert is

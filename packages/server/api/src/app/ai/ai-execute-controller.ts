@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { system } from '../helper/system/system'
 import { AppSystemProp } from '../helper/system/system-props'
+import { opencodeAiSteps } from '../opencode/opencode-ai-steps'
+import { opencodeRouting } from '../opencode/opencode-routing'
 import { assertCreditsAndAppSumoNotExceeded } from '../platform/billing-provider'
 import { aiExecution } from './ai-execution'
 import { aiModelCandidates } from './ai-model-candidates'
@@ -25,6 +27,14 @@ export const aiExecuteController: FastifyPluginAsyncZod = async (app) => {
         }
         const { projectId, platform } = request.principal
         const body = request.body
+        if (opencodeRouting.isRoutedAction({ action: body.action }) && await opencodeRouting.isOn({ platformId: platform.id })) {
+            const routed = await opencodeAiSteps(request.log).execute({
+                platformId: platform.id,
+                projectId,
+                call: { flowId: body.flowId, flowRunId: body.flowRunId, waitpointId: body.waitpointId, request: body },
+            })
+            return reply.status(StatusCodes.OK).send(routed)
+        }
         await assertCreditsAndAppSumoNotExceeded({ platformId: platform.id, log: request.log })
 
         const requestId = apId()

@@ -40,7 +40,7 @@ export const opencodeOptionsService = (log: FastifyBaseLogger) => ({
             return { agents: [] }
         }
         if (!opencodeAllowlist.isProjectAllowed({ allowlist: connection.allowlist, namespace: target.namespace, projectId: target.project })) {
-            return { agents: [], error: notAllowlisted({ namespace: target.namespace, project: target.project }) }
+            return { agents: [], error: opencodeErrors.notAllowlisted({ namespace: target.namespace, project: target.project }) }
         }
         const catalog = await opencodeConnectionService(log).catalog({ platformId })
         const directory = folderOf({ namespaces: catalog.namespaces, namespace: target.namespace, project: target.project })
@@ -73,10 +73,6 @@ async function resolveTarget({ projectId, namespace, project }: { projectId: str
 
 function folderOf({ namespaces, namespace, project }: { namespaces: OpencodeCatalogNamespace[], namespace: string, project: string }): string | undefined {
     return namespaces.find((candidate) => candidate.id === namespace)?.projects.find((candidate) => candidate.id === project)?.folder
-}
-
-function notAllowlisted({ namespace, project }: { namespace: string, project: string }): string {
-    return `${namespace}/${project} is not allowlisted. A platform admin can add it in Platform → AI → OpenCode.`
 }
 
 type ProjectParams = {

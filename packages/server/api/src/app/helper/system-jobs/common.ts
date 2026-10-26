@@ -17,6 +17,7 @@ export enum SystemJobName {
     CHAT_STALE_SWEEP = 'chat-stale-sweep',
     WAITPOINT_DEADLINE_SWEEP = 'waitpoint-deadline-sweep',
     AUDIT_LOG_RETENTION = 'audit-log-retention',
+    OPENCODE_STEP_SWEEP = 'opencode-step-sweep',
 }
 
 type DeleteFlowDurableSystemJobData =  {
@@ -60,6 +61,7 @@ type SystemJobDataMap = {
     [SystemJobName.CHAT_STALE_SWEEP]: Record<string, never>
     [SystemJobName.WAITPOINT_DEADLINE_SWEEP]: Record<string, never>
     [SystemJobName.AUDIT_LOG_RETENTION]: Record<string, never>
+    [SystemJobName.OPENCODE_STEP_SWEEP]: Record<string, never>
 }
 
 export type SystemJobData<T extends SystemJobName = SystemJobName> = T extends SystemJobName ? SystemJobDataMap[T] : never

@@ -1,0 +1,148 @@
+import { ActivepiecesError, ErrorCode, isNil, sanitizeObjectForPostgresql, tryCatch } from '@activepieces/core-utils'
+import { EngineResponseStatus } from '@activepieces/shared'
+import { FastifyBaseLogger } from 'fastify'
+import { repoFactory } from '../core/db/repo-factory'
+import { resumeService } from '../waitpoints/resume-service'
+import { engineResponseWatcher } from '../workers/engine-response-watcher'
+import { opencodeConnectionService } from './opencode-connection.service'
+import { opencodeErrors } from './opencode-errors'
+import { opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
+import { opencodeReply } from './opencode-reply'
+import { opencodeSessions } from './opencode-sessions'
+import { OpencodeStepEntity, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
+import { opencodeStoredRequest } from './opencode-stored-request'
+
+const stepRepo = repoFactory(OpencodeStepEntity)
+
+export const opencodeCompletion = (log: FastifyBaseLogger) => ({
+    async complete({ stepId }: { stepId: string }): Promise<CompletionResult> {
+        const step = await stepRepo().findOneBy({ id: stepId })
+        if (isNil(step) || step.status !== 'DISPATCHED' || isNil(step.sessionId)) {
+            return { finished: false, nextStepId: null }
+        }
+        const client = await opencodeConnectionService(log).client({ platformId: step.platformId })
+        const state = await opencodeReply.read({ client, sessionId: step.sessionId, messageId: step.messageId, directory: step.directory ?? undefined })
+        switch (state.kind) {
+            case 'pending':
+                return { finished: false, nextStepId: null }
+            case 'not-sent':
+                if (sentLongAgo({ dispatchedAt: step.dispatchedAt })) {
+                    await stepRepo().update({ id: step.id, status: 'DISPATCHED' }, { status: 'PENDING' })
+                }
+                return { finished: false, nextStepId: null }
+            case 'gone':
+                return this.finish({ step, answer: { failure: opencodeErrors.sessionGone({ sessionId: step.sessionId }) } })
+            case 'done': {
+                const stored = opencodeStoredRequest.parse(step.request)
+                if (isNil(stored)) {
+                    return this.finish({ step, answer: { failure: 'The step request could not be read back.' } })
+                }
+                return this.finish({ step, answer: opencodePrompts.mapReply({ request: stored.request, reply: state.reply }) })
+            }
+        }
+    },
+
+    async fail({ stepId, failure }: { stepId: string, failure: string }): Promise<CompletionResult> {
+        const step = await stepRepo().findOneBy({ id: stepId })
+        if (isNil(step)) {
+            return { finished: false, nextStepId: null }
+        }
+        return this.finish({ step, answer: { failure } })
+    },
+
+    async finish({ step, answer }: { step: OpencodeStepRow, answer: OpencodeStepAnswer }): Promise<CompletionResult> {
+        const claimed = await stepRepo().createQueryBuilder()
+            .update()
+            .set({ status: 'COMPLETING', failure: answer.failure ?? null })
+            .where('id = :id AND status IN (:...statuses)', { id: step.id, statuses: OPEN_STATUSES })
+            .returning(['id'])
+            .execute()
+        if (!hasRows({ raw: claimed.raw })) {
+            return { finished: false, nextStepId: null }
+        }
+        await deliver({ step, answer, log })
+        return this.settle({ step, failed: !isNil(answer.failure) })
+    },
+
+    async redeliver({ stepId }: { stepId: string }): Promise<CompletionResult> {
+        const step = await stepRepo().findOneBy({ id: stepId, status: 'COMPLETING' })
+        if (isNil(step)) {
+            return { finished: false, nextStepId: null }
+        }
+        if (!isNil(step.failure)) {
+            await deliver({ step, answer: { failure: step.failure }, log })
+            return this.settle({ step, failed: true })
+        }
+        const answer = await answerFromReply({ step, log })
+        await deliver({ step, answer, log })
+        return this.settle({ step, failed: !isNil(answer.failure) })
+    },
+
+    async settle({ step, failed }: { step: OpencodeStepRow, failed: boolean }): Promise<CompletionResult> {
+        await stepRepo().update({ id: step.id }, {
+            status: failed ? 'FAILED' : 'COMPLETED',
+            request: null,
+            completedAt: new Date().toISOString(),
+        })
+        const nextStepId = await opencodeSessions(log).release({ step })
+        return { finished: true, nextStepId }
+    },
+})
+
+async function answerFromReply({ step, log }: { step: OpencodeStepRow, log: FastifyBaseLogger }): Promise<OpencodeStepAnswer> {
+    const stored = opencodeStoredRequest.parse(step.request)
+    if (isNil(step.sessionId) || isNil(stored)) {
+        return { failure: 'The step request could not be read back.' }
+    }
+    const client = await opencodeConnectionService(log).client({ platformId: step.platformId })
+    const state = await opencodeReply.read({ client, sessionId: step.sessionId, messageId: step.messageId, directory: step.directory ?? undefined })
+    if (state.kind === 'done') {
+        return opencodePrompts.mapReply({ request: stored.request, reply: state.reply })
+    }
+    if (state.kind === 'gone') {
+        return { failure: opencodeErrors.sessionGone({ sessionId: step.sessionId }) }
+    }
+    return { failure: 'OpenCode has no answer for this step.' }
+}
+
+async function deliver({ step, answer, log }: { step: OpencodeStepRow, answer: OpencodeStepAnswer, log: FastifyBaseLogger }): Promise<void> {
+    if (!isNil(step.waitpointId)) {
+        const { error } = await tryCatch(() => resumeService(log).resumeFromWaitpoint({
+            flowRunId: step.flowRunId,
+            waitpointId: step.waitpointId ?? '',
+            resumePayload: { body: sanitizeObjectForPostgresql(answer), headers: {}, queryParams: {} },
+        }))
+        if (!isNil(error) && !isFlowRunGone({ error })) {
+            throw error
+        }
+        return
+    }
+    if (!isNil(step.webserverId)) {
+        await engineResponseWatcher(log).publish(step.webserverId, step.requestId, { status: EngineResponseStatus.OK, response: answer })
+    }
+}
+
+function hasRows({ raw }: { raw: unknown }): boolean {
+    return Array.isArray(raw) && raw.length > 0
+}
+
+function sentLongAgo({ dispatchedAt }: { dispatchedAt: string | null }): boolean {
+    return isNil(dispatchedAt) || Date.now() - new Date(dispatchedAt).getTime() > RESEND_AFTER_MS
+}
+
+function isFlowRunGone({ error }: { error: unknown }): boolean {
+    return error instanceof ActivepiecesError
+        && error.error.code === ErrorCode.ENTITY_NOT_FOUND
+        && error.error.params.entityType === FLOW_RUN_ENTITY_TYPE
+}
+
+const OPEN_STATUSES: OpencodeStepStatus[] = ['PENDING', 'QUEUED', 'DISPATCHED']
+
+const FLOW_RUN_ENTITY_TYPE = 'flow_run'
+
+const RESEND_AFTER_MS = 2 * 60 * 1000
+
+export type CompletionResult = {
+    finished: boolean
+    nextStepId: string | null
+}
