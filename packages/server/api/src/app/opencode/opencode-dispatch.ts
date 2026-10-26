@@ -1,20 +1,21 @@
 import { AiStepAction, apId, isNil, tryCatch } from '@activepieces/core-utils'
-import { FileType, opencodeStepUtil } from '@activepieces/shared'
+import { opencodeStepUtil } from '@activepieces/shared'
 import { OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import { isAxiosError } from 'axios'
 import { FastifyBaseLogger } from 'fastify'
 import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
-import { fileService } from '../file/file.service'
 import { rejectedPromiseHandler } from '../helper/promise-handler'
 import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
 import { opencodeCompletion } from './opencode-completion'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors, OpencodeRequestError, OpencodeToolsError } from './opencode-errors'
+import { opencodeFilesIn } from './opencode-files-in'
+import { opencodeOutputFolder } from './opencode-files-out'
 import { opencodeIds } from './opencode-ids'
 import { opencodeMcpBridge } from './opencode-mcp-bridge'
 import { opencodeModelKeys } from './opencode-models'
-import { BuiltPrompt, OpencodeAiRequest, OpencodeInputFile, opencodePrompts } from './opencode-prompts'
+import { BuiltPrompt, opencodePrompts } from './opencode-prompts'
 import { opencodeProvisioning } from './opencode-provisioning'
 import { opencodeSessions, SessionOutcome } from './opencode-sessions'
 import { opencodeStepContext } from './opencode-step-context'
@@ -87,6 +88,7 @@ async function createStep({ platformId, projectId, requestId, webserverId, call,
         messageId: opencodeIds.message(),
         status: 'PENDING',
         failure: null,
+        files: null,
         dispatchedAt: null,
         completedAt: null,
     }
@@ -177,30 +179,12 @@ async function markDispatched({ step }: { step: OpencodeStepRow }): Promise<void
 
 async function promptOf({ step, request, log }: { step: OpencodeStepRow, request: OpencodeStepRequest, log: FastifyBaseLogger }): Promise<BuiltPrompt> {
     if (request.action === OPENCODE_RUN_AGENT) {
-        return opencodeAgentPrompt.build({ request })
+        return opencodeAgentPrompt.build({ request, outputFolder: opencodeOutputFolder.of({ stepId: step.id }) })
     }
-    const files = await readInputFiles({ step, request, log })
+    const files = request.action === AiStepAction.EXTRACT_STRUCTURED_DATA
+        ? await opencodeFilesIn.read({ step, files: request.files ?? [], log })
+        : []
     return opencodePrompts.build({ request, files })
-}
-
-async function readInputFiles({ step, request, log }: { step: OpencodeStepRow, request: OpencodeAiRequest, log: FastifyBaseLogger }): Promise<OpencodeInputFile[]> {
-    if (request.action !== AiStepAction.EXTRACT_STRUCTURED_DATA) {
-        return []
-    }
-    return Promise.all((request.files ?? []).map(async (file) => {
-        const stored = await fileService(log).getDataOrThrow({ projectId: step.projectId, platformId: step.platformId, fileId: file.fileId, type: FileType.FLOW_STEP_FILE })
-        const filename = file.filename ?? stored.fileName
-        return {
-            mime: file.mimeType ?? mimeTypeOf({ metadata: stored.metadata }) ?? DEFAULT_MIME,
-            base64: stored.data.toString('base64'),
-            ...(isNil(filename) ? {} : { filename }),
-        }
-    }))
-}
-
-function mimeTypeOf({ metadata }: { metadata: Record<string, unknown> | null | undefined }): string | undefined {
-    const value = metadata?.['mimeType']
-    return typeof value === 'string' ? value : undefined
 }
 
 async function failureOf({ error, step, log }: { error: unknown, step: OpencodeStepRow, log: FastifyBaseLogger }): Promise<string> {
@@ -224,8 +208,6 @@ function isGuardRefusal({ error }: { error: unknown }): boolean {
 const DISPATCHABLE: OpencodeStepStatus[] = ['PENDING', 'QUEUED']
 
 const DISPATCH_LOCK_TIMEOUT_SECONDS = 120
-
-const DEFAULT_MIME = 'application/octet-stream'
 
 export type OpencodeAiCall = {
     flowId: string

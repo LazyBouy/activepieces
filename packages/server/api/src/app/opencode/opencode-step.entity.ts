@@ -13,6 +13,12 @@ export const OpencodeStepModel = z.object({
 })
 export type OpencodeStepModel = z.infer<typeof OpencodeStepModel>
 
+export const OpencodeStepFiles = z.object({
+    files: z.array(z.object({ name: z.string(), url: z.string(), size: z.number() })),
+    skippedFiles: z.array(z.object({ name: z.string(), reason: z.string() })),
+})
+export type OpencodeStepFiles = z.infer<typeof OpencodeStepFiles>
+
 const OpencodeStepRow = z.object({
     ...BaseModelSchema,
     platformId: z.string(),
@@ -37,6 +43,7 @@ const OpencodeStepRow = z.object({
     messageId: z.string(),
     status: OpencodeStepStatus,
     failure: z.string().nullable(),
+    files: OpencodeStepFiles.nullable(),
     dispatchedAt: z.string().nullable(),
     completedAt: z.string().nullable(),
 })
@@ -137,6 +144,10 @@ export const OpencodeStepEntity = new EntitySchema<OpencodeStepSchema>({
         },
         failure: {
             type: String,
+            nullable: true,
+        },
+        files: {
+            type: 'jsonb',
             nullable: true,
         },
         dispatchedAt: {

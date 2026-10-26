@@ -26,6 +26,8 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         pendingQuestions: [],
         goneRequests: [],
         refusedRequests: [],
+        diffs: {},
+        projectFiles: {},
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
@@ -179,7 +181,31 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
         send({ res, value: true })
         return true
     }
+    if (method === 'GET' && rest === '/diff') {
+        send({ res, value: state.diffs[url.searchParams.get('messageID') ?? ''] ?? [] })
+        return true
+    }
     return false
+}
+
+function routeProjectFile({ state, url, res }: { state: OpencodeStubState, url: URL, res: http.ServerResponse }): void {
+    const filePath = url.searchParams.get('path') ?? ''
+    const maxBytes = Number(url.searchParams.get('maxBytes') ?? Infinity)
+    if (filePath.startsWith('..') || filePath.startsWith('/')) {
+        return send({ res, status: 400, value: { name: 'OperatorFileRefusedError', data: { message: `${filePath} is outside the project folder` } } })
+    }
+    const file = state.projectFiles[filePath]
+    if (file === undefined) {
+        return send({ res, status: 404, value: { name: 'OperatorFileNotFoundError', data: { message: `${filePath} is not a file here` } } })
+    }
+    if (file.failWith !== undefined) {
+        return send({ res, status: file.failWith, value: { name: 'UnknownError', data: { message: 'EACCES: permission denied' } } })
+    }
+    const data = Buffer.from(file.content)
+    if (data.length > maxBytes) {
+        return send({ res, status: 413, value: { name: 'OperatorFileTooLargeError', data: { message: 'too large', size: data.length } } })
+    }
+    send({ res, value: { path: filePath, size: data.length, mime: file.mime, content: data.toString('base64') } })
 }
 
 function route({ state, method, url, body, res }: RouteParams): void {
@@ -198,6 +224,9 @@ function route({ state, method, url, body, res }: RouteParams): void {
     }
     if (routeSession({ state, method, url, json, directory, res })) {
         return
+    }
+    if (key === 'GET /operator/file/raw') {
+        return routeProjectFile({ state, url, res })
     }
     if (key === 'POST /mcp') {
         const name = String(json['name'])
@@ -449,6 +478,8 @@ export type OpencodeStubState = {
     pendingQuestions: Record<string, unknown>[]
     goneRequests: string[]
     refusedRequests: string[]
+    diffs: Record<string, { file: string, status: string, additions: number, deletions: number }[]>
+    projectFiles: Record<string, { content: string | Buffer, mime: string, failWith?: number }>
 }
 
 export type OpencodeStub = {

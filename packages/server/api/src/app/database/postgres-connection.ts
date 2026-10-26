@@ -459,6 +459,7 @@ import { AddOpencodeConnection1868000000000 } from './migration/postgres/1868000
 import { AddOpencodeDefaultsToFlowVersion1869000000000 } from './migration/postgres/1869000000000-AddOpencodeDefaultsToFlowVersion'
 import { AddOpencodeStepAndRunSession1870000000000 } from './migration/postgres/1870000000000-AddOpencodeStepAndRunSession'
 import { AddOpencodeAsk1871000000000 } from './migration/postgres/1871000000000-AddOpencodeAsk'
+import { AddOpencodeStepFiles1872000000000 } from './migration/postgres/1872000000000-AddOpencodeStepFiles'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -933,6 +934,7 @@ export const getMigrations = (): (new () => Migration)[] => {
         AddOpencodeDefaultsToFlowVersion1869000000000,
         AddOpencodeStepAndRunSession1870000000000,
         AddOpencodeAsk1871000000000,
+        AddOpencodeStepFiles1872000000000,
     ]
     return migrations
 }

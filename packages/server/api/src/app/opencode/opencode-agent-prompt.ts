@@ -6,17 +6,17 @@ import { opencodeErrors } from './opencode-errors'
 import { opencodeMcpNames } from './opencode-mcp-names'
 import { BuiltPrompt, opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
 import { OpencodeReplyMessage, ReplySummary } from './opencode-reply'
-import { OpencodeStepRow } from './opencode-step.entity'
+import { OpencodeStepFiles, OpencodeStepRow } from './opencode-step.entity'
 
-function build({ request }: { request: OpencodeAgentRequest }): BuiltPrompt {
+function build({ request, outputFolder }: { request: OpencodeAgentRequest, outputFolder: string }): BuiltPrompt {
     const fields = request.structuredOutput ?? []
     return {
-        parts: [{ type: 'text', text: request.instruction }],
+        parts: [{ type: 'text', text: `${request.instruction}\n\nSave the files you create for this step in ${outputFolder}/ in the project folder.` }],
         ...(fields.length === 0 ? {} : { format: { type: 'json_schema', schema: outputSchema({ fields }).jsonSchema } }),
     }
 }
 
-function answer({ request, step, replies, reply, summary, adminPanelUrl }: AnswerParams): OpencodeStepAnswer {
+function answer({ request, step, replies, reply, summary, adminPanelUrl, files }: AnswerParams): OpencodeStepAnswer {
     if (!isNil(reply.error)) {
         return { failure: opencodeErrors.sessionError({ message: reply.error }) }
     }
@@ -37,7 +37,8 @@ function answer({ request, step, replies, reply, summary, adminPanelUrl }: Answe
             agent: step.agent,
             model: summary.model,
             usage: summary.usage,
-            files: [],
+            files: files.files,
+            skippedFiles: files.skippedFiles,
         },
     }
     return { output: result }
@@ -180,7 +181,8 @@ export type OpencodeAgentResult = AgentResult & {
         agent: string | null
         model: ReplySummary['model']
         usage: ReplySummary['usage']
-        files: { name: string, url: string, size: number }[]
+        files: OpencodeStepFiles['files']
+        skippedFiles: OpencodeStepFiles['skippedFiles']
     }
 }
 
@@ -191,6 +193,7 @@ type AnswerParams = {
     reply: { structured: unknown, error?: string }
     summary: ReplySummary
     adminPanelUrl: string
+    files: OpencodeStepFiles
 }
 
 type OutputSchema = {

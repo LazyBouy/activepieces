@@ -28,15 +28,17 @@ describe('opencodePrompts.build', () => {
         expect(built.parts).toEqual([{ type: 'text', text: 'Earlier in this conversation:\nUser: First\n\nAnd now?' }])
     })
 
-    it('passes an advanced Extract schema through and attaches images, PDFs and text files but not other binaries', () => {
+    it('passes an advanced Extract schema through, sends text-like files as plain text for OpenCode to inline, and every other file with its own type', () => {
         const schema = { type: 'object', properties: { total: { type: 'number' } } }
         const built = opencodePrompts.build({
             request: { action: AiStepAction.EXTRACT_STRUCTURED_DATA, prompt: 'Find the total', schema: { mode: 'advanced', fields: schema } },
             files: [
-                { mime: 'image/png', base64: 'aW1n', filename: 'receipt.png' },
-                { mime: 'application/pdf', base64: 'cGRm' },
-                { mime: 'text/csv', base64: 'YSxi' },
-                { mime: 'application/zip', base64: 'emlw' },
+                { mime: 'image/png', data: Buffer.from('img'), filename: 'receipt.png' },
+                { mime: 'application/pdf', data: Buffer.from('pdf') },
+                { mime: 'text/csv', data: Buffer.from('a,b'), filename: 'rows.csv' },
+                { mime: 'application/json; charset=utf-8', data: Buffer.from('{"total":3}') },
+                { mime: 'text/csv', data: Buffer.from([0xff, 0xfe, 0x00]) },
+                { mime: 'application/zip', data: Buffer.from('zip'), filename: 'bundle.zip' },
             ],
         })
 
@@ -45,7 +47,10 @@ describe('opencodePrompts.build', () => {
             { type: 'text', text: 'Find the total' },
             { type: 'file', mime: 'image/png', url: 'data:image/png;base64,aW1n', filename: 'receipt.png' },
             { type: 'file', mime: 'application/pdf', url: 'data:application/pdf;base64,cGRm' },
-            { type: 'file', mime: 'text/csv', url: 'data:text/csv;base64,YSxi' },
+            { type: 'file', mime: 'text/plain', url: 'data:text/plain;base64,YSxi', filename: 'rows.csv' },
+            { type: 'file', mime: 'text/plain', url: `data:text/plain;base64,${Buffer.from('{"total":3}').toString('base64')}` },
+            { type: 'file', mime: 'text/csv', url: 'data:text/csv;base64,//4A' },
+            { type: 'file', mime: 'application/zip', url: 'data:application/zip;base64,emlw', filename: 'bundle.zip' },
         ])
     })
 

@@ -44,7 +44,7 @@
     "@fastify/static": "10.1.2",
     "@fastify/swagger": "9.5.1",
     "@modelcontextprotocol/sdk": "1.27.1",
-    "@opencode-ai/sdk": "file:../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-858ed8c833-58eb66cf.tgz",
+    "@opencode-ai/sdk": "file:../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-72b2fac5a-db365e6d.tgz",
     "@openrouter/ai-sdk-provider": "3.0.0",
     "@openrouter/sdk": "0.2.9",
     "@sentry/node": "7.120.0",

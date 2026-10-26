@@ -8,11 +8,12 @@ import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt
 import { opencodeAsks } from './opencode-asks'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
+import { opencodeFilesOut } from './opencode-files-out'
 import { opencodeMcpBridge } from './opencode-mcp-bridge'
 import { opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
 import { opencodeReply, ReplyState } from './opencode-reply'
 import { opencodeSessions } from './opencode-sessions'
-import { OpencodeStepEntity, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
+import { OpencodeStepEntity, OpencodeStepFiles, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
 import { opencodeStoredRequest } from './opencode-stored-request'
 
 const stepRepo = repoFactory(OpencodeStepEntity)
@@ -109,6 +110,9 @@ async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Ex
     if (isNil(stored)) {
         return { failure: UNREADABLE_REQUEST }
     }
+    const files = isNil(state.reply.error)
+        ? await opencodeFilesOut(log).ensure({ step, client: await opencodeConnectionService(log).client({ platformId: step.platformId }), replies: state.replies })
+        : NO_FILES
     if (stored.request.action !== OPENCODE_RUN_AGENT) {
         return opencodePrompts.mapReply({ request: stored.request, reply: state.reply })
     }
@@ -120,6 +124,7 @@ async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Ex
         reply: state.reply,
         summary: state.summary,
         adminPanelUrl: connection.adminPanelUrl,
+        files,
     })
 }
 
@@ -171,6 +176,8 @@ function isFlowRunGone({ error }: { error: unknown }): boolean {
 }
 
 const UNREADABLE_REQUEST = 'The step request could not be read back.'
+
+const NO_FILES: OpencodeStepFiles = { files: [], skippedFiles: [] }
 
 const OPEN_STATUSES: OpencodeStepStatus[] = ['PENDING', 'QUEUED', 'DISPATCHED']
 

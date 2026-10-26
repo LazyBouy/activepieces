@@ -2,6 +2,7 @@ import { AiStepAction, isNil } from '@activepieces/core-utils'
 import { AiRouterMatchMode, AiStepFile, AiStepSchema } from '@activepieces/shared'
 import { z } from 'zod'
 import { opencodeErrors } from './opencode-errors'
+import { OpencodeFilePart, opencodeFilesIn, OpencodeInputFile } from './opencode-files-in'
 
 function build({ request, files }: BuildParams): BuiltPrompt {
     switch (request.action) {
@@ -16,7 +17,7 @@ function build({ request, files }: BuildParams): BuiltPrompt {
             }
         case AiStepAction.EXTRACT_STRUCTURED_DATA:
             return {
-                parts: [textPart({ text: extractText({ request }) }), ...files.filter(isExtractable).map(filePart)],
+                parts: [textPart({ text: extractText({ request }) }), ...files.map((file) => opencodeFilesIn.partOf({ file }))],
                 format: jsonSchemaFormat({ schema: extractSchema({ schema: request.schema }).jsonSchema }),
             }
         case AiStepAction.ROUTE:
@@ -224,19 +225,6 @@ function isBestMatch({ request }: { request: OpencodeAiRequest }): boolean {
     return request.matchMode !== AiRouterMatchMode.ALL_MATCHES
 }
 
-function isExtractable(file: OpencodeInputFile): boolean {
-    return file.mime.startsWith('image/') || file.mime.startsWith('application/pdf') || file.mime.startsWith('text/')
-}
-
-function filePart(file: OpencodeInputFile): OpencodeFilePart {
-    return {
-        type: 'file',
-        mime: file.mime,
-        url: `data:${file.mime};base64,${file.base64}`,
-        ...(isNil(file.filename) ? {} : { filename: file.filename }),
-    }
-}
-
 function textPart({ text }: { text: string }): OpencodeTextPart {
     return { type: 'text', text }
 }
@@ -294,22 +282,9 @@ export const opencodePrompts = {
     NO_STRUCTURED_OUTPUT,
 }
 
-export type OpencodeInputFile = {
-    mime: string
-    base64: string
-    filename?: string
-}
-
 export type OpencodeTextPart = {
     type: 'text'
     text: string
-}
-
-export type OpencodeFilePart = {
-    type: 'file'
-    mime: string
-    url: string
-    filename?: string
 }
 
 export type OpencodeOutputFormat = {

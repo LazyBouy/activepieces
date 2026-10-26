@@ -147,7 +147,7 @@ describe('Run Agent on OpenCode', () => {
         expect(session.prompts[0]).toMatchObject({
             agent: 'flow',
             model: { providerID: 'openrouter', modelID: 'qwen/qwen3-coder' },
-            parts: [{ type: 'text', text: 'Find the ticket id' }],
+            parts: [{ type: 'text', text: `Find the ticket id\n\nSave the files you create for this step in out/${step.id}/ in the project folder.` }],
             format: {
                 type: 'json_schema',
                 schema: {
@@ -196,6 +196,7 @@ describe('Run Agent on OpenCode', () => {
                 model: { providerID: 'stub', modelID: 'stub-model' },
                 usage: { input: 24, output: 10, reasoning: 2, cost: 0.004 },
                 files: [],
+                skippedFiles: [],
             },
         })
     })

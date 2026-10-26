@@ -5,12 +5,15 @@ import { OpencodeReplyMessage } from '../../../../src/app/opencode/opencode-repl
 import { OpencodeStepRow } from '../../../../src/app/opencode/opencode-step.entity'
 
 describe('opencodeAgentPrompt.build', () => {
-    it('sends the instruction as visible text and asks for no output format when the step has no structured output', () => {
-        expect(opencodeAgentPrompt.build({ request: REQUEST })).toEqual({ parts: [{ type: 'text', text: 'Tidy the repo' }] })
+    it('sends the instruction and the step\'s output folder as visible text, and asks for no output format when the step has no structured output', () => {
+        expect(opencodeAgentPrompt.build({ request: REQUEST, outputFolder: 'out/step_1' })).toEqual({
+            parts: [{ type: 'text', text: 'Tidy the repo\n\nSave the files you create for this step in out/step_1/ in the project folder.' }],
+        })
     })
 
     it('turns each output field into a required, provider-safe JSON schema property', () => {
         const built = opencodeAgentPrompt.build({
+            outputFolder: 'out/step_1',
             request: {
                 ...REQUEST,
                 structuredOutput: [
@@ -155,6 +158,7 @@ const STEP: OpencodeStepRow = {
     messageId: 'msg_user',
     status: 'DISPATCHED',
     failure: null,
+    files: null,
     dispatchedAt: null,
     completedAt: null,
 }
@@ -166,4 +170,5 @@ const ANSWER = {
     reply: { structured: undefined },
     summary: { model: null, usage: { input: 0, output: 0, reasoning: 0, cost: 0 } },
     adminPanelUrl: 'http://127.0.0.1:4444/',
+    files: { files: [], skippedFiles: [] },
 }
