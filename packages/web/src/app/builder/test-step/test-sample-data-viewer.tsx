@@ -13,7 +13,7 @@ import React, { useMemo } from 'react';
 
 import type { OutputSchema } from '@/components/custom/smart-output-viewer/types';
 import { Button } from '@/components/ui/button';
-import { OpencodeStepAsks } from '@/features/opencode';
+import { OpencodeStepAsks, OpencodeStepSessions } from '@/features/opencode';
 import { formatUtils } from '@/lib/format-utils';
 
 import { ErrorExplanationContext } from '../data-display/explanation-prompt';
@@ -130,6 +130,14 @@ export const TestSampleDataViewer = React.memo(
             flowVersionId={flowVersionId}
             stepName={currentStep?.name ?? ''}
             enabled={true}
+          />
+        )}
+        {!isTesting && opencodeTested && !isNil(flowVersionId) && (
+          <OpencodeStepSessions
+            key={lastTestDate}
+            flowVersionId={flowVersionId}
+            stepName={currentStep?.name ?? ''}
+            enabled={!isNil(lastTestDate)}
           />
         )}
         {isTesting && !showAgentView ? (

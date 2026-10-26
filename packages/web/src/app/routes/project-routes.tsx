@@ -55,6 +55,10 @@ const AppConnectionsPage = lazyWithRetry(
     import('./connections').then((m) => ({ default: m.AppConnectionsPage })),
   'connections',
 );
+const OpencodePage = lazyWithRetry(
+  () => import('./opencode').then((m) => ({ default: m.OpencodePage })),
+  'opencode',
+);
 const VariablesPage = lazyWithRetry(
   () => import('./variables').then((m) => ({ default: m.VariablesPage })),
   'variables',
@@ -237,6 +241,20 @@ export const projectRoutes = [
           <PageTitle title="Variables">
             <SuspenseWrapper>
               <VariablesPage />
+            </SuspenseWrapper>
+          </PageTitle>
+        </RoutePermissionGuard>
+      </ProjectDashboardLayout>
+    ),
+  }),
+  ...ProjectRouterWrapper({
+    path: routesThatRequireProjectId.opencode,
+    element: (
+      <ProjectDashboardLayout>
+        <RoutePermissionGuard requiredPermissions={Permission.READ_FLOW}>
+          <PageTitle title="OpenCode">
+            <SuspenseWrapper>
+              <OpencodePage />
             </SuspenseWrapper>
           </PageTitle>
         </RoutePermissionGuard>

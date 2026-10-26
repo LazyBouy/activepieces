@@ -42,6 +42,7 @@ import {
   OpencodeFormSchema,
   OpencodeFormValues,
 } from './opencode-form';
+import { ServerOverview } from './server-overview';
 
 export function OpencodeTab() {
   const {
@@ -289,6 +290,11 @@ function OpencodeSettings({ connection }: { connection: OpencodeConnection }) {
           />
           <AllowlistField control={form.control} disabled={isPending} />
         </div>
+
+        <ServerOverview
+          adminPanelUrl={connection.adminPanelUrl}
+          allowlist={connection.allowlist}
+        />
 
         {form.formState.errors.root?.serverError && (
           <p className="text-sm text-danger-11">

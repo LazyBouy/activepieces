@@ -3,6 +3,7 @@ import { AgentOutputField, AgentOutputFieldType, AgentResult, AgentStepBlock, Ag
 import { Part, ToolPart, ToolState } from '@opencode-ai/sdk/v2/client'
 import { z } from 'zod'
 import { opencodeErrors } from './opencode-errors'
+import { opencodeLinks } from './opencode-links'
 import { opencodeMcpNames } from './opencode-mcp-names'
 import { BuiltPrompt, opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
 import { OpencodeReplyMessage, ReplySummary } from './opencode-reply'
@@ -56,7 +57,7 @@ function sessionLink({ adminPanelUrl, directory, sessionId }: { adminPanelUrl: s
     if (isNil(directory) || isNil(sessionId)) {
         return null
     }
-    return `${adminPanelUrl.replace(/\/+$/, '')}/${Buffer.from(directory).toString('base64url')}/session/${sessionId}`
+    return opencodeLinks.session({ adminPanelUrl, directory, sessionId })
 }
 
 function stepsOf({ replies, stepId, tools }: { replies: OpencodeReplyMessage[], stepId: string, tools: AgentTool[] }): AgentStepBlock[] {

@@ -1,5 +1,5 @@
 import { isNil, tryCatch } from '@activepieces/core-utils'
-import { OPENCODE_DEFAULT_NAMESPACE, OpencodeAgentList, OpencodeCatalogNamespace, OpencodeProjectOptions } from '@activepieces/shared'
+import { OPENCODE_DEFAULT_NAMESPACE, OpencodeAgentList, OpencodeProjectOptions } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { repoFactory } from '../core/db/repo-factory'
 import { opencodeAllowlist } from './opencode-allowlist'
@@ -33,20 +33,32 @@ export const opencodeOptionsService = (log: FastifyBaseLogger) => ({
         }
     },
 
-    async agents({ platformId, projectId, namespace, project }: ListAgentsParams): Promise<OpencodeAgentList> {
+    async locate({ platformId, projectId, namespace, project }: ListAgentsParams): Promise<OpencodeLocated> {
         const connection = await opencodeConnectionService(log).getOrCreate({ platformId })
         const target = await resolveTarget({ projectId, namespace, project })
         if (isNil(target)) {
-            return { agents: [] }
+            return { kind: 'none' }
         }
         if (!opencodeAllowlist.isProjectAllowed({ allowlist: connection.allowlist, namespace: target.namespace, projectId: target.project })) {
-            return { agents: [], error: opencodeErrors.notAllowlisted({ namespace: target.namespace, project: target.project }) }
+            return { kind: 'error', error: opencodeErrors.notAllowlisted({ namespace: target.namespace, project: target.project }) }
         }
         const catalog = await opencodeConnectionService(log).catalog({ platformId })
-        const directory = folderOf({ namespaces: catalog.namespaces, namespace: target.namespace, project: target.project })
-        if (isNil(directory)) {
-            return { agents: [], error: catalog.error ?? `OpenCode has no project ${target.namespace}/${target.project}.` }
+        const found = catalog.namespaces.find((candidate) => candidate.id === target.namespace)?.projects.find((candidate) => candidate.id === target.project)
+        if (isNil(found)) {
+            return { kind: 'error', error: catalog.error ?? `OpenCode has no project ${target.namespace}/${target.project}.` }
         }
+        return { kind: 'found', namespace: target.namespace, project: target.project, name: found.name, directory: found.folder, adminPanelUrl: connection.adminPanelUrl }
+    },
+
+    async agents({ platformId, projectId, namespace, project }: ListAgentsParams): Promise<OpencodeAgentList> {
+        const located = await this.locate({ platformId, projectId, namespace, project })
+        if (located.kind === 'none') {
+            return { agents: [] }
+        }
+        if (located.kind === 'error') {
+            return { agents: [], error: located.error }
+        }
+        const directory = located.directory
         const client = await opencodeConnectionService(log).client({ platformId })
         const { data: result, error } = await tryCatch(() => client.operator.agent.list({ directory }, { throwOnError: true }))
         if (isNil(result)) {
@@ -71,9 +83,10 @@ async function resolveTarget({ projectId, namespace, project }: { projectId: str
     return { namespace: link.namespace, project: link.opencodeProjectId }
 }
 
-function folderOf({ namespaces, namespace, project }: { namespaces: OpencodeCatalogNamespace[], namespace: string, project: string }): string | undefined {
-    return namespaces.find((candidate) => candidate.id === namespace)?.projects.find((candidate) => candidate.id === project)?.folder
-}
+export type OpencodeLocated =
+    | { kind: 'none' }
+    | { kind: 'error', error: string }
+    | { kind: 'found', namespace: string, project: string, name: string, directory: string, adminPanelUrl: string }
 
 type ProjectParams = {
     platformId: string

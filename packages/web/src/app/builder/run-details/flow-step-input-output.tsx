@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AgentTimeline } from '@/features/agents';
 import { flowRunUtils } from '@/features/flow-runs';
-import { OpencodeStepAsks } from '@/features/opencode';
+import { OpencodeStepAsks, OpencodeStepSessions } from '@/features/opencode';
 import { piecesHooks } from '@/features/pieces';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { formatUtils } from '@/lib/format-utils';
@@ -195,6 +195,11 @@ const RunStepOutputPane = ({
       }
     >
       <OpencodeStepAsks
+        flowRunId={run.id}
+        stepName={selectedStep.name}
+        enabled={opencodeStepUtil.isOpencodeStep({ step: selectedStep })}
+      />
+      <OpencodeStepSessions
         flowRunId={run.id}
         stepName={selectedStep.name}
         enabled={opencodeStepUtil.isOpencodeStep({ step: selectedStep })}

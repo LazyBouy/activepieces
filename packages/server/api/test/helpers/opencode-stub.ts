@@ -28,6 +28,7 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         refusedRequests: [],
         diffs: {},
         projectFiles: {},
+        views: { toolPrompts: {}, capabilities: [], memoryLevels: [], hooks: [], mcpStatus: {}, defaultModel: 'openrouter/qwen/qwen3-235b-a22b-2507' },
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
@@ -44,7 +45,7 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         answer: (params) => answer({ state, ...params }),
         createSession: async ({ directory, parentId }) => {
             const id = `ses_${String(state.nextSessionId++).padStart(4, '0')}`
-            state.sessions.push({ id, directory, title: '', agent: undefined, metadata: {}, permission: [], parentId, messages: [], prompts: [], aborted: 0 })
+            state.sessions.push({ id, directory, title: '', agent: undefined, metadata: {}, permission: [], parentId, messages: [], prompts: [], aborted: 0, created: Date.now() })
             return id
         },
         emit: (payload) => emit({ state, payload }),
@@ -113,6 +114,7 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
             messages: [],
             prompts: [],
             aborted: 0,
+            created: Date.now(),
         }
         state.sessions.push(created)
         send({ res, value: { id: created.id, title: created.title, directory, time: { created: Date.now(), updated: Date.now() } } })
@@ -305,7 +307,68 @@ function route({ state, method, url, body, res }: RouteParams): void {
         return send({ res, value: { key: json['key'], description: json['description'], status: 'active', members: [], groups: [] } })
     }
     if (key === 'GET /operator/agent') {
-        return send({ res, value: state.agents.filter((agent) => agent.directory === directory).map(({ directory: _directory, scope: _scope, ...agent }) => agent) })
+        return send({ res, value: state.agents.filter((agent) => agent.directory === directory).map(({ directory: _directory, scope, ...agent }) => ({
+            permission: [],
+            options: {},
+            source: { kind: 'file', path: null, customized: false },
+            level: { kind: scope.length > 0 ? scope : 'project' },
+            settings: {},
+            sessions: { total: 0 },
+            modelSource: { model: state.views.defaultModel, source: 'default', how: 'namespace' },
+            ...agent,
+            disabled: agent.disabled ?? false,
+        })) })
+    }
+    const toolPrompt = url.pathname.match(/^\/operator\/agent\/([^/]+)\/tool-prompt$/)
+    if (method === 'GET' && toolPrompt !== null) {
+        const name = decodeURIComponent(toolPrompt[1])
+        if (!state.agents.some((agent) => agent.directory === directory && agent.name === name)) {
+            return send({ res, status: 404, value: { name: 'OperatorAgentNotFoundError', data: { message: `No agent named ${name}` } } })
+        }
+        const view = state.views.toolPrompts[name] ?? { rows: [], sent: [], notSent: [] }
+        return send({ res, value: { agent: name, model: state.views.defaultModel, runsAs: 'primary', sizes: {}, list: [], ...view } })
+    }
+    if (key === 'GET /operator/capability') {
+        return send({ res, value: { scope: 'project', namespace: 'iphi-flow', inheritGlobal: true, items: state.views.capabilities } })
+    }
+    if (key === 'GET /operator/memory/levels') {
+        const agent = url.searchParams.get('agent')
+        return send({ res, value: {
+            project: directory,
+            namespace: { id: 'iphi-flow', name: 'iphi-flow' },
+            instructions: false,
+            ...(agent === null ? {} : { agent }),
+            limits: { lines: 200, chars: 25000 },
+            levels: state.views.memoryLevels.filter((level) => agent !== null || level['level'] !== 'agent'),
+        } })
+    }
+    if (key === 'GET /operator/hook') {
+        return send({ res, value: { hooks: state.views.hooks, paused: false, level: 'project', file: `${directory}/.opencode/opencode.jsonc`, folder: `${directory}/.opencode/hooks`, pluginsOff: false } })
+    }
+    if (key === 'GET /mcp') {
+        return send({ res, value: state.views.mcpStatus })
+    }
+    if (key === 'GET /operator/model') {
+        return send({ res, value: {
+            model: { model: state.views.defaultModel, source: 'default', how: 'namespace' },
+            small: { model: '', source: 'none' },
+            global: {},
+            chain: {},
+        } })
+    }
+    if (key === 'GET /session') {
+        return send({ res, value: state.sessions.filter((session) => session.directory === directory && session.parentId === undefined).map((session) => ({
+            id: session.id,
+            slug: session.id,
+            projectID: 'stub',
+            directory: session.directory,
+            title: session.title,
+            ...(session.agent === undefined ? {} : { agent: session.agent }),
+            version: 'stub-1.0.0',
+            metadata: session.metadata,
+            cost: 0.01,
+            time: { created: session.created, updated: session.created },
+        })) })
     }
     if (key === 'POST /operator/agent') {
         const name = String(json['name'])
@@ -414,6 +477,16 @@ type StubSession = {
     messages: StubMessage[]
     prompts: Record<string, unknown>[]
     aborted: number
+    created: number
+}
+
+type StubViews = {
+    toolPrompts: Record<string, { rows: Record<string, unknown>[], sent: Record<string, unknown>[], notSent: Record<string, unknown>[] }>
+    capabilities: Record<string, unknown>[]
+    memoryLevels: Record<string, unknown>[]
+    hooks: Record<string, unknown>[]
+    mcpStatus: Record<string, unknown>
+    defaultModel: string
 }
 
 type StubMessage = {
@@ -480,6 +553,7 @@ export type OpencodeStubState = {
     refusedRequests: string[]
     diffs: Record<string, { file: string, status: string, additions: number, deletions: number }[]>
     projectFiles: Record<string, { content: string | Buffer, mime: string, failWith?: number }>
+    views: StubViews
 }
 
 export type OpencodeStub = {

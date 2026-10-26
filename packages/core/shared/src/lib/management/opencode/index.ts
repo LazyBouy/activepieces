@@ -193,6 +193,154 @@ export const OpencodeAskLink = z.object({
 })
 export type OpencodeAskLink = z.infer<typeof OpencodeAskLink>
 
+export const OpencodeAccess = z.enum(['allow', 'ask', 'deny'])
+export type OpencodeAccess = z.infer<typeof OpencodeAccess>
+
+export const OpencodeNamedItem = z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    origin: z.string().optional(),
+    access: OpencodeAccess.optional(),
+})
+export type OpencodeNamedItem = z.infer<typeof OpencodeNamedItem>
+
+export const OpencodeMcpServerView = z.object({
+    name: z.string(),
+    status: z.string(),
+    error: z.string().optional(),
+})
+export type OpencodeMcpServerView = z.infer<typeof OpencodeMcpServerView>
+
+export const OpencodeMemoryLevelView = z.object({
+    level: z.string(),
+    folder: z.string(),
+    entries: z.array(z.object({ title: z.string(), description: z.string() })),
+})
+export type OpencodeMemoryLevelView = z.infer<typeof OpencodeMemoryLevelView>
+
+export const OpencodeProviderView = z.object({
+    id: z.string(),
+    name: z.string(),
+    defaultModel: z.string().nullable(),
+    models: z.array(z.object({ id: z.string(), name: z.string() })),
+})
+export type OpencodeProviderView = z.infer<typeof OpencodeProviderView>
+
+export const OpencodeAgentCard = z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    mode: z.string(),
+    model: z.string().nullable(),
+    modelFrom: z.string().nullable(),
+    steps: z.number().nullable(),
+    tools: z.array(z.object({ name: z.string(), source: z.string() })),
+    hiddenTools: z.array(z.object({ name: z.string(), reason: z.string() })),
+    skills: z.array(OpencodeNamedItem),
+    subagents: z.array(OpencodeNamedItem),
+    mcpServers: z.array(OpencodeMcpServerView),
+    memory: z.array(OpencodeMemoryLevelView),
+    permissions: z.array(z.object({ permission: z.string(), pattern: z.string(), action: OpencodeAccess, level: z.string() })),
+    hooks: z.array(z.object({ name: z.string(), event: z.string(), level: z.string(), state: z.string(), description: z.string().optional() })),
+    links: z.object({ agent: z.string(), tools: z.string(), permissions: z.string(), hooks: z.string(), memory: z.string() }),
+})
+export type OpencodeAgentCard = z.infer<typeof OpencodeAgentCard>
+
+export const OpencodeAgentCardResult = z.object({
+    card: OpencodeAgentCard.nullable(),
+    error: z.string().optional(),
+})
+export type OpencodeAgentCardResult = z.infer<typeof OpencodeAgentCardResult>
+
+export const OpencodeProjectSessionView = z.object({
+    id: z.string(),
+    title: z.string(),
+    agent: z.string().nullable(),
+    model: z.string().nullable(),
+    cost: z.number(),
+    created: z.string(),
+    updated: z.string(),
+    flowId: z.string().nullable(),
+    flowRunId: z.string().nullable(),
+    stepName: z.string().nullable(),
+    adminPanelUrl: z.string(),
+})
+export type OpencodeProjectSessionView = z.infer<typeof OpencodeProjectSessionView>
+
+export const OpencodeProjectView = z.object({
+    namespace: z.string(),
+    project: z.string(),
+    name: z.string(),
+    folder: z.string(),
+    agents: z.array(OpencodeNamedItem.extend({ mode: z.string() })),
+    tools: z.array(OpencodeNamedItem),
+    skills: z.array(OpencodeNamedItem),
+    commands: z.array(OpencodeNamedItem),
+    mcpServers: z.array(OpencodeMcpServerView),
+    memory: z.array(OpencodeMemoryLevelView),
+    defaultModel: z.string().nullable(),
+    defaultModelFrom: z.string().nullable(),
+    providers: z.array(OpencodeProviderView),
+    sessions: z.array(OpencodeProjectSessionView),
+    links: z.object({ agents: z.string(), capabilities: z.string(), memory: z.string(), models: z.string(), sessions: z.string() }),
+})
+export type OpencodeProjectView = z.infer<typeof OpencodeProjectView>
+
+export const OpencodeProjectViewResult = z.object({
+    view: OpencodeProjectView.nullable(),
+    error: z.string().optional(),
+})
+export type OpencodeProjectViewResult = z.infer<typeof OpencodeProjectViewResult>
+
+export const OpencodeTranscriptEntry = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('text'), text: z.string() }),
+    z.object({
+        type: z.literal('tool'),
+        tool: z.string(),
+        status: z.string(),
+        input: z.unknown(),
+        output: z.string().optional(),
+        error: z.string().optional(),
+        subagentUrl: z.string().optional(),
+    }),
+])
+export type OpencodeTranscriptEntry = z.infer<typeof OpencodeTranscriptEntry>
+
+export const OpencodeStepSessionView = z.object({
+    stepId: z.string(),
+    stepName: z.string(),
+    action: z.string(),
+    status: z.string(),
+    created: z.string(),
+    sessionId: z.string().nullable(),
+    adminPanelUrl: z.string().nullable(),
+    namespace: z.string().nullable(),
+    project: z.string().nullable(),
+    agent: z.string().nullable(),
+    model: z.string().nullable(),
+    usage: z.object({ input: z.number(), output: z.number(), reasoning: z.number(), cost: z.number() }).nullable(),
+    durationMs: z.number().nullable(),
+    failure: z.string().nullable(),
+    files: z.array(z.object({ name: z.string(), url: z.string(), size: z.number() })),
+    skippedFiles: z.array(z.object({ name: z.string(), reason: z.string() })),
+    transcript: z.array(OpencodeTranscriptEntry),
+    sessionGone: z.boolean(),
+})
+export type OpencodeStepSessionView = z.infer<typeof OpencodeStepSessionView>
+
+export const ListOpencodeStepSessionsQuery = z.object({
+    flowRunId: z.string().optional(),
+    flowVersionId: z.string().optional(),
+    stepName: z.string(),
+})
+export type ListOpencodeStepSessionsQuery = z.infer<typeof ListOpencodeStepSessionsQuery>
+
+export const OpencodeServerOverview = z.object({
+    allowed: z.array(OpencodeCatalogNamespace),
+    providers: z.array(OpencodeProviderView),
+    error: z.string().optional(),
+})
+export type OpencodeServerOverview = z.infer<typeof OpencodeServerOverview>
+
 export const OpencodeAskEvent = z.object({
     askId: z.string(),
     flowId: z.string(),

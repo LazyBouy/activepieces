@@ -14,6 +14,7 @@ import { opencodeAskNotices } from './opencode-ask-notices'
 import { OpencodeAskEntity, OpencodeAskRow } from './opencode-ask.entity'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
+import { opencodeLinks } from './opencode-links'
 import { OpencodeStepEntity, OpencodeStepRow } from './opencode-step.entity'
 
 const askRepo = repoFactory(OpencodeAskEntity)
@@ -305,7 +306,7 @@ function viewOf({ ask, step, adminPanelUrl }: { ask: OpencodeAskRow, step: Openc
         answer: ask.answer,
         answeredVia: ask.answeredVia,
         answeredAt: ask.answeredAt,
-        adminPanelUrl: isNil(step?.directory) ? null : `${adminPanelUrl.replace(/\/+$/, '')}/${Buffer.from(step.directory).toString('base64url')}/session/${ask.sessionId}`,
+        adminPanelUrl: isNil(step?.directory) ? null : opencodeLinks.session({ adminPanelUrl, directory: step.directory, sessionId: ask.sessionId }),
     }
 }
 

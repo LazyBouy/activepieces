@@ -24,6 +24,8 @@ import {
 
 import { opencodeOptionsQueries } from '../hooks/opencode-options-hooks';
 
+import { OpencodeAgentCard } from './opencode-agent-card';
+
 export const OpencodeStepSection = ({
   projectId,
   readonly,
@@ -325,6 +327,15 @@ const OpencodePickers = ({
                   reason: agentError,
                 })}
               </span>
+            )}
+            {locationComplete && (
+              <OpencodeAgentCard
+                key={`${current.namespace}/${current.project}/${current.agent}`}
+                projectId={projectId}
+                name={current.agent ?? options.defaultLocation.agent}
+                namespace={current.namespace}
+                project={current.project}
+              />
             )}
             <FormMessage />
           </FormItem>

@@ -8,6 +8,7 @@ import { useEmbedding } from '@/components/providers/embed-provider';
 import { Badge } from '@/components/ui/badge';
 import { tabsListVariants, tabsTriggerVariants } from '@/components/ui/tabs';
 import { flowApprovalsHooks } from '@/features/flow-approvals';
+import { opencodeOptionsQueries } from '@/features/opencode';
 import { projectCollectionUtils } from '@/features/projects';
 import { useAuthorization } from '@/hooks/authorization-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
@@ -33,6 +34,9 @@ export const ProjectDashboardLayoutHeader = ({
   const { data: pendingApprovalsBadge } =
     flowApprovalsHooks.usePendingApprovalsBadge();
   const pendingCount = pendingApprovalsBadge?.data.length ?? 0;
+  const { data: opencodeOptions } = opencodeOptionsQueries.useOptions({
+    projectId: project.id,
+  });
 
   const tabs: ProjectDashboardLayoutHeaderTab[] = [
     {
@@ -58,6 +62,12 @@ export const ProjectDashboardLayoutHeader = ({
       label: t('Variables'),
       hasPermission: checkAccess(Permission.READ_VARIABLE),
       show: true,
+    },
+    {
+      to: authenticationSession.appendProjectRoutePrefix('/opencode'),
+      label: t('OpenCode'),
+      hasPermission: checkAccess(Permission.READ_FLOW),
+      show: opencodeOptions?.enabled === true,
     },
     {
       to: authenticationSession.appendProjectRoutePrefix('/releases'),
