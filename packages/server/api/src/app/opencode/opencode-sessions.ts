@@ -2,7 +2,7 @@ import { apId, isNil, tryCatch } from '@activepieces/core-utils'
 import { OpencodeStepSettings } from '@activepieces/shared'
 import { OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import { FastifyBaseLogger } from 'fastify'
-import { IsNull } from 'typeorm'
+import { IsNull, Not } from 'typeorm'
 import { repoFactory } from '../core/db/repo-factory'
 import { projectService } from '../project/project-service'
 import { opencodeAllowlist } from './opencode-allowlist'
@@ -38,14 +38,46 @@ export const opencodeSessions = (log: FastifyBaseLogger) => ({
         }
     },
 
+    async locateSession({ platformId, sessionId, agent }: LocateSessionParams): Promise<OpencodeLocation> {
+        const client = await opencodeConnectionService(log).client({ platformId })
+        const found = await client.session.get({ sessionID: sessionId })
+        if (isNil(found.data)) {
+            if (found.response?.status === NOT_FOUND) {
+                throw new Error(opencodeErrors.sessionGone({ sessionId }))
+            }
+            throw new OpencodeRequestError({ status: found.response?.status, message: opencodeErrors.describe({ error: found.error }) })
+        }
+        const session = found.data
+        const connection = await opencodeConnectionService(log).getOrCreate({ platformId })
+        const catalog = await opencodeConnectionService(log).catalog({ platformId })
+        const owner = catalog.namespaces
+            .flatMap((namespace) => namespace.projects.map((project) => ({ namespace: namespace.id, project: project.id, folder: project.folder })))
+            .find(({ folder }) => session.directory === folder || session.directory.startsWith(`${folder}/`))
+        if (isNil(owner)) {
+            throw new Error(catalog.error ?? `The OpenCode session ${sessionId} is not in an OpenCode project Activepieces knows.`)
+        }
+        if (!opencodeAllowlist.isProjectAllowed({ allowlist: connection.allowlist, namespace: owner.namespace, projectId: owner.project })) {
+            throw new Error(opencodeErrors.notAllowlisted({ namespace: owner.namespace, project: owner.project }))
+        }
+        return { namespace: owner.namespace, opencodeProjectId: owner.project, directory: session.directory, agent: agent ?? session.agent ?? null }
+    },
+
     async provision({ platformId, projectId }: { platformId: string, projectId: string }): Promise<{ namespace: string, opencodeProjectId: string, directory: string, agent: string }> {
         const project = await projectService(log).getOneOrThrow(projectId)
         return opencodeProvisioning(log).ensureProject({ platformId, projectId, projectName: project.displayName })
     },
 
-    async open({ step, client, flowName }: OpenParams): Promise<SessionOutcome> {
+    async open({ step, client, flowName, pinnedSessionId }: OpenParams): Promise<SessionOutcome> {
         if (!isNil(step.sessionId)) {
             return { kind: 'ready', sessionId: step.sessionId }
+        }
+        if (!isNil(pinnedSessionId)) {
+            const slot = await findOrCreatePinnedSlot({ step, sessionId: pinnedSessionId })
+            if (!await claimSlot({ step, slot })) {
+                return { kind: 'queued' }
+            }
+            await stepRepo().update({ id: step.id }, { sessionId: pinnedSessionId })
+            return { kind: 'ready', sessionId: pinnedSessionId }
         }
         if (step.sessionMode === 'NEW_PER_STEP') {
             const sessionId = await this.createSession({ step, client, title: stepTitle({ step, flowName }), metadata: stepMetadata({ step }) })
@@ -53,15 +85,7 @@ export const opencodeSessions = (log: FastifyBaseLogger) => ({
             return { kind: 'ready', sessionId }
         }
         const runSession = await findOrCreateRunSession({ step })
-        await stepRepo().update({ id: step.id }, { runSessionId: runSession.id })
-        const claimed = await runSessionRepo().createQueryBuilder()
-            .update()
-            .set({ activeStepId: step.id })
-            .where('id = :id AND ("activeStepId" IS NULL OR "activeStepId" = :stepId)', { id: runSession.id, stepId: step.id })
-            .returning(['id'])
-            .execute()
-        const ownsSlot = Array.isArray(claimed.raw) && claimed.raw.length > 0
-        if (!ownsSlot) {
+        if (!await claimSlot({ step, slot: runSession })) {
             return { kind: 'queued' }
         }
         const sessionId = runSession.sessionId ?? await this.startRunSession({ step, client, runSession, flowName })
@@ -154,6 +178,48 @@ async function findOrCreateRunSession({ step }: { step: OpencodeStepRow }): Prom
     return runSessionRepo().findOneByOrFail({ projectId: step.projectId, ...location })
 }
 
+async function findOrCreatePinnedSlot({ step, sessionId }: { step: OpencodeStepRow, sessionId: string }): Promise<OpencodeRunSessionRow> {
+    await runSessionRepo().createQueryBuilder()
+        .insert()
+        .values({
+            id: apId(),
+            platformId: step.platformId,
+            projectId: step.projectId,
+            flowRunId: null,
+            namespace: step.namespace ?? '',
+            opencodeProjectId: step.opencodeProjectId ?? '',
+            agent: step.agent ?? '',
+            sessionId,
+            activeStepId: null,
+        })
+        .orIgnore()
+        .execute()
+    return runSessionRepo().findOneByOrFail({ platformId: step.platformId, sessionId, flowRunId: IsNull() })
+}
+
+async function claimSlot({ step, slot }: { step: OpencodeStepRow, slot: OpencodeRunSessionRow }): Promise<boolean> {
+    await stepRepo().update({ id: step.id }, { runSessionId: slot.id })
+    const claimed = await runSessionRepo().createQueryBuilder()
+        .update()
+        .set({ activeStepId: step.id })
+        .where('id = :id AND ("activeStepId" IS NULL OR "activeStepId" = :stepId)', { id: slot.id, stepId: step.id })
+        .returning(['id'])
+        .execute()
+    if (!Array.isArray(claimed.raw) || claimed.raw.length === 0) {
+        return false
+    }
+    if (isNil(slot.sessionId) || !await busyElsewhere({ slot, sessionId: slot.sessionId, stepId: step.id })) {
+        return true
+    }
+    await runSessionRepo().update({ id: slot.id, activeStepId: step.id }, { activeStepId: null })
+    return false
+}
+
+async function busyElsewhere({ slot, sessionId, stepId }: { slot: OpencodeRunSessionRow, sessionId: string, stepId: string }): Promise<boolean> {
+    const holders = await runSessionRepo().findBy({ platformId: slot.platformId, sessionId, activeStepId: Not(IsNull()) })
+    return holders.some((holder) => holder.id !== slot.id && holder.activeStepId !== stepId)
+}
+
 async function folderOf({ platformId, namespace, project, log }: { platformId: string, namespace: string, project: string, log: FastifyBaseLogger }): Promise<string> {
     const catalog = await opencodeConnectionService(log).catalog({ platformId })
     const folder = catalog.namespaces.find((candidate) => candidate.id === namespace)?.projects.find((candidate) => candidate.id === project)?.folder
@@ -193,11 +259,13 @@ const SESSION_SOURCE = 'iphi-flow'
 
 const TERMINAL_STATUSES = ['COMPLETED', 'FAILED']
 
+const NOT_FOUND = 404
+
 export type OpencodeLocation = {
     namespace: string
     opencodeProjectId: string
     directory: string
-    agent: string
+    agent: string | null
 }
 
 export type SessionOutcome =
@@ -210,10 +278,17 @@ type LocateParams = {
     settings: OpencodeStepSettings | undefined
 }
 
+type LocateSessionParams = {
+    platformId: string
+    sessionId: string
+    agent: string | null
+}
+
 type OpenParams = {
     step: OpencodeStepRow
     client: OpencodeClient
     flowName: string | null
+    pinnedSessionId?: string
 }
 
 type CreateSessionParams = {

@@ -7,6 +7,7 @@ import {
     FlowOperationType,
     flowStructureUtil,
     FlowVersion,
+    OPENCODE_PIECE_NAME,
     OpencodeStepSettings,
     OpencodeStepSettingsWithValidation,
     opencodeStepUtil,
@@ -61,6 +62,22 @@ describe('opencodeStepUtil.isOpencodeStep', () => {
         expect(opencodeStepUtil.isOpencodeStep({ step: otherPiece })).toBe(false)
         expect(opencodeStepUtil.isOpencodeStep({ step: code({ name: 'step_3' }) })).toBe(false)
         expect(opencodeStepUtil.isOpencodeStep({ step: flowVersion({}).trigger })).toBe(false)
+    })
+})
+
+describe('opencodeStepUtil.runsOnOpencode', () => {
+    it('counts the routed AI steps and every OpenCode piece step, and nothing else', () => {
+        const opencodePiece = aiPiece({ name: 'step_1', actionName: 'send_to_inbox' })
+        opencodePiece.settings.pieceName = OPENCODE_PIECE_NAME
+        const otherPiece = aiPiece({ name: 'step_2', actionName: 'askAi' })
+        otherPiece.settings.pieceName = '@activepieces/piece-openai'
+
+        expect(opencodeStepUtil.runsOnOpencode({ step: opencodePiece })).toBe(true)
+        expect(opencodeStepUtil.isOpencodeStep({ step: opencodePiece })).toBe(false)
+        expect(opencodeStepUtil.runsOnOpencode({ step: aiPiece({ name: 'step_3', actionName: 'run_agent' }) })).toBe(true)
+        expect(opencodeStepUtil.runsOnOpencode({ step: aiPiece({ name: 'step_4', actionName: 'generateImage' }) })).toBe(false)
+        expect(opencodeStepUtil.runsOnOpencode({ step: otherPiece })).toBe(false)
+        expect(opencodeStepUtil.runsOnOpencode({ step: code({ name: 'step_5' }) })).toBe(false)
     })
 })
 

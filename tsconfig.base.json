@@ -1617,6 +1617,9 @@
       "@iphi-flow/piece-one-time-passwords": [
         "packages/pieces/custom/one-time-passwords/src/index.ts"
       ],
+      "@iphi-flow/piece-opencode": [
+        "packages/pieces/custom/opencode/src/index.ts"
+      ],
       "Aminos": ["packages/pieces/community/Aminos/src/index.ts"],
       "activepieces/piece-microsoft-dynamics-365-business-central": [
         "packages/pieces/community/microsoft-dynamics-365-business-central/src/index.ts"

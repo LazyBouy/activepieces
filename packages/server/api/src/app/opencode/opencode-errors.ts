@@ -70,6 +70,30 @@ function answerRefused({ reason }: { reason: string }): string {
     return `OpenCode did not accept the answer: ${reason}`
 }
 
+function routingOff(): string {
+    return 'Run AI on OpenCode is off. Turn it on in Platform → AI → OpenCode.'
+}
+
+function inboxTimeout({ minutes }: { minutes: number }): string {
+    return `No reply arrived within ${minutes} min.`
+}
+
+function inboxNotDelivered({ reason }: { reason: string }): string {
+    return `The project inbox did not deliver the message: ${reason}.`
+}
+
+function commandNotStarted({ command, seconds }: { command: string, seconds: number }): string {
+    return `OpenCode did not start the command ${command} within ${seconds} seconds.`
+}
+
+function commandRefused({ command, reason }: { command: string, reason: string }): string {
+    return `OpenCode refused the command ${command}: ${reason}.`
+}
+
+function noCommand({ command, namespace, project }: { command: string, namespace: string, project: string }): string {
+    return `OpenCode has no command or skill ${command} in ${namespace}/${project}.`
+}
+
 export class OpencodeRequestError extends Error {
     readonly status: number | undefined
 
@@ -100,4 +124,10 @@ export const opencodeErrors = {
     mcpServerUnreachable,
     askCapPassed,
     answerRefused,
+    routingOff,
+    inboxTimeout,
+    inboxNotDelivered,
+    commandNotStarted,
+    commandRefused,
+    noCommand,
 }

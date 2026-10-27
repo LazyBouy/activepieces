@@ -197,12 +197,12 @@ const RunStepOutputPane = ({
       <OpencodeStepAsks
         flowRunId={run.id}
         stepName={selectedStep.name}
-        enabled={opencodeStepUtil.isOpencodeStep({ step: selectedStep })}
+        enabled={opencodeStepUtil.runsOnOpencode({ step: selectedStep })}
       />
       <OpencodeStepSessions
         flowRunId={run.id}
         stepName={selectedStep.name}
-        enabled={opencodeStepUtil.isOpencodeStep({ step: selectedStep })}
+        enabled={opencodeStepUtil.runsOnOpencode({ step: selectedStep })}
       />
       {isRunning ? (
         <StepOutputSkeleton className="p-4" />

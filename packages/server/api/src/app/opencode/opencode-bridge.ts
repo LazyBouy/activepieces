@@ -1,6 +1,7 @@
 import { isNil, tryCatch } from '@activepieces/core-utils'
 import { OpencodeAskKind, OpencodeQuestion } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
+import { IsNull } from 'typeorm'
 import { z } from 'zod'
 import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
@@ -11,6 +12,7 @@ import { OpencodeConnectionEntity } from './opencode-connection.entity'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeDispatch } from './opencode-dispatch'
 import { opencodeErrors } from './opencode-errors'
+import { OPENCODE_PIECE_ACTION } from './opencode-piece-steps'
 import { opencodeProgress } from './opencode-progress'
 import { OpencodeStepEntity } from './opencode-step.entity'
 import { opencodeSweep } from './opencode-sweep'
@@ -97,10 +99,12 @@ export const opencodeBridge = (log: FastifyBaseLogger) => ({
         switch (payload.type) {
             case 'session.idle':
                 await completeSession({ platformId, sessionId: payload.properties.sessionID, log })
+                await completeInboxWaits({ platformId, log })
                 return
             case 'session.status':
                 if (payload.properties.status.type === IDLE) {
                     await completeSession({ platformId, sessionId: payload.properties.sessionID, log })
+                    await completeInboxWaits({ platformId, log })
                 }
                 return
             case 'session.error':
@@ -151,6 +155,22 @@ async function completeSession({ platformId, sessionId, log }: SessionEventParam
     }
 }
 
+async function completeInboxWaits({ platformId, log }: { platformId: string, log: FastifyBaseLogger }): Promise<void> {
+    const waiting = await stepRepo().find({
+        where: { platformId, status: 'DISPATCHED', action: OPENCODE_PIECE_ACTION.SEND_TO_INBOX, sessionId: IsNull() },
+        order: { created: 'ASC' },
+        take: INBOX_CHECK_LIMIT,
+    })
+    for (const step of waiting) {
+        const { data: result, error } = await tryCatch(() => opencodeCompletion(log).complete({ stepId: step.id }))
+        if (isNil(result)) {
+            log.warn({ opencodeStep: { id: step.id }, error }, '[opencodeBridge] Could not check a project inbox reply')
+            continue
+        }
+        opencodeDispatch(log).dispatchLater({ stepId: result.nextStepId })
+    }
+}
+
 async function failSession({ platformId, sessionId, failure, log }: SessionEventParams & { failure: string }): Promise<void> {
     const steps = await stepRepo().findBy({ platformId, sessionId, status: 'DISPATCHED' })
     for (const step of steps) {
@@ -182,6 +202,8 @@ const RECONCILE_INTERVAL_MS = 30 * 1000
 const RECONNECT_DELAY_MS = 2 * 1000
 
 const LEADER_LOCK_SECONDS = 30
+
+const INBOX_CHECK_LIMIT = 20
 
 const BridgeEvent = z.object({
     directory: z.string().optional(),

@@ -2,6 +2,7 @@ import { isUtf8 } from 'node:buffer'
 import { isNil } from '@activepieces/core-utils'
 import { AiStepFile, FileType } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
+import mime from 'mime-types'
 import { fileService } from '../file/file.service'
 import { OpencodeStepRow } from './opencode-step.entity'
 
@@ -10,7 +11,7 @@ async function read({ step, files, log }: ReadParams): Promise<OpencodeInputFile
         const stored = await fileService(log).getDataOrThrow({ projectId: step.projectId, platformId: step.platformId, fileId: file.fileId, type: FileType.FLOW_STEP_FILE })
         const filename = file.filename ?? stored.fileName
         return {
-            mime: file.mimeType ?? mimeTypeOf({ metadata: stored.metadata }) ?? DEFAULT_MIME,
+            mime: file.mimeType ?? mimeTypeOf({ metadata: stored.metadata }) ?? mimeOfName({ filename }) ?? DEFAULT_MIME,
             data: stored.data,
             ...(isNil(filename) ? {} : { filename }),
         }
@@ -35,6 +36,14 @@ function isTextLike({ mime }: { mime: string }): boolean {
 function mimeTypeOf({ metadata }: { metadata: Record<string, unknown> | null | undefined }): string | undefined {
     const value = metadata?.['mimeType'] ?? metadata?.['mimetype']
     return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function mimeOfName({ filename }: { filename: string | undefined | null }): string | undefined {
+    if (isNil(filename)) {
+        return undefined
+    }
+    const found = mime.lookup(filename)
+    return found === false ? undefined : found
 }
 
 const TEXT_MIME = 'text/plain'

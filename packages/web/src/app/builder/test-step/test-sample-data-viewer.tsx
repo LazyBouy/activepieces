@@ -82,7 +82,7 @@ export const TestSampleDataViewer = React.memo(
     const showData = !isTesting && !showAgentView;
     const opencodeTested =
       !isNil(currentStep) &&
-      opencodeStepUtil.isOpencodeStep({ step: currentStep });
+      opencodeStepUtil.runsOnOpencode({ step: currentStep });
 
     return (
       <DataPane

@@ -167,7 +167,7 @@ function chain({ steps }: { steps: OpencodeStepSpec[] }): Record<string, unknown
         ...common,
         type: FlowActionType.PIECE,
         settings: {
-            pieceName: '@activepieces/piece-ai',
+            pieceName: head.pieceName ?? '@activepieces/piece-ai',
             pieceVersion: '0.11.0',
             actionName: head.actionName ?? 'askAi',
             input: {},
@@ -202,6 +202,7 @@ const ResumedWaitpoint = z.object({
 
 export type OpencodeStepSpec = {
     name: string
+    pieceName?: string
     actionName?: string
     router?: boolean
     opencode?: OpencodeStepSettings

@@ -12,6 +12,10 @@ function isOpencodeStep({ step }: { step: Step }): boolean {
     return step.settings.pieceName === AI_PIECE_NAME && ROUTED_AI_ACTIONS.includes(step.settings.actionName ?? '')
 }
 
+function runsOnOpencode({ step }: { step: Step }): boolean {
+    return isOpencodeStep({ step }) || (step.type === FlowActionType.PIECE && step.settings.pieceName === OPENCODE_PIECE_NAME)
+}
+
 function settingsOf({ step }: { step: Step }): OpencodeStepSettings | undefined {
     if (step.type === FlowActionType.AI_ROUTER || step.type === FlowActionType.PIECE) {
         return step.settings.opencode
@@ -31,8 +35,11 @@ const ROUTED_AI_ACTIONS = ['askAi', 'summarizeText', 'classifyText', 'extractStr
 
 const DEFAULT_SESSION_MODE: OpencodeSessionMode = 'NEW_PER_STEP'
 
+export const OPENCODE_PIECE_NAME = '@iphi-flow/piece-opencode'
+
 export const opencodeStepUtil = {
     isOpencodeStep,
+    runsOnOpencode,
     settingsOf,
     resolveSessionMode,
     resolveFlowSessionMode,

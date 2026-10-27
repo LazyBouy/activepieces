@@ -4,18 +4,30 @@ import { opencodeErrors, OpencodeRequestError } from './opencode-errors'
 import { OpencodeReply } from './opencode-prompts'
 
 async function read({ client, sessionId, messageId, directory }: ReadParams): Promise<ReplyState> {
+    const messages = await messagesOf({ client, sessionId, directory })
+    if (isNil(messages)) {
+        return { kind: 'gone' }
+    }
+    return stateOf({ client, sessionId, messageId, directory, messages })
+}
+
+async function messagesOf({ client, sessionId, directory }: Omit<ReadParams, 'messageId'>): Promise<SessionMessage[] | null> {
     const result = await client.session.messages({ sessionID: sessionId, directory })
     if (isNil(result.data)) {
         if (result.response?.status === NOT_FOUND) {
-            return { kind: 'gone' }
+            return null
         }
         throw new OpencodeRequestError({ status: result.response?.status, message: opencodeErrors.describe({ error: result.error }) })
     }
-    const sent = result.data.some((message) => message.info.id === messageId)
+    return result.data
+}
+
+async function stateOf({ client, sessionId, messageId, directory, messages }: ReadParams & { messages: SessionMessage[] }): Promise<ReplyState> {
+    const sent = messages.some((message) => message.info.id === messageId)
     if (!sent) {
         return { kind: 'not-sent' }
     }
-    const replies = repliesTo({ messages: result.data, messageId })
+    const replies = repliesTo({ messages, messageId })
     const last = replies[replies.length - 1]
     if (isNil(last)) {
         return { kind: 'pending' }
@@ -45,7 +57,7 @@ async function transcript({ client, sessionId, messageId, directory }: ReadParam
     return repliesTo({ messages: result.data, messageId })
 }
 
-function repliesTo({ messages, messageId }: { messages: { info: Message, parts: Part[] }[], messageId: string }): OpencodeReplyMessage[] {
+function repliesTo({ messages, messageId }: { messages: SessionMessage[], messageId: string }): OpencodeReplyMessage[] {
     return messages
         .filter((message): message is OpencodeReplyMessage => message.info.role === 'assistant' && message.info.parentID === messageId)
         .sort((left, right) => left.info.id.localeCompare(right.info.id))
@@ -88,7 +100,14 @@ const IDLE = 'idle'
 
 export const opencodeReply = {
     read,
+    messagesOf,
+    stateOf,
     transcript,
+}
+
+export type SessionMessage = {
+    info: Message
+    parts: Part[]
 }
 
 export type OpencodeReplyMessage = {

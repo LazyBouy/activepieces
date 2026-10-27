@@ -1,5 +1,5 @@
 import { AiStepAction, apId, isNil, tryCatch } from '@activepieces/core-utils'
-import { opencodeStepUtil } from '@activepieces/shared'
+import { OpencodeStepSettings, opencodeStepUtil } from '@activepieces/shared'
 import { OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import { isAxiosError } from 'axios'
 import { FastifyBaseLogger } from 'fastify'
@@ -13,13 +13,15 @@ import { opencodeErrors, OpencodeRequestError, OpencodeToolsError } from './open
 import { opencodeFilesIn } from './opencode-files-in'
 import { opencodeOutputFolder } from './opencode-files-out'
 import { opencodeIds } from './opencode-ids'
+import { opencodeInbox } from './opencode-inbox'
 import { opencodeMcpBridge } from './opencode-mcp-bridge'
 import { opencodeModelKeys } from './opencode-models'
+import { OPENCODE_PIECE_ACTION, OpencodePieceRequest, opencodePieceSteps, PinnedSession } from './opencode-piece-steps'
 import { BuiltPrompt, opencodePrompts } from './opencode-prompts'
 import { opencodeProvisioning } from './opencode-provisioning'
 import { opencodeSessions, SessionOutcome } from './opencode-sessions'
 import { opencodeStepContext } from './opencode-step-context'
-import { OpencodeStepEntity, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
+import { OpencodeStepEntity, OpencodeStepModel, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
 import { OpencodeStepRequest, OpencodeStoredRequest } from './opencode-stored-request'
 
 const stepRepo = repoFactory(OpencodeStepEntity)
@@ -61,7 +63,8 @@ export const opencodeDispatch = (log: FastifyBaseLogger) => ({
 
 async function createStep({ platformId, projectId, requestId, webserverId, call, log }: CreateStepParams): Promise<OpencodeStepRow> {
     const context = await opencodeStepContext.resolve({ projectId, flowRunId: call.flowRunId, waitpointId: call.waitpointId, log })
-    const stored: OpencodeStoredRequest = { request: call.request, flowName: context.flowName, settings: context.settings ?? null }
+    const settings = call.settings ?? context.settings
+    const stored: OpencodeStoredRequest = { request: call.request, flowName: context.flowName, settings: settings ?? null }
     const draft: OpencodeStepRow = {
         id: apId(),
         created: new Date().toISOString(),
@@ -77,12 +80,12 @@ async function createStep({ platformId, projectId, requestId, webserverId, call,
         webserverId: webserverId ?? null,
         action: call.request.action,
         request: stored,
-        sessionMode: context.settings?.sessionMode ?? opencodeStepUtil.resolveFlowSessionMode({ defaults: context.defaults }),
+        sessionMode: settings?.sessionMode ?? opencodeStepUtil.resolveFlowSessionMode({ defaults: context.defaults }),
         namespace: null,
         opencodeProjectId: null,
         directory: null,
         agent: null,
-        model: opencodeModelKeys.resolveModel({ providerConfigId: call.request.providerConfigId, modelId: call.request.modelId }),
+        model: modelOf({ request: call.request }),
         runSessionId: null,
         sessionId: null,
         messageId: opencodeIds.message(),
@@ -102,9 +105,14 @@ async function createStep({ platformId, projectId, requestId, webserverId, call,
 async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: FastifyBaseLogger }): Promise<void> {
     const stored = OpencodeStoredRequest.parse(step.request)
     const client = await opencodeConnectionService(log).client({ platformId: step.platformId })
-    const located = await locateOnce({ step, stored, log })
+    if (stored.request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX) {
+        await opencodeInbox(log).dispatch({ step, request: stored.request, client })
+        return
+    }
+    const pinned = opencodePieceSteps.isPieceRequest(stored.request) ? opencodePieceSteps.pinnedSessionOf({ request: stored.request }) : null
+    const located = await locateOnce({ step, stored, pinned, log })
     await opencodeProvisioning(log).waitForReload({ directory: located.directory ?? '' })
-    const outcome = await openWithRetry({ step: located, stored, client, log })
+    const outcome = await openWithRetry({ step: located, stored, client, pinnedSessionId: pinned?.sessionId, log })
     if (outcome.kind === 'queued') {
         await stepRepo().update({ id: step.id }, { status: 'QUEUED' })
         return
@@ -116,6 +124,11 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
     }
     if (stored.request.action === OPENCODE_RUN_AGENT) {
         await opencodeMcpBridge(log).attach({ step: ready, client, tools: stored.request.tools ?? [] })
+    }
+    if (stored.request.action === OPENCODE_PIECE_ACTION.RUN_COMMAND) {
+        await sendCommand({ step: ready, request: stored.request, client, log })
+        await markDispatched({ step: ready })
+        return
     }
     const prompt = await promptOf({ step: ready, request: stored.request, log })
     const sent = await client.session.promptAsync({
@@ -133,11 +146,13 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
     await markDispatched({ step: ready })
 }
 
-async function locateOnce({ step, stored, log }: { step: OpencodeStepRow, stored: OpencodeStoredRequest, log: FastifyBaseLogger }): Promise<OpencodeStepRow> {
+async function locateOnce({ step, stored, pinned, log }: LocateOnceParams): Promise<OpencodeStepRow> {
     if (!isNil(step.directory)) {
         return step
     }
-    const location = await opencodeSessions(log).locate({ platformId: step.platformId, projectId: step.projectId, settings: stored.settings ?? undefined })
+    const location = isNil(pinned)
+        ? await opencodeSessions(log).locate({ platformId: step.platformId, projectId: step.projectId, settings: stored.settings ?? undefined })
+        : await opencodeSessions(log).locateSession({ platformId: step.platformId, sessionId: pinned.sessionId, agent: pinned.agent })
     const located = {
         namespace: location.namespace,
         opencodeProjectId: location.opencodeProjectId,
@@ -148,12 +163,12 @@ async function locateOnce({ step, stored, log }: { step: OpencodeStepRow, stored
     return { ...step, ...located }
 }
 
-async function openWithRetry({ step, stored, client, log }: OpenWithRetryParams): Promise<SessionOutcome> {
-    const first = await tryCatch(() => opencodeSessions(log).open({ step, client, flowName: stored.flowName }))
+async function openWithRetry({ step, stored, client, pinnedSessionId, log }: OpenWithRetryParams): Promise<SessionOutcome> {
+    const first = await tryCatch(() => opencodeSessions(log).open({ step, client, flowName: stored.flowName, pinnedSessionId }))
     if (!isNil(first.data)) {
         return first.data
     }
-    if (!isGuardRefusal({ error: first.error }) || !isNil(stored.settings?.project)) {
+    if (!isGuardRefusal({ error: first.error }) || !isNil(stored.settings?.project) || !isNil(pinnedSessionId)) {
         throw first.error
     }
     opencodeProvisioning(log).invalidate({ platformId: step.platformId, projectId: step.projectId })
@@ -177,9 +192,63 @@ async function markDispatched({ step }: { step: OpencodeStepRow }): Promise<void
     await stepRepo().update({ id: step.id }, { status: 'DISPATCHED', sessionId: step.sessionId, dispatchedAt: new Date().toISOString() })
 }
 
+async function sendCommand({ step, request, client, log }: SendCommandParams): Promise<void> {
+    const listed = await client.command.list({ directory: step.directory ?? undefined })
+    if (!isNil(listed.data) && !listed.data.some((command) => command.name === request.command)) {
+        throw new Error(opencodeErrors.noCommand({ command: request.command, namespace: step.namespace ?? '', project: step.opencodeProjectId ?? '' }))
+    }
+    const files = await opencodeFilesIn.read({ step, files: request.files ?? [], log })
+    const sent: Promise<CommandOutcome> = client.session.command({
+        sessionID: step.sessionId ?? '',
+        directory: step.directory ?? undefined,
+        messageID: step.messageId,
+        command: request.command,
+        arguments: request.arguments ?? '',
+        ...(isNil(step.agent) ? {} : { agent: step.agent }),
+        parts: files.map((file) => opencodeFilesIn.partOf({ file })),
+    }).then(
+        (result) => isNil(result.error) ? { kind: 'finished' } : { kind: 'refused', error: new Error(opencodeErrors.commandRefused({ command: request.command, reason: opencodeErrors.describe({ error: result.error }) })) },
+        (error: unknown) => ({ kind: 'refused', error }),
+    )
+    const deadline = Date.now() + COMMAND_START_MS
+    while (Date.now() < deadline) {
+        const outcome = await Promise.race([sent, delay({ ms: COMMAND_POLL_MS }).then(() => null)])
+        if (outcome?.kind === 'refused') {
+            throw outcome.error
+        }
+        if (outcome?.kind === 'finished' || await alreadySent({ step, client })) {
+            rejectedPromiseHandler(sent.then((late) => logLateRefusal({ step, outcome: late, log })), log)
+            return
+        }
+    }
+    await opencodeSessions(log).abort({ step, client })
+    throw new Error(opencodeErrors.commandNotStarted({ command: request.command, seconds: COMMAND_START_MS / 1000 }))
+}
+
+function logLateRefusal({ step, outcome, log }: { step: OpencodeStepRow, outcome: CommandOutcome, log: FastifyBaseLogger }): void {
+    if (outcome.kind === 'refused') {
+        log.warn({ opencodeStep: { id: step.id }, error: opencodeErrors.describe({ error: outcome.error }) }, '[opencodeDispatch] The OpenCode command ended with an error after it started')
+    }
+}
+
+async function delay({ ms }: { ms: number }): Promise<void> {
+    await new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
+function modelOf({ request }: { request: OpencodeStepRequest }): OpencodeStepModel | null {
+    if (opencodePieceSteps.isPieceRequest(request)) {
+        return opencodePieceSteps.modelOf({ request })
+    }
+    return opencodeModelKeys.resolveModel({ providerConfigId: request.providerConfigId, modelId: request.modelId })
+}
+
 async function promptOf({ step, request, log }: { step: OpencodeStepRow, request: OpencodeStepRequest, log: FastifyBaseLogger }): Promise<BuiltPrompt> {
     if (request.action === OPENCODE_RUN_AGENT) {
         return opencodeAgentPrompt.build({ request, outputFolder: opencodeOutputFolder.of({ stepId: step.id }) })
+    }
+    if (opencodePieceSteps.isPieceRequest(request)) {
+        const files = await opencodeFilesIn.read({ step, files: opencodePieceSteps.filesOf({ request }), log })
+        return opencodePieceSteps.build({ request, outputFolder: opencodeOutputFolder.of({ stepId: step.id }), files })
     }
     const files = request.action === AiStepAction.EXTRACT_STRUCTURED_DATA
         ? await opencodeFilesIn.read({ step, files: request.files ?? [], log })
@@ -209,11 +278,34 @@ const DISPATCHABLE: OpencodeStepStatus[] = ['PENDING', 'QUEUED']
 
 const DISPATCH_LOCK_TIMEOUT_SECONDS = 120
 
+const COMMAND_START_MS = 90 * 1000
+
+const COMMAND_POLL_MS = 500
+
 export type OpencodeAiCall = {
     flowId: string
     flowRunId: string
     waitpointId?: string
     request: OpencodeStepRequest
+    settings?: OpencodeStepSettings
+}
+
+type CommandOutcome =
+    | { kind: 'finished' }
+    | { kind: 'refused', error: unknown }
+
+type SendCommandParams = {
+    step: OpencodeStepRow
+    request: Extract<OpencodePieceRequest, { action: typeof OPENCODE_PIECE_ACTION.RUN_COMMAND }>
+    client: OpencodeClient
+    log: FastifyBaseLogger
+}
+
+type LocateOnceParams = {
+    step: OpencodeStepRow
+    stored: OpencodeStoredRequest
+    pinned: PinnedSession | null
+    log: FastifyBaseLogger
 }
 
 type StartParams = {
@@ -232,5 +324,6 @@ type OpenWithRetryParams = {
     step: OpencodeStepRow
     stored: OpencodeStoredRequest
     client: OpencodeClient
+    pinnedSessionId: string | undefined
     log: FastifyBaseLogger
 }

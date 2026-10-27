@@ -155,6 +155,19 @@ export const opencodeViews = (log: FastifyBaseLogger) => ({
         return Promise.all(matching.map((step) => stepView({ step, stepName, client, adminPanelUrl: connection.adminPanelUrl, log })))
     },
 
+    async providers({ platformId, projectId, namespace, project }: ProjectViewParams): Promise<OpencodeProviderList> {
+        const located = await opencodeOptionsService(log).locate({ platformId, projectId, namespace, project })
+        if (located.kind !== 'found') {
+            return { providers: [], ...(located.kind === 'error' ? { error: located.error } : {}) }
+        }
+        const client = await opencodeConnectionService(log).client({ platformId })
+        const { data: listed, error } = await tryCatch(() => client.config.providers({ directory: located.directory }, { throwOnError: true }))
+        if (isNil(listed)) {
+            return { providers: [], error: opencodeErrors.describe({ error }) }
+        }
+        return { providers: providersOf({ listed: listed.data }) }
+    },
+
     async serverOverview({ platformId }: { platformId: string }): Promise<OpencodeServerOverview> {
         const connection = await opencodeConnectionService(log).getOrCreate({ platformId })
         const catalog = await opencodeConnectionService(log).catalog({ platformId })
@@ -367,6 +380,12 @@ const SessionMetadata = z.object({
 })
 
 const SubagentMetadata = z.object({ sessionId: z.string() })
+
+export const OpencodeProviderList = z.object({
+    providers: z.array(OpencodeProviderView),
+    error: z.string().optional(),
+})
+export type OpencodeProviderList = z.infer<typeof OpencodeProviderList>
 
 type AgentCardParams = {
     platformId: string

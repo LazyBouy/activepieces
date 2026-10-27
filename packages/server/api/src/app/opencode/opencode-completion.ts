@@ -9,7 +9,9 @@ import { opencodeAsks } from './opencode-asks'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
 import { opencodeFilesOut } from './opencode-files-out'
+import { opencodeInbox } from './opencode-inbox'
 import { opencodeMcpBridge } from './opencode-mcp-bridge'
+import { OPENCODE_PIECE_ACTION, OpencodeInboxRequest, opencodePieceSteps } from './opencode-piece-steps'
 import { opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
 import { opencodeReply, ReplyState } from './opencode-reply'
 import { opencodeSessions } from './opencode-sessions'
@@ -21,7 +23,14 @@ const stepRepo = repoFactory(OpencodeStepEntity)
 export const opencodeCompletion = (log: FastifyBaseLogger) => ({
     async complete({ stepId }: { stepId: string }): Promise<CompletionResult> {
         const step = await stepRepo().findOneBy({ id: stepId })
-        if (isNil(step) || step.status !== 'DISPATCHED' || isNil(step.sessionId)) {
+        if (isNil(step) || step.status !== 'DISPATCHED') {
+            return { finished: false, nextStepId: null }
+        }
+        const stored = opencodeStoredRequest.parse(step.request)
+        if (stored?.request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX) {
+            return this.completeInbox({ step, request: stored.request })
+        }
+        if (isNil(step.sessionId)) {
             return { finished: false, nextStepId: null }
         }
         const client = await opencodeConnectionService(log).client({ platformId: step.platformId })
@@ -38,6 +47,22 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
                 return this.finish({ step, answer: { failure: opencodeErrors.sessionGone({ sessionId: step.sessionId }) } })
             case 'done':
                 return this.finish({ step, answer: await answerOf({ step, state, log }) })
+        }
+    },
+
+    async completeInbox({ step, request }: { step: OpencodeStepRow, request: OpencodeInboxRequest }): Promise<CompletionResult> {
+        const check = await opencodeInbox(log).check({ step, request })
+        switch (check.kind) {
+            case 'pending':
+                return { finished: false, nextStepId: null }
+            case 'failed':
+                return this.finish({ step, answer: { failure: check.failure } })
+            case 'done': {
+                const delivered = { sessionId: check.delivered.sessionId, directory: check.delivered.directory, messageId: check.delivered.messageId, agent: check.delivered.agent }
+                await stepRepo().update({ id: step.id, status: 'DISPATCHED' }, delivered)
+                const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
+                return this.finish({ step: { ...step, ...delivered }, answer: opencodeInbox(log).answerOf({ check, request, adminPanelUrl: connection.adminPanelUrl }) })
+            }
         }
     },
 
@@ -91,6 +116,10 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
 })
 
 async function answerFromReply({ step, log }: { step: OpencodeStepRow, log: FastifyBaseLogger }): Promise<OpencodeStepAnswer> {
+    const stored = opencodeStoredRequest.parse(step.request)
+    if (stored?.request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX) {
+        return inboxAnswer({ step, request: stored.request, log })
+    }
     if (isNil(step.sessionId)) {
         return { failure: UNREADABLE_REQUEST }
     }
@@ -105,6 +134,18 @@ async function answerFromReply({ step, log }: { step: OpencodeStepRow, log: Fast
     return { failure: 'OpenCode has no answer for this step.' }
 }
 
+async function inboxAnswer({ step, request, log }: { step: OpencodeStepRow, request: OpencodeInboxRequest, log: FastifyBaseLogger }): Promise<OpencodeStepAnswer> {
+    const check = await opencodeInbox(log).check({ step, request })
+    if (check.kind === 'failed') {
+        return { failure: check.failure }
+    }
+    if (check.kind === 'pending') {
+        return { failure: 'OpenCode has no answer for this step.' }
+    }
+    const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
+    return opencodeInbox(log).answerOf({ check, request, adminPanelUrl: connection.adminPanelUrl })
+}
+
 async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Extract<ReplyState, { kind: 'done' }>, log: FastifyBaseLogger }): Promise<OpencodeStepAnswer> {
     const stored = opencodeStoredRequest.parse(step.request)
     if (isNil(stored)) {
@@ -113,6 +154,10 @@ async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Ex
     const files = isNil(state.reply.error)
         ? await opencodeFilesOut(log).ensure({ step, client: await opencodeConnectionService(log).client({ platformId: step.platformId }), replies: state.replies })
         : NO_FILES
+    if (opencodePieceSteps.isPieceRequest(stored.request)) {
+        const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
+        return opencodePieceSteps.answer({ request: stored.request, step, replies: state.replies, reply: state.reply, summary: state.summary, adminPanelUrl: connection.adminPanelUrl, files })
+    }
     if (stored.request.action !== OPENCODE_RUN_AGENT) {
         return opencodePrompts.mapReply({ request: stored.request, reply: state.reply })
     }

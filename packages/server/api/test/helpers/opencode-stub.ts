@@ -1,5 +1,6 @@
 import http from 'node:http'
 import { AddressInfo } from 'node:net'
+import { z } from 'zod'
 
 export async function startOpencodeStub(): Promise<OpencodeStub> {
     const state: OpencodeStubState = {
@@ -29,6 +30,10 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         diffs: {},
         projectFiles: {},
         views: { toolPrompts: {}, capabilities: [], memoryLevels: [], hooks: [], mcpStatus: {}, defaultModel: 'openrouter/qwen/qwen3-235b-a22b-2507' },
+        commands: [],
+        groups: {},
+        inboxMessages: [],
+        nextInboxId: 1,
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
@@ -150,7 +155,22 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
     }
     const rest = match[2] ?? ''
     if (method === 'GET' && rest === '') {
-        send({ res, value: { id: session.id, title: session.title, directory: session.directory, ...(session.parentId === undefined ? {} : { parentID: session.parentId }) } })
+        send({ res, value: {
+            id: session.id,
+            title: session.title,
+            directory: session.directory,
+            ...(session.agent === undefined ? {} : { agent: session.agent }),
+            ...(session.parentId === undefined ? {} : { parentID: session.parentId }),
+        } })
+        return true
+    }
+    if (method === 'POST' && rest === '/command') {
+        session.prompts.push(json)
+        session.messages.push({
+            info: { id: json['messageID'], sessionID: session.id, role: 'user', agent: json['agent'] ?? session.agent, time: { created: Date.now() } },
+            parts: [{ id: `${String(json['messageID'])}_p1`, type: 'text', text: `/${String(json['command'])} ${String(json['arguments'] ?? '')}` }, ...(Array.isArray(json['parts']) ? json['parts'] : [])],
+        })
+        send({ res, value: { info: { id: `${String(json['messageID'])}_r0`, role: 'assistant' }, parts: [] } })
         return true
     }
     if (method === 'DELETE' && rest === '') {
@@ -188,6 +208,113 @@ function routeSession({ state, method, url, json, directory, res }: SessionRoute
         return true
     }
     return false
+}
+
+function routeInbox({ state, method, url, json, res }: Omit<SessionRouteParams, 'directory'>): boolean {
+    if (method === 'GET' && url.pathname === '/operator/project-records') {
+        send({ res, value: state.projects.map((project) => ({ key: project.key, description: '', status: 'active', members: [], groups: state.groups[project.key] ?? [] })) })
+        return true
+    }
+    const entered = url.pathname.match(/^\/operator\/project-inbox\/([^/]+)$/)
+    if (method === 'POST' && entered !== null) {
+        const project = state.projects.find((candidate) => candidate.id === entered[1])
+        if (project === undefined) {
+            send({ res, status: 404, value: { name: 'OperatorProjectInboxNotFoundError', data: { message: `No project ${entered[1]}` } } })
+            return true
+        }
+        send({ res, value: enterInbox({ state, project, json }) })
+        return true
+    }
+    const record = url.pathname.match(/^\/operator\/messages\/([^/]+)$/)
+    if (method === 'GET' && record !== null) {
+        const found = state.inboxMessages.find((message) => message.id === record[1])
+        send({ res, status: found === undefined ? 404 : 200, value: found ?? { name: 'OperatorProjectInboxNotFoundError', data: { message: `No message ${record[1]}` } } })
+        return true
+    }
+    const conversation = url.pathname.match(/^\/operator\/conversation\/([^/]+)$/)
+    if (method === 'GET' && conversation !== null) {
+        const correlationID = decodeURIComponent(conversation[1])
+        send({ res, value: { correlationID, messages: state.inboxMessages.filter((message) => message.correlationID === correlationID), sessions: [] } })
+        return true
+    }
+    return false
+}
+
+function enterInbox({ state, project, json }: { state: OpencodeStubState, project: StubProject, json: Record<string, unknown> }): StubInboxMessage {
+    const id = `msg_${String(state.nextInboxId++).padStart(4, '0')}`
+    const now = Date.now()
+    const text = String(json['text'] ?? '')
+    const target = InboxTarget.safeParse(json['to'])
+    const from = { kind: json['from'] === 'external' ? 'external' : 'user', project: project.id }
+    const base: StubInboxMessage = {
+        id,
+        project: project.id,
+        folder: project.key,
+        from,
+        to: target.success ? target.data : { type: 'inbox' },
+        body: { type: 'text', text },
+        priority: 'normal',
+        steer: false,
+        correlationID: typeof json['correlationID'] === 'string' ? json['correlationID'] : id,
+        hops: 1,
+        status: 'queued',
+        inbox: project.id,
+        createdAt: now,
+        trail: [{ at: now, kind: 'entered the Project inbox', detail: `from ${from.kind}` }],
+    }
+    if (!target.success) {
+        const dead = { ...base, status: 'dead letter', trail: [...base.trail, { at: now, kind: 'dead letter', detail: 'no rule matched, the project has no manager, and it names no recipient' }] }
+        state.inboxMessages.push(dead)
+        return dead
+    }
+    const agents = recipientsOf({ state, project, target: target.data })
+    const routed = { ...base, status: 'routed', routedBy: 'as addressed', routedTo: agents.map(({ agent }) => agent), trail: [...base.trail, { at: now, kind: 'routed', detail: `as addressed: to ${agents.map(({ agent }) => agent).join(', ')}` }] }
+    state.inboxMessages.push(routed)
+    agents.forEach(({ agent, sessionId }) => deliverCopy({ state, project, original: routed, agent, sessionId }))
+    return routed
+}
+
+function recipientsOf({ state, project, target }: { state: OpencodeStubState, project: StubProject, target: { type: string, id: string } }): { agent: string, sessionId: string | undefined }[] {
+    if (target.type === 'session') {
+        return [{ agent: state.sessions.find((session) => session.id === target.id)?.agent ?? 'flow', sessionId: target.id }]
+    }
+    if (target.type === 'group') {
+        return (state.groups[project.key]?.find((group) => group.id === target.id)?.members ?? []).map((agent) => ({ agent, sessionId: undefined }))
+    }
+    return [{ agent: target.id, sessionId: undefined }]
+}
+
+function deliverCopy({ state, project, original, agent, sessionId }: DeliverCopyParams): void {
+    const copyId = `msg_${String(state.nextInboxId++).padStart(4, '0')}`
+    const session = state.sessions.find((candidate) => candidate.id === sessionId) ?? newSession({ state, directory: project.key, agent })
+    state.inboxMessages.push({
+        ...original,
+        id: copyId,
+        to: { type: 'agent', id: agent },
+        via: original.id,
+        status: 'delivered',
+        agent,
+        sessionID: session.id,
+        deliveredAt: Date.now(),
+        routedBy: undefined,
+        routedTo: undefined,
+        trail: [],
+    })
+    session.messages.push({
+        info: { id: `${copyId}_u`, sessionID: session.id, role: 'user', agent, time: { created: Date.now() } },
+        parts: [{
+            id: `${copyId}_p1`,
+            type: 'text',
+            text: `Message from outside (project ${project.name}) · correlation ${original.correlationID} · id ${copyId}:\n${original.body.text}`,
+            metadata: { message: { id: copyId, agent, folder: project.key, from: original.from, correlationID: original.correlationID, via: original.id, priority: 'normal' } },
+        }],
+    })
+}
+
+function newSession({ state, directory, agent }: { state: OpencodeStubState, directory: string, agent: string }): StubSession {
+    const created: StubSession = { id: `ses_${String(state.nextSessionId++).padStart(4, '0')}`, directory, title: 'Inbox', agent, metadata: {}, permission: [], messages: [], prompts: [], aborted: 0, created: Date.now() }
+    state.sessions.push(created)
+    return created
 }
 
 function routeProjectFile({ state, url, res }: { state: OpencodeStubState, url: URL, res: http.ServerResponse }): void {
@@ -229,6 +356,12 @@ function route({ state, method, url, body, res }: RouteParams): void {
     }
     if (key === 'GET /operator/file/raw') {
         return routeProjectFile({ state, url, res })
+    }
+    if (routeInbox({ state, method, url, json, res })) {
+        return
+    }
+    if (key === 'GET /command') {
+        return send({ res, value: state.commands.map((command) => ({ template: '$ARGUMENTS', hints: [], ...command })) })
     }
     if (key === 'POST /mcp') {
         const name = String(json['name'])
@@ -527,6 +660,39 @@ type StubCall = {
     body: string
 }
 
+type StubInboxMessage = {
+    id: string
+    project: string
+    folder: string
+    from: { kind: string, project: string }
+    to: { type: string, id?: string }
+    body: { type: string, text: string }
+    priority: string
+    steer: boolean
+    correlationID: string
+    hops: number
+    status: string
+    inbox: string
+    createdAt: number
+    trail: { at: number, kind: string, detail?: string }[]
+    via?: string
+    agent?: string
+    sessionID?: string
+    deliveredAt?: number
+    routedBy?: string
+    routedTo?: string[]
+}
+
+type DeliverCopyParams = {
+    state: OpencodeStubState
+    project: StubProject
+    original: StubInboxMessage
+    agent: string
+    sessionId: string | undefined
+}
+
+const InboxTarget = z.object({ type: z.enum(['agent', 'session', 'group']), id: z.string() })
+
 export type OpencodeStubState = {
     namespaces: StubNamespace[]
     projects: StubProject[]
@@ -554,6 +720,10 @@ export type OpencodeStubState = {
     diffs: Record<string, { file: string, status: string, additions: number, deletions: number }[]>
     projectFiles: Record<string, { content: string | Buffer, mime: string, failWith?: number }>
     views: StubViews
+    commands: { name: string, source: string, description?: string }[]
+    groups: Record<string, { id: string, name: string, members: string[] }[]>
+    inboxMessages: StubInboxMessage[]
+    nextInboxId: number
 }
 
 export type OpencodeStub = {

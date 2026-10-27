@@ -8,7 +8,7 @@ const OpencodeRunSessionRow = z.object({
     ...BaseModelSchema,
     platformId: z.string(),
     projectId: z.string(),
-    flowRunId: z.string(),
+    flowRunId: z.string().nullable(),
     namespace: z.string(),
     opencodeProjectId: z.string(),
     agent: z.string(),
@@ -36,7 +36,7 @@ export const OpencodeRunSessionEntity = new EntitySchema<OpencodeRunSessionSchem
         },
         flowRunId: {
             ...ApIdSchema,
-            nullable: false,
+            nullable: true,
         },
         namespace: {
             type: String,
@@ -64,6 +64,12 @@ export const OpencodeRunSessionEntity = new EntitySchema<OpencodeRunSessionSchem
             name: 'idx_opencode_run_session_location',
             columns: ['flowRunId', 'namespace', 'opencodeProjectId', 'agent'],
             unique: true,
+        },
+        {
+            name: 'idx_opencode_run_session_pinned',
+            columns: ['platformId', 'sessionId'],
+            unique: true,
+            where: '"flowRunId" IS NULL',
         },
         {
             name: 'idx_opencode_run_session_project_id',
