@@ -60,12 +60,16 @@ describe('Agent channel with a finish rule', () => {
                 id: `iphiflow-ch-${channel.id}-0`,
                 name: 'iphi-flow channel step_1: to writer',
                 enabled: true,
-                match: { correlationPrefix: channel.correlationId, recipient: { type: 'agent', id: 'writer' } },
+                match: { fromSession: [critic.sessionId], recipient: { type: 'agent', id: 'writer' } },
                 action: { kind: 'forward', to: [{ type: 'session', id: writer.sessionId }] },
             },
             expect.objectContaining({ preset: 'replies' }),
         ])
-        expect(stub.state.inboxRules['c0002']?.[0]).toMatchObject({ id: `iphiflow-ch-${channel.id}-1`, action: { to: [{ type: 'session', id: critic.sessionId }] } })
+        expect(stub.state.inboxRules['c0002']?.[0]).toMatchObject({
+            id: `iphiflow-ch-${channel.id}-1`,
+            match: { fromSession: [writer.sessionId], recipient: { type: 'agent', id: 'critic' } },
+            action: { to: [{ type: 'session', id: critic.sessionId }] },
+        })
         expect(writerSession.prompts).toHaveLength(1)
         expect(writerSession.prompts[0]).toMatchObject({ messageID: writer.messageId, agent: 'writer' })
         expect(writerSession.prompts[0]['noReply']).toBeUndefined()
@@ -254,21 +258,42 @@ describe('Agent channel with Wait for None', () => {
         await pieceStep({ setup, waitpointId: joining, request: { action: 'OPENCODE_RUN_AGENT', namespace: 'crew', project: 'c0001', agent: 'triage', prompt: 'Ask the critic about the draft', session: { kind: 'NEW' }, channel: output.correlationId } })
         const joiner = await stepRow({ waitpointId: joining })
         const joinerSession = sessionOf({ id: joiner.sessionId })
-        expect(joinerSession.permission).toEqual(expect.arrayContaining([
+        const writerSession = channel.participants[0].sessionId
+        const criticSession = channel.participants[1].sessionId
+        expect(joinerSession.permission).toEqual([
+            opencodeMcpNames.denyAllLine(),
             ...closedPingLines(),
-            { permission: 'ping', pattern: 'SEND(agent/writer)', action: 'allow' },
+            { permission: 'ping', pattern: `SEND(session/${writerSession})`, action: 'allow' },
             { permission: 'ping', pattern: 'SEND(project/c0002/agent/critic)', action: 'allow' },
-        ]))
+        ])
+        expect(sessionOf({ id: writerSession }).permission).toEqual([
+            opencodeMcpNames.denyAllLine(),
+            ...closedPingLines(),
+            { permission: 'ping', pattern: 'SEND(project/c0002/agent/critic)', action: 'allow' },
+            { permission: 'ping', pattern: `SEND(session/${joiner.sessionId})`, action: 'allow' },
+        ])
+        expect(sessionOf({ id: criticSession }).permission).toEqual([
+            opencodeMcpNames.denyAllLine(),
+            ...closedPingLines(),
+            { permission: 'ping', pattern: 'SEND(project/c0001/agent/writer)', action: 'allow' },
+            { permission: 'ping', pattern: 'SEND(project/c0001/agent/triage)', action: 'allow' },
+        ])
         expect(joinerSession.prompts.map((prompt) => prompt['noReply'])).toEqual([true, undefined])
         expect(textOf({ prompt: joinerSession.prompts[0] })).toContain(`putting iphiflow_jn_${channel.id}_${joiner.id} in correlationID`)
         expect(textOf({ prompt: joinerSession.prompts[0] })).toContain(`- writer in this project: target {"type":"session","id":"${channel.participants[0].sessionId}"}`)
         expect(textOf({ prompt: joinerSession.prompts[1] })).toContain('Ask the critic about the draft')
         expect(stub.state.inboxRules['c0002']?.[0]).toMatchObject({
             id: `iphiflow-jn-${channel.id}-${joiner.id}-1`,
-            match: { correlationPrefix: `iphiflow_jn_${channel.id}_${joiner.id}`, recipient: { type: 'agent', id: 'critic' } },
-            action: { to: [{ type: 'session', id: channel.participants[1].sessionId }] },
+            match: { fromSession: [joiner.sessionId], recipient: { type: 'agent', id: 'critic' } },
+            action: { to: [{ type: 'session', id: criticSession }] },
         })
-        expect((stub.state.inboxRules['c0001'] ?? []).some((rule) => JSON.stringify(rule).includes('iphiflow-jn-'))).toBe(false)
+        expect(stub.state.inboxRules['c0001']?.[0]).toEqual({
+            id: `iphiflow-jn-${channel.id}-${joiner.id}-r`,
+            name: 'iphi-flow channel step_1: step step_2: answers',
+            enabled: true,
+            match: { fromSession: [criticSession], recipient: { type: 'agent', id: 'triage' } },
+            action: { kind: 'forward', to: [{ type: 'session', id: joiner.sessionId }] },
+        })
 
         const byStep = await waitpointFor({ setup, stepName: 'step_3' })
         await execute({ setup, waitpointId: byStep, body: { action: AiStepAction.ASK_AI, prompt: 'Summarise what the critic said' } })
@@ -286,7 +311,32 @@ describe('Agent channel with Wait for None', () => {
 
         expect(ChannelRow.parse(await db.findOneBy('opencode_channel', { id: channel.id }))).toMatchObject({ status: 'CLOSED', finishedBy: 'run ended' })
         expect(stub.state.inboxRules['c0002']).toEqual([expect.objectContaining({ preset: 'replies' })])
+        expect(stub.state.inboxRules['c0001']).toEqual([expect.objectContaining({ preset: 'replies' })])
         expect(sessionOf({ id: channel.participants[0].sessionId }).aborted).toBe(1)
+        expect(joinerSession.aborted).toBe(0)
+        expect(joinerSession.permission).toEqual([opencodeMcpNames.denyAllLine(), ...closedPingLines()])
+        expect(sessionOf({ id: stepJoiner.sessionId }).permission).toEqual([opencodeMcpNames.denyAllLine(), ...closedPingLines()])
+    })
+
+    it('answers to a joining step that runs as a participant\'s agent in its project are told apart by the correlation id', async () => {
+        const setup = await channelFlow({ steps: [channelStep({ name: 'step_1' }), { name: 'step_2', pieceName: PIECE, actionName: 'run_agent' }] })
+        const opened = await pieceStep({ setup, stepName: 'step_1', request: { action: 'OPENCODE_AGENT_CHANNEL', participants: [participant({ key: WRITER }), participant({ key: CRITIC })], waitFor: 'OPEN' } })
+        const correlationId = OpenOutput.parse(opened.json()).output.correlationId
+        const channel = ChannelRow.parse(await db.findOneBy('opencode_channel', { correlationId }))
+        const joining = await waitpointFor({ setup, stepName: 'step_2' })
+
+        await pieceStep({ setup, waitpointId: joining, request: { action: 'OPENCODE_RUN_AGENT', namespace: 'crew', project: 'c0001', agent: 'writer', prompt: 'Check in with the critic', session: { kind: 'NEW' }, channel: correlationId } })
+
+        const joiner = await stepRow({ waitpointId: joining })
+        expect(stub.state.inboxRules['c0001']?.map((rule) => RuleView.parse(rule).id)).toEqual([
+            `iphiflow-jn-${channel.id}-${joiner.id}-r`,
+            `iphiflow-ch-${channel.id}-0`,
+            'replies',
+        ])
+        expect(stub.state.inboxRules['c0001']?.[0]).toMatchObject({
+            match: { fromSession: [channel.participants[1].sessionId], recipient: { type: 'agent', id: 'writer' }, correlationPrefix: `iphiflow_jn_${channel.id}_${joiner.id}` },
+            action: { to: [{ type: 'session', id: joiner.sessionId }] },
+        })
     })
 
     it('fails a step that names a channel that is not open, or one in another namespace', async () => {
@@ -415,6 +465,8 @@ const ChannelRow = z.object({
 }).passthrough()
 
 const AskRow = z.object({ id: z.string() }).passthrough()
+
+const RuleView = z.object({ id: z.string() }).passthrough()
 
 const OpenOutput = z.object({
     output: z.object({

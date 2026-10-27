@@ -5,8 +5,8 @@ import { FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
 import { repoFactory } from '../core/db/repo-factory'
 import { flowRunService } from '../flows/flow-run/flow-run-service'
-import { opencodeChannelText } from './opencode-channel-text'
-import { OpencodeChannelEntity, OpencodeChannelParticipant, OpencodeChannelRow, OpencodeChannelRule } from './opencode-channel.entity'
+import { ChannelPeer, opencodeChannelText } from './opencode-channel-text'
+import { OpencodeChannelEntity, OpencodeChannelJoin, OpencodeChannelParticipant, OpencodeChannelRow, OpencodeChannelRule } from './opencode-channel.entity'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors, OpencodeRequestError } from './opencode-errors'
 import { opencodeIds } from './opencode-ids'
@@ -29,6 +29,7 @@ export const opencodeChannels = (log: FastifyBaseLogger) => ({
         const channel = existing ?? await createChannel({ origin, request, opencodeStepId, log })
         const client = await opencodeConnectionService(log).client({ platformId: channel.platformId })
         const withSessions = await createSessions({ channel, flowName, client })
+        await grantPeers({ channel: withSessions, client })
         const withRules = await installRules({ channel: withSessions, client, log })
         const doneBy = doneByOf({ channel: withRules })
         if (!isNil(doneBy) && !isNil(withRules.opencodeStepId)) {
@@ -83,10 +84,16 @@ export const opencodeChannels = (log: FastifyBaseLogger) => ({
             }
             const { error } = await tryCatch(async () => {
                 await client.session.abort({ sessionID: sessionId, directory: participant.directory })
-                await replacePingLines({ client, sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, others: [] }) })
+                await replacePingLines({ client, sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, peers: [] }) })
             })
             if (!isNil(error)) {
                 log.warn({ opencodeChannel: { id: channel.id }, error }, '[opencodeChannels] Could not stop a participant session')
+            }
+        }
+        for (const joined of channel.joins) {
+            const { error } = await tryCatch(() => replacePingLines({ client, sessionId: joined.sessionId, directory: joined.directory, lines: opencodeChannelText.pingLines({ directory: joined.directory, peers: [] }) }))
+            if (!isNil(error)) {
+                log.warn({ opencodeChannel: { id: channel.id }, opencodeStep: { id: joined.stepId }, error }, '[opencodeChannels] Could not close a joining session\'s lines')
             }
         }
         await removeRules({ channel, rules: channel.rules, client, log })
@@ -149,36 +156,35 @@ export const opencodeChannels = (log: FastifyBaseLogger) => ({
         if (channel.namespace !== step.namespace) {
             throw new Error(opencodeErrors.channelAcrossNamespaces())
         }
-        if (channel.joins.some((joined) => joined.stepId === step.id) || isNil(step.sessionId) || isNil(step.directory)) {
+        if (channel.joins.some((joined) => joined.stepId === step.id) || isNil(step.sessionId) || isNil(step.directory) || isNil(step.opencodeProjectId)) {
             return
         }
-        const sessionId = step.sessionId
-        const directory = step.directory
         const correlationId = `${JOIN_PREFIX}${channel.id}_${step.id}`
-        await replacePingLines({ client, sessionId, directory, lines: opencodeChannelText.pingLines({ directory, others: channel.participants }) })
-        const reachable = channel.participants.filter((participant) => participant.directory !== directory)
-        const rules = await addRules({
-            channel,
-            client,
-            log,
-            entries: reachable.map((participant) => ({ participant, ruleId: `iphiflow-jn-${channel.id}-${step.id}-${channel.participants.indexOf(participant)}`, correlationPrefix: correlationId, name: `iphi-flow channel ${channel.stepName ?? channel.id}: step ${step.stepName ?? step.id} to ${participant.agent}` })),
-        })
-        const messageId = opencodeIds.message()
+        const joiner: OpencodeChannelJoin = {
+            stepId: step.id,
+            correlationId,
+            sessionId: step.sessionId,
+            directory: step.directory,
+            project: step.opencodeProjectId,
+            agent: step.agent ?? '',
+            messageId: opencodeIds.message(),
+        }
+        await replacePingLines({ client, sessionId: joiner.sessionId, directory: joiner.directory, lines: opencodeChannelText.pingLines({ directory: joiner.directory, peers: channel.participants }) })
+        const rules = await addRules({ channel, client, log, entries: joinRules({ channel, joiner, stepName: step.stepName }) })
+        const joined = { ...channel, rules: [...channel.rules, ...rules], joins: [...channel.joins, joiner] }
+        await grantPeers({ channel: joined, client })
         const sent = await client.session.promptAsync({
-            sessionID: sessionId,
-            directory,
-            messageID: messageId,
+            sessionID: joiner.sessionId,
+            directory: joiner.directory,
+            messageID: joiner.messageId,
             ...(isNil(step.agent) ? {} : { agent: step.agent }),
             noReply: true,
-            parts: [{ type: 'text', text: opencodeChannelText.joinNote({ channel, correlationId, directory }) }],
+            parts: [{ type: 'text', text: opencodeChannelText.joinNote({ channel, correlationId, directory: joiner.directory }) }],
         })
         if (!isNil(sent.error)) {
             throw new OpencodeRequestError({ status: sent.response?.status, message: opencodeErrors.describe({ error: sent.error }) })
         }
-        await channelRepo().update({ id: channel.id }, {
-            rules: [...channel.rules, ...rules],
-            joins: [...channel.joins, { stepId: step.id, correlationId, sessionId, directory, agent: step.agent ?? '', messageId }],
-        })
+        await channelRepo().update({ id: channel.id }, { rules: joined.rules, joins: joined.joins })
         log.info({ opencodeChannel: { id: channel.id }, opencodeStep: { id: step.id } }, '[opencodeChannels] A step joined an agent channel')
     },
 
@@ -322,7 +328,6 @@ async function createSessions({ channel, flowName, client }: { channel: Opencode
         if (!isNil(participant.sessionId)) {
             return participant
         }
-        const others = channel.participants.filter((other) => other.key !== participant.key)
         const created = await client.session.create({
             directory: participant.directory,
             title: [flowName ?? channel.flowId, `run ${channel.flowRunId}`, channel.stepName ?? 'channel', participant.agent].join(' · '),
@@ -340,7 +345,7 @@ async function createSessions({ channel, flowName, client }: { channel: Opencode
             permission: [
                 opencodeMcpNames.denyAllLine(),
                 ...(doneBy?.key === participant.key && !isNil(channel.opencodeStepId) ? [opencodeMcpNames.allowStepLine({ stepId: channel.opencodeStepId })] : []),
-                ...opencodeChannelText.pingLines({ directory: participant.directory, others }),
+                ...opencodeChannelText.pingLines({ directory: participant.directory, peers: [] }),
             ],
         })
         if (isNil(created.data)) {
@@ -352,40 +357,86 @@ async function createSessions({ channel, flowName, client }: { channel: Opencode
     return { ...channel, participants }
 }
 
+async function grantPeers({ channel, client }: { channel: OpencodeChannelRow, client: OpencodeClient }): Promise<void> {
+    for (const participant of channel.participants) {
+        if (isNil(participant.sessionId)) {
+            continue
+        }
+        const peers = [...channel.participants.filter((other) => other.key !== participant.key), ...channel.joins]
+        await replacePingLines({ client, sessionId: participant.sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, peers }) })
+    }
+}
+
 async function installRules({ channel, client, log }: { channel: OpencodeChannelRow, client: OpencodeClient, log: FastifyBaseLogger }): Promise<OpencodeChannelRow> {
-    const missing = channel.participants
-        .map((participant, index) => ({ participant, ruleId: `iphiflow-ch-${channel.id}-${index}` }))
-        .filter(({ ruleId }) => !channel.rules.some((rule) => rule.ruleId === ruleId))
-    const rules = await addRules({
-        channel,
-        client,
-        log,
-        entries: missing.map(({ participant, ruleId }) => ({ participant, ruleId, correlationPrefix: channel.correlationId, name: `iphi-flow channel ${channel.stepName ?? channel.id}: to ${participant.agent}` })),
+    const entries = channel.participants.flatMap((receiver, index) => {
+        const id = `iphiflow-ch-${channel.id}-${index}`
+        const senders = sessionsOutside({ peers: channel.participants, directory: receiver.directory })
+        if (isNil(receiver.sessionId) || senders.length === 0 || channel.rules.some((rule) => rule.ruleId === id)) {
+            return []
+        }
+        return [{
+            project: receiver.project,
+            directory: receiver.directory,
+            rule: forwardRule({ id, name: `iphi-flow channel ${channel.stepName ?? channel.id}: to ${receiver.agent}`, fromSession: senders, agent: receiver.agent, sessionId: receiver.sessionId }),
+        }]
     })
+    const rules = await addRules({ channel, client, log, entries })
     const all = [...channel.rules, ...rules]
     await channelRepo().update({ id: channel.id }, { rules: all })
     return { ...channel, rules: all }
 }
 
+function joinRules({ channel, joiner, stepName }: { channel: OpencodeChannelRow, joiner: OpencodeChannelJoin, stepName: string | null }): RuleEntry[] {
+    const name = `iphi-flow channel ${channel.stepName ?? channel.id}: step ${stepName ?? joiner.stepId}`
+    const toParticipants = channel.participants.flatMap((participant, index) => {
+        if (participant.directory === joiner.directory || isNil(participant.sessionId)) {
+            return []
+        }
+        return [{
+            project: participant.project,
+            directory: participant.directory,
+            rule: forwardRule({ id: `iphiflow-jn-${channel.id}-${joiner.stepId}-${index}`, name: `${name} to ${participant.agent}`, fromSession: [joiner.sessionId], agent: participant.agent, sessionId: participant.sessionId }),
+        }]
+    })
+    const senders = sessionsOutside({ peers: channel.participants, directory: joiner.directory })
+    if (senders.length === 0 || joiner.agent.length === 0) {
+        return toParticipants
+    }
+    const shared = channel.participants.some((participant) => participant.directory === joiner.directory && participant.agent === joiner.agent)
+    return [...toParticipants, {
+        project: joiner.project,
+        directory: joiner.directory,
+        rule: forwardRule({
+            id: `iphiflow-jn-${channel.id}-${joiner.stepId}-r`,
+            name: `${name}: answers`,
+            fromSession: senders,
+            agent: joiner.agent,
+            sessionId: joiner.sessionId,
+            ...(shared ? { correlationPrefix: joiner.correlationId } : {}),
+        }),
+    }]
+}
+
+function forwardRule({ id, name, fromSession, agent, sessionId, correlationPrefix }: ForwardRuleParams): OperatorInboxRule {
+    return {
+        id,
+        name,
+        enabled: true,
+        match: { fromSession, recipient: { type: 'agent', id: agent }, ...(isNil(correlationPrefix) ? {} : { correlationPrefix }) },
+        action: { kind: 'forward', to: [{ type: 'session', id: sessionId }] },
+    }
+}
+
+function sessionsOutside({ peers, directory }: { peers: ChannelPeer[], directory: string }): string[] {
+    return peers.flatMap((peer) => peer.directory !== directory && !isNil(peer.sessionId) ? [peer.sessionId] : [])
+}
+
 async function addRules({ channel, client, log, entries }: AddRulesParams): Promise<OpencodeChannelRule[]> {
-    const projects = [...new Set(entries.map(({ participant }) => participant.project))]
+    const projects = [...new Set(entries.map((entry) => entry.project))]
     const added = await Promise.all(projects.map(async (project) => {
-        const here = entries.filter(({ participant }) => participant.project === project)
-        const directory = here[0].participant.directory
-        await opencodeInboxRules(log).addFirst({
-            platformId: channel.platformId,
-            client,
-            project,
-            directory,
-            rules: here.map(({ participant, ruleId, correlationPrefix, name }): OperatorInboxRule => ({
-                id: ruleId,
-                name,
-                enabled: true,
-                match: { correlationPrefix, recipient: { type: 'agent', id: participant.agent } },
-                action: { kind: 'forward', to: [{ type: 'session', id: participant.sessionId ?? '' }] },
-            })),
-        })
-        return here.map(({ ruleId }) => ({ project, directory, ruleId }))
+        const here = entries.filter((entry) => entry.project === project)
+        await opencodeInboxRules(log).addFirst({ platformId: channel.platformId, client, project, directory: here[0].directory, rules: here.map((entry) => entry.rule) })
+        return here.map((entry) => ({ project, directory: entry.directory, ruleId: entry.rule.id }))
     }))
     return added.flat()
 }
@@ -690,7 +741,22 @@ type AddRulesParams = {
     channel: OpencodeChannelRow
     client: OpencodeClient
     log: FastifyBaseLogger
-    entries: { participant: OpencodeChannelParticipant, ruleId: string, correlationPrefix: string, name: string }[]
+    entries: RuleEntry[]
+}
+
+type RuleEntry = {
+    project: string
+    directory: string
+    rule: OperatorInboxRule
+}
+
+type ForwardRuleParams = {
+    id: string
+    name: string
+    fromSession: string[]
+    agent: string
+    sessionId: string
+    correlationPrefix?: string
 }
 
 type ReplacePingLinesParams = {

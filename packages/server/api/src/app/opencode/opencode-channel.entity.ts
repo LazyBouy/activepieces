@@ -29,6 +29,7 @@ export const OpencodeChannelJoin = z.object({
     correlationId: z.string(),
     sessionId: z.string(),
     directory: z.string(),
+    project: z.string(),
     agent: z.string(),
     messageId: z.string(),
 })

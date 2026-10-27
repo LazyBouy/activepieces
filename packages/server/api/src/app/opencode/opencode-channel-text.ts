@@ -10,7 +10,7 @@ function brief({ channel, self, flowName, finishTool }: BriefParams): string {
         `You are ${self.agent} in project ${self.projectName}. Correlation id: ${channel.correlationId}. Put it in every ping you send in this channel (correlationID).`,
         'The others in this channel, and how to reach each with ping send:',
         ...others.map((other) => `- ${other.agent} in ${placeOf({ viewer: self.directory, other })}: target ${targetOf({ viewer: self.directory, other })}`),
-        'To answer a message, use ping send with replyTo set to its id.',
+        'Answer every message that reaches you with ping send, replyTo set to its id. An answer you only write in your reply reaches no one.',
         ...doneLine({ self, doneBy, finishTool }),
         ...(isNil(channel.finish) ? [] : [`The channel ends after ${channel.finish.maxMessages} messages or ${channel.finish.timeoutMinutes} minutes at the latest.`]),
     ].join('\n')
@@ -29,10 +29,13 @@ function joinNote({ channel, correlationId, directory }: JoinNoteParams): string
     ].join('\n')
 }
 
-function pingLines({ directory, others }: { directory: string, others: OpencodeChannelParticipant[] }): OpencodePermissionLine[] {
+function pingLines({ directory, peers }: { directory: string, peers: ChannelPeer[] }): OpencodePermissionLine[] {
     return [
         ...CLOSED_PATTERNS.map((pattern) => ({ permission: PING, pattern, action: 'deny' as const })),
-        ...others.map((other) => ({ permission: PING, pattern: sendPatternOf({ viewer: directory, other }), action: 'allow' as const })),
+        ...peers.flatMap((peer) => {
+            const pattern = sendPatternOf({ viewer: directory, peer })
+            return isNil(pattern) ? [] : [{ permission: PING, pattern, action: 'allow' as const }]
+        }),
     ]
 }
 
@@ -60,8 +63,11 @@ function placeOf({ viewer, other }: { viewer: string, other: OpencodeChannelPart
     return other.directory === viewer ? 'this project' : `project ${other.projectName}`
 }
 
-function sendPatternOf({ viewer, other }: { viewer: string, other: OpencodeChannelParticipant }): string {
-    return other.directory === viewer ? `SEND(agent/${other.agent})` : `SEND(project/${other.project}/agent/${other.agent})`
+function sendPatternOf({ viewer, peer }: { viewer: string, peer: ChannelPeer }): string | null {
+    if (peer.directory !== viewer) {
+        return `SEND(project/${peer.project}/agent/${peer.agent})`
+    }
+    return isNil(peer.sessionId) ? null : `SEND(session/${peer.sessionId})`
 }
 
 const PING = 'ping'
@@ -74,6 +80,13 @@ export const opencodeChannelText = {
     joinNote,
     pingLines,
     isPingLine,
+}
+
+export type ChannelPeer = {
+    directory: string
+    project: string
+    agent: string
+    sessionId: string | null
 }
 
 type BriefParams = {
