@@ -6,6 +6,7 @@ import { resumeService } from '../waitpoints/resume-service'
 import { engineResponseWatcher } from '../workers/engine-response-watcher'
 import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
 import { opencodeAsks } from './opencode-asks'
+import { opencodeChannels } from './opencode-channels'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
 import { opencodeFilesOut } from './opencode-files-out'
@@ -29,6 +30,9 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
         const stored = opencodeStoredRequest.parse(step.request)
         if (stored?.request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX) {
             return this.completeInbox({ step, request: stored.request })
+        }
+        if (stored?.request.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL) {
+            return this.completeChannel({ step })
         }
         if (isNil(step.sessionId)) {
             return { finished: false, nextStepId: null }
@@ -63,6 +67,18 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
                 const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
                 return this.finish({ step: { ...step, ...delivered }, answer: opencodeInbox(log).answerOf({ check, request, adminPanelUrl: connection.adminPanelUrl }) })
             }
+        }
+    },
+
+    async completeChannel({ step }: { step: OpencodeStepRow }): Promise<CompletionResult> {
+        const check = await opencodeChannels(log).check({ step })
+        switch (check.kind) {
+            case 'pending':
+                return { finished: false, nextStepId: null }
+            case 'failed':
+                return this.finish({ step, answer: { failure: check.failure } })
+            case 'done':
+                return this.finish({ step, answer: { output: check.output } })
         }
     },
 
@@ -105,6 +121,9 @@ export const opencodeCompletion = (log: FastifyBaseLogger) => ({
     async settle({ step, failed }: { step: OpencodeStepRow, failed: boolean }): Promise<CompletionResult> {
         await detachTools({ step, log })
         await opencodeAsks(log).closeForStep({ stepId: step.id })
+        if (step.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL) {
+            await opencodeChannels(log).closeForStep({ stepId: step.id, finishedBy: STEP_FAILED })
+        }
         await stepRepo().update({ id: step.id }, {
             status: failed ? 'FAILED' : 'COMPLETED',
             request: null,
@@ -119,6 +138,10 @@ async function answerFromReply({ step, log }: { step: OpencodeStepRow, log: Fast
     const stored = opencodeStoredRequest.parse(step.request)
     if (stored?.request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX) {
         return inboxAnswer({ step, request: stored.request, log })
+    }
+    if (stored?.request.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL) {
+        const check = await opencodeChannels(log).check({ step })
+        return check.kind === 'done' ? { output: check.output } : { failure: check.kind === 'failed' ? check.failure : 'OpenCode has no answer for this step.' }
     }
     if (isNil(step.sessionId)) {
         return { failure: UNREADABLE_REQUEST }
@@ -221,6 +244,8 @@ function isFlowRunGone({ error }: { error: unknown }): boolean {
 }
 
 const UNREADABLE_REQUEST = 'The step request could not be read back.'
+
+const STEP_FAILED = 'step failed'
 
 const NO_FILES: OpencodeStepFiles = { files: [], skippedFiles: [] }
 

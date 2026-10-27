@@ -27,6 +27,7 @@ export const runCommandAction = createAction({
     }),
     session: opencodeProps.session,
     sessionId: opencodeProps.sessionId,
+    channel: opencodeProps.channel,
   },
   outputSchema: outputSchemas.runCommand,
   async run(context) {
@@ -35,13 +36,14 @@ export const runCommandAction = createAction({
       timeoutMs: opencodeStepRun.STEP_TIMEOUT_MS,
       noAnswer: opencodeStepRun.NO_ANSWER,
       buildRequest: async () => {
-        const { namespace, project, agent, command, session, sessionId } = context.propsValue;
+        const { namespace, project, agent, command, session, sessionId, channel } = context.propsValue;
         return {
           action: 'OPENCODE_RUN_COMMAND',
           ...opencodeLocations.locationOf({ namespace, project, agent }),
           command,
           arguments: context.propsValue.arguments ?? '',
           session: opencodeLocations.sessionOf({ session, sessionId }),
+          ...opencodeLocations.channelOf({ value: channel }),
         };
       },
     });

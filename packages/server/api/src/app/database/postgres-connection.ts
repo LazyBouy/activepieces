@@ -461,6 +461,8 @@ import { AddOpencodeStepAndRunSession1870000000000 } from './migration/postgres/
 import { AddOpencodeAsk1871000000000 } from './migration/postgres/1871000000000-AddOpencodeAsk'
 import { AddOpencodeStepFiles1872000000000 } from './migration/postgres/1872000000000-AddOpencodeStepFiles'
 import { AddOpencodePinnedSessions1873000000000 } from './migration/postgres/1873000000000-AddOpencodePinnedSessions'
+import { AddOpencodeChannel1874000000000 } from './migration/postgres/1874000000000-AddOpencodeChannel'
+import { AddOpencodeAskDirectory1875000000000 } from './migration/postgres/1875000000000-AddOpencodeAskDirectory'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -937,6 +939,8 @@ export const getMigrations = (): (new () => Migration)[] => {
         AddOpencodeAsk1871000000000,
         AddOpencodeStepFiles1872000000000,
         AddOpencodePinnedSessions1873000000000,
+        AddOpencodeChannel1874000000000,
+        AddOpencodeAskDirectory1875000000000,
     ]
     return migrations
 }

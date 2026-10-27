@@ -94,6 +94,14 @@ function noCommand({ command, namespace, project }: { command: string, namespace
     return `OpenCode has no command or skill ${command} in ${namespace}/${project}.`
 }
 
+function channelAcrossNamespaces(): string {
+    return 'Agent channels can only connect agents in one OpenCode namespace for now.'
+}
+
+function channelNotOpen({ channel }: { channel: string }): string {
+    return `The agent channel ${channel} is not open in this run.`
+}
+
 export class OpencodeRequestError extends Error {
     readonly status: number | undefined
 
@@ -130,4 +138,6 @@ export const opencodeErrors = {
     commandNotStarted,
     commandRefused,
     noCommand,
+    channelAcrossNamespaces,
+    channelNotOpen,
 }

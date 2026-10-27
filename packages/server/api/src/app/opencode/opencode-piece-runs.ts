@@ -4,11 +4,13 @@ import { FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
 import { flowRunService } from '../flows/flow-run/flow-run-service'
 import { OpencodeAiStepResponse, opencodeAiSteps } from './opencode-ai-steps'
+import { opencodeChannels } from './opencode-channels'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
 import { opencodeInbox } from './opencode-inbox'
 import { OPENCODE_PIECE_ACTION, OpencodePieceRequest, opencodePieceSteps } from './opencode-piece-steps'
 import { opencodeRouting } from './opencode-routing'
+import { opencodeStepContext } from './opencode-step-context'
 
 export const opencodePieceRuns = (log: FastifyBaseLogger) => ({
     async start({ platformId, projectId, body }: StartParams): Promise<OpencodeAiStepResponse> {
@@ -20,6 +22,20 @@ export const opencodePieceRuns = (log: FastifyBaseLogger) => ({
         if (request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX && !request.wait) {
             const { data: answer, error } = await tryCatch(() => opencodeInbox(log).sendNow({ platformId, projectId, request }))
             return { requestId: apId(), ...(isNil(answer) ? { failure: await failureOf({ platformId, error, log }) } : answer) }
+        }
+        if (request.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL && request.waitFor === 'OPEN') {
+            const context = await opencodeStepContext.resolve({ projectId, flowRunId: flowRun.id, waitpointId: undefined, log })
+            const { data: channel, error } = await tryCatch(() => opencodeChannels(log).open({
+                origin: { platformId, projectId, flowId: flowRun.flowId, flowRunId: flowRun.id, flowVersionId: context.flowVersionId, stepName: body.stepName ?? null },
+                request,
+                flowName: context.flowName,
+                opencodeStepId: null,
+            }))
+            if (isNil(channel)) {
+                return { requestId: apId(), failure: await failureOf({ platformId, error, log }) }
+            }
+            const connection = await opencodeConnectionService(log).getOrCreate({ platformId })
+            return { requestId: apId(), output: opencodeChannels(log).openOutputOf({ channel, adminPanelUrl: connection.adminPanelUrl }) }
         }
         const response = await opencodeAiSteps(log).execute({
             platformId,
@@ -57,6 +73,7 @@ export const OpencodePieceRunBody = z.object({
     flowId: z.string(),
     flowRunId: z.string(),
     waitpointId: z.string().optional(),
+    stepName: z.string().optional(),
     request: OpencodePieceRequest,
 })
 export type OpencodePieceRunBody = z.infer<typeof OpencodePieceRunBody>

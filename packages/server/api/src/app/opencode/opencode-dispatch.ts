@@ -7,6 +7,7 @@ import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
 import { rejectedPromiseHandler } from '../helper/promise-handler'
 import { OPENCODE_RUN_AGENT, opencodeAgentPrompt } from './opencode-agent-prompt'
+import { ChannelReference, opencodeChannels } from './opencode-channels'
 import { opencodeCompletion } from './opencode-completion'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors, OpencodeRequestError, OpencodeToolsError } from './opencode-errors'
@@ -109,6 +110,10 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
         await opencodeInbox(log).dispatch({ step, request: stored.request, client })
         return
     }
+    if (stored.request.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL) {
+        await opencodeChannels(log).dispatch({ step, request: stored.request, flowName: stored.flowName })
+        return
+    }
     const pinned = opencodePieceSteps.isPieceRequest(stored.request) ? opencodePieceSteps.pinnedSessionOf({ request: stored.request }) : null
     const located = await locateOnce({ step, stored, pinned, log })
     await opencodeProvisioning(log).waitForReload({ directory: located.directory ?? '' })
@@ -121,6 +126,10 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
     if (await alreadySent({ step: ready, client })) {
         await markDispatched({ step: ready })
         return
+    }
+    const channel = channelReferenceOf({ stored })
+    if (!isNil(channel)) {
+        await opencodeChannels(log).join({ step: ready, reference: channel, client })
     }
     if (stored.request.action === OPENCODE_RUN_AGENT) {
         await opencodeMcpBridge(log).attach({ step: ready, client, tools: stored.request.tools ?? [] })
@@ -233,6 +242,15 @@ function logLateRefusal({ step, outcome, log }: { step: OpencodeStepRow, outcome
 
 async function delay({ ms }: { ms: number }): Promise<void> {
     await new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
+function channelReferenceOf({ stored }: { stored: OpencodeStoredRequest }): ChannelReference | null {
+    if (opencodePieceSteps.isPieceRequest(stored.request)) {
+        const correlationId = opencodePieceSteps.channelOf({ request: stored.request })
+        return isNil(correlationId) ? null : { kind: 'correlation', value: correlationId }
+    }
+    const stepName = stored.settings?.channel
+    return isNil(stepName) ? null : { kind: 'step', value: stepName }
 }
 
 function modelOf({ request }: { request: OpencodeStepRequest }): OpencodeStepModel | null {

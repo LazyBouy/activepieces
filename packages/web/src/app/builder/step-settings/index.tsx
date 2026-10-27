@@ -182,13 +182,13 @@ StepParametersTab.displayName = 'StepParametersTab';
 
 const StepSettingsTab = () => {
   const { selectedStep } = useStepSettingsContext();
-  const [readonly, projectId, opencodeDefaults] = useBuilderStateContext(
-    (state) => [
+  const [readonly, projectId, opencodeDefaults, trigger] =
+    useBuilderStateContext((state) => [
       state.readonly,
       state.flow.projectId,
       state.flowVersion.opencodeDefaults,
-    ],
-  );
+      state.flowVersion.trigger,
+    ]);
   const { stepMetadata } = stepsHooks.useStepMetadata({
     step: selectedStep,
   });
@@ -231,6 +231,12 @@ const StepSettingsTab = () => {
           flowSessionMode={opencodeStepUtil.resolveFlowSessionMode({
             defaults: opencodeDefaults,
           })}
+          channelSteps={opencodeStepUtil
+            .openChannelStepsBefore({ trigger, stepName: selectedStep.name })
+            .map((step) => ({
+              name: step.name,
+              displayName: step.displayName,
+            }))}
         />
       )}
     </div>

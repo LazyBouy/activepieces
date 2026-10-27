@@ -47,6 +47,7 @@ async function send({ context, request, waitpointId }: SendParams): Promise<{ ou
     body: {
       flowId: context.flows.current.id,
       flowRunId: context.run.id,
+      stepName: context.step.name,
       ...(isNil(waitpointId) ? {} : { waitpointId }),
       request,
     },
@@ -82,7 +83,7 @@ export const opencodeStepRun = {
 
 export type StepContext = Pick<
   ActionContext<undefined, InputPropertyMap>,
-  'server' | 'flows' | 'files' | 'run' | 'executionType'
+  'server' | 'flows' | 'files' | 'run' | 'executionType' | 'step'
 > & { resumePayload?: { body?: unknown } };
 
 export type StepResult =

@@ -24,6 +24,11 @@ function sessionOf({ session, sessionId }: { session: SessionChoice; sessionId: 
   return { kind: 'EXISTING', sessionId: id };
 }
 
+function channelOf({ value }: { value: string | undefined }): { channel?: string } {
+  const id = value?.trim() ?? '';
+  return id.length === 0 ? {} : { channel: id };
+}
+
 function schemaOf({ value }: { value: unknown }): Record<string, unknown> | undefined {
   if (isNil(value) || value === '') {
     return undefined;
@@ -46,6 +51,7 @@ function parseJson({ text }: { text: string }): unknown {
 export const opencodeLocations = {
   locationOf,
   sessionOf,
+  channelOf,
   schemaOf,
 };
 

@@ -334,6 +334,55 @@ export const ListOpencodeStepSessionsQuery = z.object({
 })
 export type ListOpencodeStepSessionsQuery = z.infer<typeof ListOpencodeStepSessionsQuery>
 
+export const OpencodeChannelMode = z.enum(['FINISH_RULE', 'OPEN'])
+export type OpencodeChannelMode = z.infer<typeof OpencodeChannelMode>
+
+export const OpencodeChannelStatus = z.enum(['OPEN', 'CLOSED'])
+export type OpencodeChannelStatus = z.infer<typeof OpencodeChannelStatus>
+
+export const OpencodeChannelParticipantView = z.object({
+    key: z.string(),
+    namespace: z.string(),
+    project: z.string(),
+    projectName: z.string(),
+    agent: z.string(),
+    sessionId: z.string().nullable(),
+    adminPanelUrl: z.string().nullable(),
+})
+export type OpencodeChannelParticipantView = z.infer<typeof OpencodeChannelParticipantView>
+
+export const OpencodeChannelMessageView = z.object({
+    id: z.string(),
+    from: z.string(),
+    to: z.string(),
+    text: z.string(),
+    at: z.string(),
+    status: z.string(),
+})
+export type OpencodeChannelMessageView = z.infer<typeof OpencodeChannelMessageView>
+
+export const OpencodeChannelView = z.object({
+    id: z.string(),
+    stepName: z.string().nullable(),
+    correlationId: z.string(),
+    mode: OpencodeChannelMode,
+    status: OpencodeChannelStatus,
+    finishedBy: z.string().nullable(),
+    created: z.string(),
+    closedAt: z.string().nullable(),
+    participants: z.array(OpencodeChannelParticipantView),
+    messages: z.array(OpencodeChannelMessageView),
+    error: z.string().optional(),
+})
+export type OpencodeChannelView = z.infer<typeof OpencodeChannelView>
+
+export const ListOpencodeChannelsQuery = z.object({
+    flowRunId: z.string().optional(),
+    flowVersionId: z.string().optional(),
+    stepName: z.string(),
+})
+export type ListOpencodeChannelsQuery = z.infer<typeof ListOpencodeChannelsQuery>
+
 export const OpencodeServerOverview = z.object({
     allowed: z.array(OpencodeCatalogNamespace),
     providers: z.array(OpencodeProviderView),

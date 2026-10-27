@@ -12,6 +12,7 @@ import { AppSystemProp } from '../helper/system/system-props'
 import { waitpointService } from '../waitpoints/waitpoint-service'
 import { opencodeAskNotices } from './opencode-ask-notices'
 import { OpencodeAskEntity, OpencodeAskRow } from './opencode-ask.entity'
+import { opencodeChannels } from './opencode-channels'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeErrors } from './opencode-errors'
 import { opencodeLinks } from './opencode-links'
@@ -23,10 +24,11 @@ const stepRepo = repoFactory(OpencodeStepEntity)
 export const opencodeAsks = (log: FastifyBaseLogger) => ({
     async open({ platformId, directory, request }: OpenParams): Promise<OpencodeAskRow | null> {
         const client = await opencodeConnectionService(log).client({ platformId })
-        const step = await stepOfSession({ platformId, directory, sessionId: request.sessionId, client, depth: 0 })
-        if (isNil(step) || isNil(step.stepName)) {
+        const target = await targetOf({ platformId, directory, sessionId: request.sessionId, client, log })
+        if (isNil(target) || isNil(target.step.stepName)) {
             return null
         }
+        const step = target.step
         const recorded = await askRepo().existsBy({ platformId, requestId: request.requestId })
         if (recorded) {
             return null
@@ -42,13 +44,14 @@ export const opencodeAsks = (log: FastifyBaseLogger) => ({
             flowId: step.flowId,
             flowRunId: step.flowRunId,
             flowVersionId: step.flowVersionId,
-            stepName: plainStepName({ stepKey: step.stepName }),
+            stepName: plainStepName({ stepKey: target.step.stepName }),
             opencodeStepId: step.id,
             sessionId: request.sessionId,
             requestId: request.requestId,
             kind: request.kind,
             status: OpencodeAskStatus.OPEN,
-            agent: step.agent,
+            agent: target.agent,
+            directory: target.directory,
             permission: request.permission ?? null,
             questions: request.questions ?? null,
             deadline,
@@ -88,7 +91,7 @@ export const opencodeAsks = (log: FastifyBaseLogger) => ({
         }
         const client = await opencodeConnectionService(log).client({ platformId: claimed.platformId })
         const step = await stepRepo().findOneBy({ id: claimed.opencodeStepId })
-        const outcome = await sendAnswer({ ask: claimed, answer, client, directory: step?.directory ?? undefined })
+        const outcome = await sendAnswer({ ask: claimed, answer, client, directory: claimed.directory ?? step?.directory ?? undefined })
         if (outcome === 'gone') {
             await askRepo().update({ id: claimed.id, status: ANSWERING }, { status: OpencodeAskStatus.CLOSED, answeredVia: VIA_OPENCODE, answeredAt: new Date().toISOString() })
             opencodeAskNotices(log).closed({ ask: claimed })
@@ -118,7 +121,7 @@ export const opencodeAsks = (log: FastifyBaseLogger) => ({
             const client = await opencodeConnectionService(log).client({ platformId: ask.platformId })
             const step = await stepRepo().findOneBy({ id: ask.opencodeStepId })
             const failure = opencodeErrors.askCapPassed({ summary: summaryOf({ ask }), capMinutes: connection.askCapMinutes })
-            await sendAnswer({ ask, answer: expiredAnswer({ ask, note: failure }), client, directory: step?.directory ?? undefined })
+            await sendAnswer({ ask, answer: expiredAnswer({ ask, note: failure }), client, directory: ask.directory ?? step?.directory ?? undefined })
             await askRepo().update({ id: ask.id }, { status: OpencodeAskStatus.EXPIRED, answeredVia: VIA_DEADLINE, answeredAt: new Date().toISOString() })
             opencodeAskNotices(log).closed({ ask })
             log.info({ opencodeAsk: { id: ask.id }, flowRun: { id: ask.flowRunId } }, '[opencodeAsks] Nobody answered in time')
@@ -139,7 +142,8 @@ export const opencodeAsks = (log: FastifyBaseLogger) => ({
 
     async reconcile({ platformId }: { platformId: string }): Promise<void> {
         const steps = await stepRepo().findBy({ platformId, status: 'DISPATCHED' })
-        const directories = [...new Set(steps.flatMap((step) => isNil(step.directory) ? [] : [step.directory]))]
+        const channelDirectories = await opencodeChannels(log).waitingDirectories({ platformId })
+        const directories = [...new Set([...steps.flatMap((step) => isNil(step.directory) ? [] : [step.directory]), ...channelDirectories])]
         if (directories.length === 0) {
             return
         }
@@ -158,8 +162,9 @@ export const opencodeAsks = (log: FastifyBaseLogger) => ({
                 await this.open({ platformId, directory, request })
             }
             const waitingIds = new Set(waiting.map((request) => request.requestId))
-            const open = await askRepo().findBy({ platformId, status: OpencodeAskStatus.OPEN, created: LessThan(listedAt), opencodeStepId: In(steps.filter((step) => step.directory === directory).map((step) => step.id)) })
-            for (const ask of open.filter((candidate) => !waitingIds.has(candidate.requestId))) {
+            const open = await askRepo().findBy({ platformId, status: OpencodeAskStatus.OPEN, created: LessThan(listedAt), opencodeStepId: In(steps.map((step) => step.id)) })
+            const here = open.filter((ask) => (ask.directory ?? steps.find((step) => step.id === ask.opencodeStepId)?.directory) === directory)
+            for (const ask of here.filter((candidate) => !waitingIds.has(candidate.requestId))) {
                 await this.closeAnsweredElsewhere({ platformId, requestId: ask.requestId })
             }
         }
@@ -206,6 +211,33 @@ async function deadlineOf({ step, wanted, log }: { step: OpencodeStepRow, wanted
         ? dayjs(step.dispatchedAt ?? new Date()).add(system.getNumberOrThrow(AppSystemProp.FLOW_TIMEOUT_SECONDS), 'second').toISOString()
         : await waitpointService(log).extendDeadline({ waitpointId: step.waitpointId, flowRunId: step.flowRunId, projectId: step.projectId, notBefore: wanted })
     return isNil(stepDeadline) || dayjs(wanted).isBefore(dayjs(stepDeadline)) ? wanted : stepDeadline
+}
+
+async function targetOf({ platformId, directory, sessionId, client, log }: TargetParams): Promise<AskTarget | null> {
+    const step = await stepOfSession({ platformId, directory, sessionId, client, depth: 0 })
+    if (!isNil(step)) {
+        return { step, directory: step.directory, agent: step.agent }
+    }
+    return channelTargetOf({ platformId, directory, sessionId, client, log, depth: 0 })
+}
+
+async function channelTargetOf({ platformId, directory, sessionId, client, log, depth }: TargetParams & { depth: number }): Promise<AskTarget | null> {
+    const participant = await opencodeChannels(log).participantSession({ platformId, sessionId })
+    if (!isNil(participant)) {
+        const step = await stepRepo().findOneBy({ id: participant.opencodeStepId, platformId, status: 'DISPATCHED' })
+        return isNil(step) ? null : { step, directory: participant.directory, agent: participant.agent }
+    }
+    if (depth >= MAX_SESSION_DEPTH || isNil(directory)) {
+        return null
+    }
+    const session = await client.session.get({ sessionID: sessionId, directory })
+    const parentId = session.data?.parentID
+    return isNil(parentId) ? null : channelTargetOf({ platformId, directory, sessionId: parentId, client, log, depth: depth + 1 })
+}
+
+function adminPanelLinkOf({ ask, step, adminPanelUrl }: { ask: OpencodeAskRow, step: OpencodeStepRow | undefined, adminPanelUrl: string }): string | null {
+    const directory = ask.directory ?? step?.directory
+    return isNil(directory) ? null : opencodeLinks.session({ adminPanelUrl, directory, sessionId: ask.sessionId })
 }
 
 async function stepOfSession({ platformId, directory, sessionId, client, depth }: StepOfSessionParams): Promise<OpencodeStepRow | null> {
@@ -306,7 +338,7 @@ function viewOf({ ask, step, adminPanelUrl }: { ask: OpencodeAskRow, step: Openc
         answer: ask.answer,
         answeredVia: ask.answeredVia,
         answeredAt: ask.answeredAt,
-        adminPanelUrl: isNil(step?.directory) ? null : opencodeLinks.session({ adminPanelUrl, directory: step.directory, sessionId: ask.sessionId }),
+        adminPanelUrl: adminPanelLinkOf({ ask, step, adminPanelUrl }),
     }
 }
 
@@ -422,6 +454,20 @@ type StepOfSessionParams = {
     sessionId: string
     client: OpencodeClient
     depth: number
+}
+
+type TargetParams = {
+    platformId: string
+    directory: string | undefined
+    sessionId: string
+    client: OpencodeClient
+    log: FastifyBaseLogger
+}
+
+type AskTarget = {
+    step: OpencodeStepRow
+    directory: string | null
+    agent: string | null
 }
 
 type SendAnswerParams = {

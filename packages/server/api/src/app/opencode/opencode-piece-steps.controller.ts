@@ -5,7 +5,7 @@ import { StatusCodes } from 'http-status-codes'
 import { z } from 'zod'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { opencodeOptionsService } from './opencode-options.service'
-import { OpencodeCommandList, OpencodeGroupList, opencodePieceOptions } from './opencode-piece-options'
+import { OpencodeCommandList, OpencodeGroupList, OpencodeParticipantList, opencodePieceOptions } from './opencode-piece-options'
 import { OpencodePieceRunBody, opencodePieceRuns } from './opencode-piece-runs'
 import { OpencodeProviderList, opencodeViews } from './opencode-views'
 
@@ -28,6 +28,11 @@ export const opencodePieceStepsController: FastifyPluginAsyncZod = async (app) =
     app.get('/commands', listEndpoint({ response: OpencodeCommandList }), async (request) => {
         const { projectId, platformId } = runPrincipal({ principal: request.principal })
         return opencodePieceOptions(request.log).commands({ platformId, projectId, ...request.query })
+    })
+
+    app.get('/participants', listEndpoint({ response: OpencodeParticipantList }), async (request) => {
+        const { projectId, platformId } = runPrincipal({ principal: request.principal })
+        return opencodePieceOptions(request.log).participants({ platformId, projectId })
     })
 
     app.get('/groups', listEndpoint({ response: OpencodeGroupList }), async (request) => {

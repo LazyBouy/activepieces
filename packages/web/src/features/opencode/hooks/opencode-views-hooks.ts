@@ -1,5 +1,8 @@
 import { isNil } from '@activepieces/core-utils';
-import { ListOpencodeStepSessionsQuery } from '@activepieces/shared';
+import {
+  ListOpencodeChannelsQuery,
+  ListOpencodeStepSessionsQuery,
+} from '@activepieces/shared';
 import { useQuery } from '@tanstack/react-query';
 
 import { authenticationSession } from '@/lib/authentication-session';
@@ -26,6 +29,13 @@ export const opencodeViewsKeys = {
     projectId: string;
     query: ListOpencodeStepSessionsQuery;
   }) => ['opencode-views', projectId, 'step-sessions', query] as const,
+  stepChannels: ({
+    projectId,
+    query,
+  }: {
+    projectId: string;
+    query: ListOpencodeChannelsQuery;
+  }) => ['opencode-views', projectId, 'step-channels', query] as const,
   serverOverview: ({ allowlist }: { allowlist: string[] }) =>
     ['opencode-views', 'server-overview', allowlist] as const,
 };
@@ -94,6 +104,30 @@ export const opencodeViewsQueries = {
         (state.state.data ?? []).some((session) =>
           RUNNING_STATUSES.includes(session.status),
         )
+          ? RUNNING_REFRESH_MS
+          : false,
+    });
+  },
+  useStepChannels: ({
+    flowRunId,
+    flowVersionId,
+    stepName,
+    enabled,
+    live,
+  }: ListOpencodeChannelsQuery & { enabled: boolean; live: boolean }) => {
+    const projectId = authenticationSession.getProjectId() ?? '';
+    const query = {
+      stepName,
+      ...(isNil(flowRunId) ? {} : { flowRunId }),
+      ...(isNil(flowVersionId) ? {} : { flowVersionId }),
+    };
+    return useQuery({
+      queryKey: opencodeViewsKeys.stepChannels({ projectId, query }),
+      queryFn: () => opencodeViewsApi.stepChannels({ projectId, query }),
+      enabled: enabled && projectId.length > 0,
+      refetchInterval: (state) =>
+        live ||
+        (state.state.data ?? []).some((channel) => channel.status === 'OPEN')
           ? RUNNING_REFRESH_MS
           : false,
     });

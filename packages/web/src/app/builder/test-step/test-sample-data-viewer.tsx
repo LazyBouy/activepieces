@@ -13,7 +13,11 @@ import React, { useMemo } from 'react';
 
 import type { OutputSchema } from '@/components/custom/smart-output-viewer/types';
 import { Button } from '@/components/ui/button';
-import { OpencodeStepAsks, OpencodeStepSessions } from '@/features/opencode';
+import {
+  OpencodeStepAsks,
+  OpencodeStepChannels,
+  OpencodeStepSessions,
+} from '@/features/opencode';
 import { formatUtils } from '@/lib/format-utils';
 
 import { ErrorExplanationContext } from '../data-display/explanation-prompt';
@@ -83,6 +87,9 @@ export const TestSampleDataViewer = React.memo(
     const opencodeTested =
       !isNil(currentStep) &&
       opencodeStepUtil.runsOnOpencode({ step: currentStep });
+    const channelTested =
+      !isNil(currentStep) &&
+      opencodeStepUtil.isChannelStep({ step: currentStep });
 
     return (
       <DataPane
@@ -132,14 +139,26 @@ export const TestSampleDataViewer = React.memo(
             enabled={true}
           />
         )}
-        {!isTesting && opencodeTested && !isNil(flowVersionId) && (
-          <OpencodeStepSessions
+        {channelTested && !isNil(flowVersionId) && (
+          <OpencodeStepChannels
             key={lastTestDate}
             flowVersionId={flowVersionId}
             stepName={currentStep?.name ?? ''}
-            enabled={!isNil(lastTestDate)}
+            enabled={isTesting || !isNil(lastTestDate)}
+            live={isTesting}
           />
         )}
+        {!isTesting &&
+          opencodeTested &&
+          !channelTested &&
+          !isNil(flowVersionId) && (
+            <OpencodeStepSessions
+              key={lastTestDate}
+              flowVersionId={flowVersionId}
+              stepName={currentStep?.name ?? ''}
+              enabled={!isNil(lastTestDate)}
+            />
+          )}
         {isTesting && !showAgentView ? (
           <div className="flex flex-col gap-3 px-3 py-2">
             <JsonTreeSkeleton />

@@ -28,6 +28,7 @@ export const continueSessionAction = createAction({
     }),
     files: opencodeProps.files,
     outputSchema: opencodeProps.outputSchema,
+    channel: opencodeProps.channel,
   },
   outputSchema: outputSchemas.continueSession,
   async run(context) {
@@ -36,7 +37,7 @@ export const continueSessionAction = createAction({
       timeoutMs: opencodeStepRun.STEP_TIMEOUT_MS,
       noAnswer: opencodeStepRun.NO_ANSWER,
       buildRequest: async () => {
-        const { sessionId, prompt, files, outputSchema } = context.propsValue;
+        const { sessionId, prompt, files, outputSchema, channel } = context.propsValue;
         const id = sessionId.trim();
         if (id.length === 0) {
           throw new Error('Enter the id of the OpenCode session to continue.');
@@ -49,6 +50,7 @@ export const continueSessionAction = createAction({
           prompt,
           ...(uploaded.length === 0 ? {} : { files: uploaded }),
           ...(isNil(schema) ? {} : { outputSchema: schema }),
+          ...opencodeLocations.channelOf({ value: channel }),
         };
       },
     });

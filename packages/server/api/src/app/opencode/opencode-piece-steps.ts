@@ -1,5 +1,5 @@
 import { isNil } from '@activepieces/core-utils'
-import { AiStepFile, OpencodeStepSettings } from '@activepieces/shared'
+import { AiStepFile, OpencodeChannelMode, OpencodeStepSettings } from '@activepieces/shared'
 import { Part } from '@opencode-ai/sdk/v2/client'
 import { z } from 'zod'
 import { opencodeErrors } from './opencode-errors'
@@ -26,6 +26,20 @@ function settingsOf({ request }: { request: OpencodePieceRequest }): OpencodeSte
             return { sessionMode: 'NEW_PER_STEP' }
         case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
             return { sessionMode: 'NEW_PER_STEP', namespace: request.namespace, project: request.project }
+        case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
+            return { sessionMode: 'NEW_PER_STEP' }
+    }
+}
+
+function channelOf({ request }: { request: OpencodePieceRequest }): string | null {
+    switch (request.action) {
+        case OPENCODE_PIECE_ACTION.RUN_AGENT:
+        case OPENCODE_PIECE_ACTION.RUN_COMMAND:
+        case OPENCODE_PIECE_ACTION.CONTINUE_SESSION:
+            return request.channel ?? null
+        case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
+        case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
+            return null
     }
 }
 
@@ -37,6 +51,7 @@ function pinnedSessionOf({ request }: { request: OpencodePieceRequest }): Pinned
         case OPENCODE_PIECE_ACTION.CONTINUE_SESSION:
             return { sessionId: request.sessionId, agent: null }
         case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
+        case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
             return null
     }
 }
@@ -61,12 +76,17 @@ function build({ request, outputFolder, files }: BuildParams): BuiltPrompt {
         case OPENCODE_PIECE_ACTION.RUN_COMMAND:
             return { parts: fileParts }
         case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
-            throw new Error('A project inbox message is not a session prompt')
+        case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
+            throw new Error(`${request.action} is not a session prompt`)
     }
 }
 
 function filesOf({ request }: { request: OpencodePieceRequest }): AiStepFile[] {
-    return request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX ? [] : request.files ?? []
+    return request.action === OPENCODE_PIECE_ACTION.SEND_TO_INBOX || request.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL ? [] : request.files ?? []
+}
+
+function participantKey({ namespace, project, agent }: { namespace: string, project: string, agent: string }): string {
+    return `${namespace}/${project}/${agent}`
 }
 
 function answer({ request, step, replies, reply, summary, adminPanelUrl, files }: AnswerParams): OpencodeStepAnswer {
@@ -120,6 +140,7 @@ export const OPENCODE_PIECE_ACTION = {
     RUN_COMMAND: 'OPENCODE_RUN_COMMAND',
     CONTINUE_SESSION: 'OPENCODE_CONTINUE_SESSION',
     SEND_TO_INBOX: 'OPENCODE_SEND_TO_INBOX',
+    AGENT_CHANNEL: 'OPENCODE_AGENT_CHANNEL',
 } as const
 
 const PIECE_ACTIONS: string[] = Object.values(OPENCODE_PIECE_ACTION)
@@ -127,6 +148,23 @@ const PIECE_ACTIONS: string[] = Object.values(OPENCODE_PIECE_ACTION)
 export const OPENCODE_INBOX_MAX_TIMEOUT_MINUTES = 30
 
 export const OPENCODE_INBOX_DEFAULT_TIMEOUT_MINUTES = 10
+
+export const OPENCODE_CHANNEL_LIMITS = {
+    MIN_PARTICIPANTS: 2,
+    MAX_PARTICIPANTS: 10,
+    DEFAULT_MAX_MESSAGES: 50,
+    MAX_MESSAGES: 1000,
+    DEFAULT_TIMEOUT_MINUTES: 30,
+    MAX_TIMEOUT_MINUTES: 1440,
+} as const
+
+export const OPENCODE_CHANNEL_START_ALL = 'ALL'
+
+const ChannelParticipantRequest = z.object({
+    namespace: z.string().min(1),
+    project: z.string().min(1),
+    agent: z.string().min(1),
+})
 
 const PieceSession = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('NEW') }),
@@ -152,6 +190,7 @@ export const OpencodePieceRequest = z.discriminatedUnion('action', [
         outputSchema: OutputSchema.optional(),
         model: OpencodeStepModel.optional(),
         session: PieceSession,
+        channel: z.string().min(1).optional(),
     }),
     z.object({
         action: z.literal(OPENCODE_PIECE_ACTION.RUN_COMMAND),
@@ -162,6 +201,7 @@ export const OpencodePieceRequest = z.discriminatedUnion('action', [
         arguments: z.string().optional(),
         files: z.array(AiStepFile).optional(),
         session: PieceSession,
+        channel: z.string().min(1).optional(),
     }),
     z.object({
         action: z.literal(OPENCODE_PIECE_ACTION.CONTINUE_SESSION),
@@ -169,6 +209,17 @@ export const OpencodePieceRequest = z.discriminatedUnion('action', [
         prompt: z.string().min(1),
         files: z.array(AiStepFile).optional(),
         outputSchema: OutputSchema.optional(),
+        channel: z.string().min(1).optional(),
+    }),
+    z.object({
+        action: z.literal(OPENCODE_PIECE_ACTION.AGENT_CHANNEL),
+        participants: z.array(ChannelParticipantRequest).min(OPENCODE_CHANNEL_LIMITS.MIN_PARTICIPANTS).max(OPENCODE_CHANNEL_LIMITS.MAX_PARTICIPANTS),
+        waitFor: OpencodeChannelMode,
+        kickoff: z.string().optional(),
+        startWith: z.string().min(1).optional(),
+        doneBy: z.string().min(1).optional(),
+        maxMessages: z.number().int().min(1).max(OPENCODE_CHANNEL_LIMITS.MAX_MESSAGES).optional(),
+        timeoutMinutes: z.number().int().min(1).max(OPENCODE_CHANNEL_LIMITS.MAX_TIMEOUT_MINUTES).optional(),
     }),
     z.object({
         action: z.literal(OPENCODE_PIECE_ACTION.SEND_TO_INBOX),
@@ -186,9 +237,13 @@ export type OpencodePieceRequest = z.infer<typeof OpencodePieceRequest>
 
 export type OpencodeInboxRequest = Extract<OpencodePieceRequest, { action: typeof OPENCODE_PIECE_ACTION.SEND_TO_INBOX }>
 
+export type OpencodeChannelRequest = Extract<OpencodePieceRequest, { action: typeof OPENCODE_PIECE_ACTION.AGENT_CHANNEL }>
+
 export const opencodePieceSteps = {
     isPieceRequest,
     settingsOf,
+    channelOf,
+    participantKey,
     pinnedSessionOf,
     modelOf,
     build,

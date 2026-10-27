@@ -30,6 +30,7 @@ export const OpencodeStepSection = ({
   projectId,
   readonly,
   flowSessionMode,
+  channelSteps,
 }: OpencodeStepSectionProps) => {
   const { data: options, isError } = opencodeOptionsQueries.useOptions({
     projectId,
@@ -77,6 +78,7 @@ export const OpencodeStepSection = ({
           projectId={projectId}
           readonly={readonly}
           flowSessionMode={flowSessionMode}
+          channelSteps={channelSteps}
           options={options}
         />
       )}
@@ -88,6 +90,7 @@ const OpencodePickers = ({
   projectId,
   readonly,
   flowSessionMode,
+  channelSteps,
   options,
 }: OpencodePickersProps) => {
   const form = useFormContext<OpencodeStepForm>();
@@ -137,6 +140,14 @@ const OpencodePickers = ({
         !allowedNamespace.projects.some(
           (project) => project.id === current.project,
         )));
+
+  const channels = withMissingChannel({
+    channelSteps,
+    selected: current.channel,
+  });
+  const channelMissing =
+    !isNil(current.channel) &&
+    !channelSteps.some((step) => step.name === current.channel);
 
   const update = (next: OpencodeStepSettings) => {
     form.setValue('settings.opencode', emptyToUndefined(next), {
@@ -341,6 +352,53 @@ const OpencodePickers = ({
           </FormItem>
         )}
       />
+
+      {channels.length > 0 && (
+        <FormField
+          control={form.control}
+          name="settings.opencode.channel"
+          render={() => (
+            <FormItem className="flex flex-col gap-1">
+              <Label>{t('Agent channel')}</Label>
+              <Select
+                disabled={readonly}
+                value={current.channel ?? NO_CHANNEL}
+                onValueChange={(value) =>
+                  update({
+                    ...current,
+                    channel: value === NO_CHANNEL ? undefined : value,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_CHANNEL}>{t('None')}</SelectItem>
+                  {channels.map((step) => (
+                    <SelectItem key={step.name} value={step.name}>
+                      {step.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-gray-11">
+                {t(
+                  "Joins the channel an earlier Agent Channel step left open, so this step's agent can message its participants.",
+                )}
+              </span>
+              {channelMissing && (
+                <span className="text-xs text-warning-11">
+                  {t(
+                    'That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another.',
+                  )}
+                </span>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
     </>
   );
 };
@@ -388,6 +446,19 @@ function withMissingProject({
   return [...projects, { id: selected, name: selected, folder: '' }];
 }
 
+function withMissingChannel({
+  channelSteps,
+  selected,
+}: {
+  channelSteps: OpencodeChannelStepChoice[];
+  selected: string | undefined;
+}): OpencodeChannelStepChoice[] {
+  if (isNil(selected) || channelSteps.some(({ name }) => name === selected)) {
+    return channelSteps;
+  }
+  return [...channelSteps, { name: selected, displayName: selected }];
+}
+
 function withMissingAgent({
   agents,
   selected,
@@ -403,6 +474,8 @@ function withMissingAgent({
 
 const DEFAULT_VALUE = '__default__';
 
+const NO_CHANNEL = '__none__';
+
 type OpencodeStepForm = {
   settings: {
     opencode?: OpencodeStepSettings;
@@ -413,8 +486,14 @@ type OpencodeStepSectionProps = {
   projectId: string;
   readonly: boolean;
   flowSessionMode: OpencodeSessionMode;
+  channelSteps: OpencodeChannelStepChoice[];
 };
 
 type OpencodePickersProps = OpencodeStepSectionProps & {
   options: OpencodeProjectOptions;
+};
+
+export type OpencodeChannelStepChoice = {
+  name: string;
+  displayName: string;
 };

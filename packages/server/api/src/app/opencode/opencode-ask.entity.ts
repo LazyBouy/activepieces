@@ -18,6 +18,7 @@ const OpencodeAskRow = z.object({
     kind: z.enum(OpencodeAskKind),
     status: z.union([z.enum(OpencodeAskStatus), z.literal('ANSWERING')]),
     agent: z.string().nullable(),
+    directory: z.string().nullable(),
     permission: OpencodeAskPermission.nullable(),
     questions: z.array(OpencodeQuestion).nullable(),
     deadline: z.string(),
@@ -81,6 +82,10 @@ export const OpencodeAskEntity = new EntitySchema<OpencodeAskSchema>({
             nullable: false,
         },
         agent: {
+            type: String,
+            nullable: true,
+        },
+        directory: {
             type: String,
             nullable: true,
         },

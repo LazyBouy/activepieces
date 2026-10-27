@@ -4,6 +4,7 @@ export { OpencodeAskNotices } from './components/opencode-ask-notices';
 export { OpencodeStepAsks } from './components/opencode-ask-card';
 export { OpencodeStepSection } from './components/opencode-step-section';
 export { OpencodeStepSessions } from './components/opencode-step-session';
+export { OpencodeStepChannels } from './components/opencode-step-channel';
 export {
   OpencodeAgentCard,
   OpencodeItemBadges,

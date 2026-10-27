@@ -26,7 +26,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AgentTimeline } from '@/features/agents';
 import { flowRunUtils } from '@/features/flow-runs';
-import { OpencodeStepAsks, OpencodeStepSessions } from '@/features/opencode';
+import {
+  OpencodeStepAsks,
+  OpencodeStepChannels,
+  OpencodeStepSessions,
+} from '@/features/opencode';
 import { piecesHooks } from '@/features/pieces';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { formatUtils } from '@/lib/format-utils';
@@ -199,11 +203,20 @@ const RunStepOutputPane = ({
         stepName={selectedStep.name}
         enabled={opencodeStepUtil.runsOnOpencode({ step: selectedStep })}
       />
-      <OpencodeStepSessions
-        flowRunId={run.id}
-        stepName={selectedStep.name}
-        enabled={opencodeStepUtil.runsOnOpencode({ step: selectedStep })}
-      />
+      {opencodeStepUtil.isChannelStep({ step: selectedStep }) ? (
+        <OpencodeStepChannels
+          flowRunId={run.id}
+          stepName={selectedStep.name}
+          enabled={true}
+          live={false}
+        />
+      ) : (
+        <OpencodeStepSessions
+          flowRunId={run.id}
+          stepName={selectedStep.name}
+          enabled={opencodeStepUtil.runsOnOpencode({ step: selectedStep })}
+        />
+      )}
       {isRunning ? (
         <StepOutputSkeleton className="p-4" />
       ) : slicedOutputRef ? (

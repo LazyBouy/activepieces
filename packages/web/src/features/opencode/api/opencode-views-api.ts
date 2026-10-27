@@ -1,7 +1,9 @@
 import {
   ListOpencodeAgentsQuery,
+  ListOpencodeChannelsQuery,
   ListOpencodeStepSessionsQuery,
   OpencodeAgentCardResult,
+  OpencodeChannelView,
   OpencodeProjectViewResult,
   OpencodeServerOverview,
   OpencodeStepSessionView,
@@ -44,6 +46,18 @@ export const opencodeViewsApi = {
     query: ListOpencodeStepSessionsQuery;
   }) {
     return api.get<OpencodeStepSessionView[]>('/v1/opencode/step-sessions', {
+      projectId,
+      ...query,
+    });
+  },
+  stepChannels({
+    projectId,
+    query,
+  }: {
+    projectId: string;
+    query: ListOpencodeChannelsQuery;
+  }) {
+    return api.get<OpencodeChannelView[]>('/v1/opencode/channels', {
       projectId,
       ...query,
     });

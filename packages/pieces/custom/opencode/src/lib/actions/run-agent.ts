@@ -29,6 +29,7 @@ export const runAgentAction = createAction({
     model: opencodeProps.model,
     session: opencodeProps.session,
     sessionId: opencodeProps.sessionId,
+    channel: opencodeProps.channel,
   },
   outputSchema: outputSchemas.runAgent,
   async run(context) {
@@ -37,7 +38,7 @@ export const runAgentAction = createAction({
       timeoutMs: opencodeStepRun.STEP_TIMEOUT_MS,
       noAnswer: opencodeStepRun.NO_ANSWER,
       buildRequest: async () => {
-        const { namespace, project, agent, prompt, files, outputSchema, model, session, sessionId } = context.propsValue;
+        const { namespace, project, agent, prompt, files, outputSchema, model, session, sessionId, channel } = context.propsValue;
         const location = opencodeLocations.locationOf({ namespace, project, agent });
         const schema = opencodeLocations.schemaOf({ value: outputSchema });
         const uploaded = await opencodeStepRun.uploadFiles({ context, value: files });
@@ -49,6 +50,7 @@ export const runAgentAction = createAction({
           ...(isNil(schema) ? {} : { outputSchema: schema }),
           ...(isNil(model) ? {} : { model }),
           session: opencodeLocations.sessionOf({ session, sessionId }),
+          ...opencodeLocations.channelOf({ value: channel }),
         };
       },
     });

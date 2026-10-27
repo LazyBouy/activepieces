@@ -108,6 +108,57 @@ async function recipientProps({ server, project, to }: RecipientParams): Promise
   };
 }
 
+async function participantOptions({ server }: { server: ServerAccess }): Promise<DropdownState<ChannelParticipant>> {
+  const listed = await opencodeServer.read<ParticipantList>({ server, path: '/participants' });
+  return {
+    disabled: false,
+    options: listed.participants.map((participant) => ({
+      label: participantLabel({ participant }),
+      value: { namespace: participant.namespace, project: participant.project, agent: participant.agent },
+    })),
+    placeholder: listed.error ?? 'Pick at least two agents',
+  };
+}
+
+async function chosenParticipantOptions({ server, chosen, withAll }: ChosenParams): Promise<DropdownState<string>> {
+  const picked = participantsOf({ value: chosen });
+  if (picked.length === 0) {
+    return { disabled: true, options: [], placeholder: 'Pick the participants first' };
+  }
+  const listed = await opencodeServer.read<ParticipantList>({ server, path: '/participants' });
+  const labelled = picked.map((participant) => {
+    const found = listed.participants.find((candidate) => participantKey({ participant: candidate }) === participantKey({ participant }));
+    return { label: isNil(found) ? `${participant.project} · ${participant.agent}` : participantLabel({ participant: found }), value: participantKey({ participant }) };
+  });
+  return {
+    disabled: false,
+    options: withAll ? [{ label: 'All participants', value: START_ALL }, ...labelled] : labelled,
+    placeholder: withAll ? 'All participants' : 'Pick the participant that finishes',
+  };
+}
+
+function participantsOf({ value }: { value: unknown }): ChannelParticipant[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || !('namespace' in entry) || !('project' in entry) || !('agent' in entry)) {
+      return [];
+    }
+    return typeof entry.namespace === 'string' && typeof entry.project === 'string' && typeof entry.agent === 'string'
+      ? [{ namespace: entry.namespace, project: entry.project, agent: entry.agent }]
+      : [];
+  });
+}
+
+function participantKey({ participant }: { participant: ChannelParticipant }): string {
+  return `${participant.namespace}/${participant.project}/${participant.agent}`;
+}
+
+function participantLabel({ participant }: { participant: ListedParticipant }): string {
+  return `${participant.namespaceName} / ${participant.projectName} · ${participant.agent}`;
+}
+
 function locationQuery({ namespace, project }: { namespace: unknown; project: unknown }): Record<string, string | undefined> {
   return {
     namespace: typeof namespace === 'string' ? namespace : undefined,
@@ -125,6 +176,74 @@ function inboxLocation({ value }: { value: unknown }): InboxProject | null {
 const ROUTING_OFF = 'Run AI on OpenCode is off. Turn it on in Platform → AI → OpenCode.';
 
 const AGENT_DEFAULT = 'Agent default';
+
+const START_ALL = 'ALL';
+
+const channel = Property.ShortText({
+  displayName: 'Channel',
+  description: 'To join an open agent channel, its correlation id: the Correlation Id output of an earlier Agent Channel step. The agent can then message the channel\'s participants.',
+  required: false,
+});
+
+const participants = Property.MultiSelectDropdown<ChannelParticipant, true>({
+  auth: PieceAuth.None(),
+  displayName: 'Participants',
+  description: 'The agents that talk in this channel: at least two, all in one OpenCode namespace. Only allowlisted projects are listed.',
+  required: true,
+  refreshers: [],
+  options: async (_, ctx) => participantOptions({ server: ctx.server }),
+});
+
+const waitFor = Property.StaticDropdown<ChannelMode, true>({
+  displayName: 'Wait for',
+  description: 'Finish rule: start the conversation and wait until it ends. None: open the channel and go on at once; later AI steps join it.',
+  required: true,
+  defaultValue: 'FINISH_RULE',
+  options: {
+    options: [
+      { label: 'Finish rule', value: 'FINISH_RULE' },
+      { label: 'None (open only)', value: 'OPEN' },
+    ],
+  },
+});
+
+const kickoff = Property.LongText({
+  displayName: 'Kickoff message',
+  description: 'With a finish rule: the task that starts the conversation, sent to the participants in Start with.',
+  required: false,
+});
+
+const startWith = Property.Dropdown<string, false>({
+  auth: PieceAuth.None(),
+  displayName: 'Start with',
+  description: 'With a finish rule: who gets the kickoff message. Leave empty for all participants.',
+  required: false,
+  refreshers: ['participants'],
+  options: async (propsValue, ctx) => chosenParticipantOptions({ server: ctx.server, chosen: propsValue['participants'], withAll: true }),
+});
+
+const doneWhen = Property.Dropdown<string, false>({
+  auth: PieceAuth.None(),
+  displayName: 'Done when',
+  description: 'With a finish rule: the participant that ends the channel by calling its finish_channel tool with the result. Leave empty to end only on Max messages or Timeout.',
+  required: false,
+  refreshers: ['participants'],
+  options: async (propsValue, ctx) => chosenParticipantOptions({ server: ctx.server, chosen: propsValue['participants'], withAll: false }),
+});
+
+const maxMessages = Property.Number({
+  displayName: 'Max messages',
+  description: 'With a finish rule: the channel ends after this many messages. 50 when empty.',
+  required: false,
+  defaultValue: 50,
+});
+
+const channelTimeout = Property.Number({
+  displayName: 'Timeout (minutes)',
+  description: 'With a finish rule: the channel ends after this many minutes. 30 when empty.',
+  required: false,
+  defaultValue: 30,
+});
 
 const namespace = Property.Dropdown<string, false>({
   auth: PieceAuth.None(),
@@ -249,11 +368,30 @@ export const opencodeProps = {
   inboxProject,
   inboxTo,
   inboxRecipient,
+  channel,
+  participants,
+  waitFor,
+  kickoff,
+  startWith,
+  doneWhen,
+  maxMessages,
+  channelTimeout,
 };
 
 export const opencodeOptions = {
   inboxLocation,
+  participantsOf,
+  participantKey,
+  START_ALL,
 };
+
+export type ChannelParticipant = {
+  namespace: string;
+  project: string;
+  agent: string;
+};
+
+export type ChannelMode = 'FINISH_RULE' | 'OPEN';
 
 export type SessionChoice = 'NEW' | 'RUN' | 'EXISTING';
 
@@ -300,6 +438,22 @@ type CommandList = {
 type GroupList = {
   groups: { id: string; name: string }[];
   error?: string;
+};
+
+type ListedParticipant = ChannelParticipant & {
+  namespaceName: string;
+  projectName: string;
+};
+
+type ParticipantList = {
+  participants: ListedParticipant[];
+  error?: string;
+};
+
+type ChosenParams = {
+  server: ServerAccess;
+  chosen: unknown;
+  withAll: boolean;
 };
 
 type ProviderList = {

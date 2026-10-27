@@ -28,8 +28,9 @@ describe('OpenCode piece', () => {
       'Run a Command',
       'Send to Project Inbox',
       'Continue a Session',
+      'Agent Channel',
     ]);
-    expect(Object.keys(metadata.actions)).toEqual(['run_agent', 'run_command', 'send_to_inbox', 'continue_session']);
+    expect(Object.keys(metadata.actions)).toEqual(['run_agent', 'run_command', 'send_to_inbox', 'continue_session', 'agent_channel']);
   });
 
   test('every action declares audience, classification, AI metadata and an output schema', () => {
@@ -43,10 +44,11 @@ describe('OpenCode piece', () => {
   });
 
   test('each action has the specified fields', () => {
-    expect(Object.keys(metadata.actions['run_agent'].props)).toEqual(['namespace', 'project', 'agent', 'prompt', 'files', 'outputSchema', 'model', 'session', 'sessionId']);
-    expect(Object.keys(metadata.actions['run_command'].props)).toEqual(['namespace', 'project', 'agent', 'command', 'arguments', 'session', 'sessionId']);
+    expect(Object.keys(metadata.actions['run_agent'].props)).toEqual(['namespace', 'project', 'agent', 'prompt', 'files', 'outputSchema', 'model', 'session', 'sessionId', 'channel']);
+    expect(Object.keys(metadata.actions['run_command'].props)).toEqual(['namespace', 'project', 'agent', 'command', 'arguments', 'session', 'sessionId', 'channel']);
     expect(Object.keys(metadata.actions['send_to_inbox'].props)).toEqual(['project', 'message', 'to', 'recipient', 'wait', 'timeoutMinutes']);
-    expect(Object.keys(metadata.actions['continue_session'].props)).toEqual(['sessionId', 'prompt', 'files', 'outputSchema']);
+    expect(Object.keys(metadata.actions['continue_session'].props)).toEqual(['sessionId', 'prompt', 'files', 'outputSchema', 'channel']);
+    expect(Object.keys(metadata.actions['agent_channel'].props)).toEqual(['participants', 'waitFor', 'kickoff', 'startWith', 'doneWhen', 'maxMessages', 'timeoutMinutes']);
   });
 
   test('uses a drawn SVG logo embedded as a data URI', () => {

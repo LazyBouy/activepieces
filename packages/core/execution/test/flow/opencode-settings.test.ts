@@ -7,6 +7,7 @@ import {
     FlowOperationType,
     flowStructureUtil,
     FlowVersion,
+    OPENCODE_CHANNEL_ACTION,
     OPENCODE_PIECE_NAME,
     OpencodeStepSettings,
     OpencodeStepSettingsWithValidation,
@@ -80,6 +81,44 @@ describe('opencodeStepUtil.runsOnOpencode', () => {
         expect(opencodeStepUtil.runsOnOpencode({ step: code({ name: 'step_5' }) })).toBe(false)
     })
 })
+
+describe('opencodeStepUtil.isChannelStep', () => {
+    it('is true only for the OpenCode piece\'s Agent Channel action', () => {
+        const channel = aiPiece({ name: 'step_1', actionName: OPENCODE_CHANNEL_ACTION })
+        channel.settings.pieceName = OPENCODE_PIECE_NAME
+        const agent = aiPiece({ name: 'step_2', actionName: 'run_agent' })
+        agent.settings.pieceName = OPENCODE_PIECE_NAME
+
+        expect(opencodeStepUtil.isChannelStep({ step: channel })).toBe(true)
+        expect(opencodeStepUtil.isChannelStep({ step: agent })).toBe(false)
+        expect(opencodeStepUtil.isChannelStep({ step: aiPiece({ name: 'step_3', actionName: OPENCODE_CHANNEL_ACTION }) })).toBe(false)
+        expect(opencodeStepUtil.isChannelStep({ step: code({ name: 'step_4' }) })).toBe(false)
+    })
+
+    it('lists only the earlier channel steps on the path that leave their channel open', () => {
+        const open = channelStep({ name: 'step_1', waitFor: 'OPEN' })
+        const finish = channelStep({ name: 'step_2', waitFor: 'FINISH_RULE' })
+        const sideBranch = channelStep({ name: 'step_3', waitFor: 'OPEN' })
+        const target = aiPiece({ name: 'step_5', actionName: 'askAi' })
+        const later = channelStep({ name: 'step_6', waitFor: 'OPEN' })
+        open.nextAction = finish
+        finish.nextAction = aiRouter({
+            name: 'step_4',
+            branches: [{ name: 'A', head: sideBranch }, { name: 'Otherwise', head: target }],
+        })
+        target.nextAction = later
+        const version = flowVersion({ next: open })
+
+        expect(opencodeStepUtil.openChannelStepsBefore({ trigger: version.trigger, stepName: 'step_5' }).map((step) => step.name)).toEqual(['step_1'])
+        expect(opencodeStepUtil.leavesChannelOpen({ step: finish })).toBe(false)
+        expect(opencodeStepUtil.leavesChannelOpen({ step: open })).toBe(true)
+    })
+})
+
+function channelStep({ name, waitFor }: { name: string, waitFor: string }): PieceAction {
+    const step = aiPiece({ name, actionName: OPENCODE_CHANNEL_ACTION })
+    return { ...step, settings: { ...step.settings, pieceName: OPENCODE_PIECE_NAME, input: { waitFor } } }
+}
 
 describe('opencodeStepUtil session mode resolution', () => {
     it('takes the step value, then the flow default, then a new session per step', () => {

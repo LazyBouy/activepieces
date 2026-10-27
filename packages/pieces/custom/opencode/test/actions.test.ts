@@ -1,6 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { ApFile } from '@activepieces/pieces-framework';
+import { agentChannelAction } from '../src/lib/actions/agent-channel';
 import { continueSessionAction } from '../src/lib/actions/continue-session';
 import { runAgentAction } from '../src/lib/actions/run-agent';
 import { runCommandAction } from '../src/lib/actions/run-command';
@@ -59,6 +60,7 @@ describe('Run an Agent', () => {
     expect(requests[0].body).toEqual({
       flowId: 'test-flow-id',
       flowRunId: 'test-run-id',
+      stepName: 'test-step',
       waitpointId: 'test-waitpoint-id',
       request: {
         action: 'OPENCODE_RUN_AGENT',
@@ -95,6 +97,7 @@ describe('Run an Agent', () => {
     expect(requests[0].body).toEqual({
       flowId: 'test-flow-id',
       flowRunId: 'test-run-id',
+      stepName: 'test-step',
       request: { action: 'OPENCODE_RUN_AGENT', prompt: 'Hello', session: { kind: 'EXISTING', sessionId: 'ses_9' } },
     });
   });
@@ -156,6 +159,124 @@ describe('Continue a Session', () => {
   });
 });
 
+describe('Channel field', () => {
+  test('Run an Agent, Run a Command and Continue a Session send a trimmed channel and leave out a blank one', async () => {
+    const requests = mockServer({ answer: () => ({ requestId: 'req_1' }) });
+    const agent = contextOf({ propsValue: { prompt: 'x', session: 'NEW', channel: ' iphiflow_ch_1 ' } });
+    const command = contextOf({ propsValue: { command: 'review', session: 'NEW', channel: 'iphiflow_ch_1' } });
+    const next = contextOf({ propsValue: { sessionId: 'ses_7', prompt: 'x', channel: 'iphiflow_ch_1' } });
+    const blank = contextOf({ propsValue: { prompt: 'x', session: 'NEW', channel: '  ' } });
+
+    await runAgentAction.run(agent.context as never);
+    await runCommandAction.run(command.context as never);
+    await continueSessionAction.run(next.context as never);
+    await runAgentAction.run(blank.context as never);
+
+    expect(requests.map((request) => request.body)).toMatchObject([
+      { request: { action: 'OPENCODE_RUN_AGENT', channel: 'iphiflow_ch_1' } },
+      { request: { action: 'OPENCODE_RUN_COMMAND', channel: 'iphiflow_ch_1' } },
+      { request: { action: 'OPENCODE_CONTINUE_SESSION', channel: 'iphiflow_ch_1' } },
+      { request: { action: 'OPENCODE_RUN_AGENT' } },
+    ]);
+    expect(requests[3].body).not.toHaveProperty('request.channel');
+  });
+});
+
+describe('Agent Channel', () => {
+  const PARTICIPANTS = [
+    { namespace: 'iphi-flow', project: 'p0001', agent: 'writer' },
+    { namespace: 'iphi-flow', project: 'p0002', agent: 'critic' },
+  ];
+  const CHANNEL_OUTPUT = {
+    correlationId: 'iphiflow_ch_1',
+    messages: [{ from: 'p0001.writer', to: 'p0002.critic', text: 'Draft ready', at: '2026-10-27T10:00:00.000Z' }],
+    results: { 'p0001.writer': 'Sent', 'p0002.critic': 'Looks good' },
+    finishedBy: 'done',
+    result: { verdict: 'ok' },
+  };
+
+  test('with a finish rule, pauses until the timeout plus a margin and sends the participants and the rule', async () => {
+    const requests = mockServer({ answer: () => ({ requestId: 'req_1' }) });
+    const { context, waitpoints, waited } = contextOf({
+      propsValue: {
+        participants: PARTICIPANTS,
+        waitFor: 'FINISH_RULE',
+        kickoff: ' Write a haiku and get it reviewed ',
+        startWith: 'iphi-flow/p0001/writer',
+        doneWhen: 'iphi-flow/p0002/critic',
+        maxMessages: 20,
+        timeoutMinutes: 10,
+      },
+    });
+    const before = Date.now();
+
+    expect(await agentChannelAction.run(context as never)).toEqual({});
+
+    const resumeAt = new Date(waitpoints[0].resumeDateTime ?? '').getTime();
+    expect(resumeAt).toBeGreaterThanOrEqual(before + 15 * 60 * 1000 - 1000);
+    expect(resumeAt).toBeLessThanOrEqual(Date.now() + 15 * 60 * 1000 + 1000);
+    expect(waited).toEqual(['test-waitpoint-id']);
+    expect(requests[0].body).toEqual({
+      flowId: 'test-flow-id',
+      flowRunId: 'test-run-id',
+      stepName: 'test-step',
+      waitpointId: 'test-waitpoint-id',
+      request: {
+        action: 'OPENCODE_AGENT_CHANNEL',
+        participants: PARTICIPANTS,
+        waitFor: 'FINISH_RULE',
+        kickoff: 'Write a haiku and get it reviewed',
+        startWith: 'iphi-flow/p0001/writer',
+        doneBy: 'iphi-flow/p0002/critic',
+        maxMessages: 20,
+        timeoutMinutes: 10,
+      },
+    });
+  });
+
+  test('defaults to all participants, 50 messages and 30 minutes, and returns the conversation on resume', async () => {
+    const requests = mockServer({ answer: () => ({ requestId: 'req_1' }) });
+    const { context } = contextOf({ propsValue: { participants: PARTICIPANTS, waitFor: 'FINISH_RULE', kickoff: 'Go' } });
+    const done = contextOf({ propsValue: { participants: PARTICIPANTS, waitFor: 'FINISH_RULE', kickoff: 'Go' }, resumePayload: resumeWith({ body: { output: CHANNEL_OUTPUT } }) });
+
+    await agentChannelAction.run(context as never);
+
+    expect(requests[0].body).toMatchObject({ request: { startWith: 'ALL', maxMessages: 50, timeoutMinutes: 30 } });
+    expect(requests[0].body).not.toHaveProperty('request.doneBy');
+    expect(await agentChannelAction.run(done.context as never)).toEqual(CHANNEL_OUTPUT);
+  });
+
+  test('with None, opens the channel in one request and returns its correlation id without pausing', async () => {
+    const opened = { correlationId: 'iphiflow_ch_2', participants: [] };
+    const requests = mockServer({ answer: () => ({ requestId: 'req_1', output: opened }) });
+    const { context, waitpoints } = contextOf({ propsValue: { participants: PARTICIPANTS, waitFor: 'OPEN' } });
+
+    expect(await agentChannelAction.run(context as never)).toEqual(opened);
+
+    expect(waitpoints).toEqual([]);
+    expect(requests[0].body).toEqual({
+      flowId: 'test-flow-id',
+      flowRunId: 'test-run-id',
+      stepName: 'test-step',
+      request: { action: 'OPENCODE_AGENT_CHANNEL', participants: PARTICIPANTS, waitFor: 'OPEN' },
+    });
+  });
+
+  test('checks the participants, kickoff and limits before sending anything', async () => {
+    const requests = mockServer({ answer: () => ({ requestId: 'req_1' }) });
+    const one = contextOf({ propsValue: { participants: [PARTICIPANTS[0]], waitFor: 'OPEN' } });
+    const noKickoff = contextOf({ propsValue: { participants: PARTICIPANTS, waitFor: 'FINISH_RULE', kickoff: ' ' } });
+    const tooMany = contextOf({ propsValue: { participants: PARTICIPANTS, waitFor: 'FINISH_RULE', kickoff: 'Go', maxMessages: 1001 } });
+    const tooLong = contextOf({ propsValue: { participants: PARTICIPANTS, waitFor: 'FINISH_RULE', kickoff: 'Go', timeoutMinutes: 2.5 } });
+
+    await expect(agentChannelAction.run(one.context as never)).rejects.toThrow('Pick at least two participants.');
+    await expect(agentChannelAction.run(noKickoff.context as never)).rejects.toThrow('Write the kickoff message: with a finish rule, it is what starts the conversation.');
+    await expect(agentChannelAction.run(tooMany.context as never)).rejects.toThrow('Max messages must be a whole number from 1 to 1000.');
+    await expect(agentChannelAction.run(tooLong.context as never)).rejects.toThrow('The timeout must be a whole number from 1 to 1440.');
+    expect(requests).toEqual([]);
+  });
+});
+
 describe('Send to Project Inbox', () => {
   const INBOX_OUTPUT = { messageId: 'msg_1', correlationId: 'iphiflow_1', status: 'routed', routedTo: ['writer'] };
 
@@ -171,6 +292,7 @@ describe('Send to Project Inbox', () => {
     expect(requests[0].body).toEqual({
       flowId: 'test-flow-id',
       flowRunId: 'test-run-id',
+      stepName: 'test-step',
       request: { action: 'OPENCODE_SEND_TO_INBOX', namespace: 'iphi-flow', project: 'p0001', message: 'New order 7', to: { type: 'agent', id: 'writer' }, wait: false, timeoutMinutes: 10 },
     });
   });

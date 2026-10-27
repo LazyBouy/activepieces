@@ -10,6 +10,7 @@ import { AppSystemProp } from '../helper/system/system-props'
 import { waitpointService } from '../waitpoints/waitpoint-service'
 import { WaitpointStatus } from '../waitpoints/waitpoint-types'
 import { opencodeAsks } from './opencode-asks'
+import { opencodeChannels } from './opencode-channels'
 import { CompletionResult, opencodeCompletion } from './opencode-completion'
 import { opencodeConnectionService } from './opencode-connection.service'
 import { opencodeDispatch } from './opencode-dispatch'
@@ -28,7 +29,8 @@ export const opencodeSweep = (log: FastifyBaseLogger) => ({
         released.forEach((stepId) => opencodeDispatch(log).dispatchLater({ stepId }))
         const queued = await this.retryQueued()
         await this.reconcileAsks()
-        return { expired, resent, checked, redelivered, released: released.length, queued }
+        const channelsClosed = await opencodeChannels(log).closeEnded()
+        return { expired, resent, checked, redelivered, released: released.length, queued, channelsClosed }
     },
 
     async expireAsks(): Promise<number> {
@@ -162,4 +164,5 @@ export type OpencodeSweepSummary = {
     redelivered: number
     released: number
     queued: number
+    channelsClosed: number
 }

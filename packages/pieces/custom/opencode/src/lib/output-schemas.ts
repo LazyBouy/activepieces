@@ -74,9 +74,42 @@ const sendToInbox: OutputSchema = {
   ],
 };
 
+const agentChannel: OutputSchema = {
+  fields: [
+    { key: 'correlationId', label: 'Correlation Id' },
+    { key: 'finishedBy', label: 'Finished By' },
+    { key: 'result', label: 'Result' },
+    { key: 'results', label: 'Last Answers', dynamicKey: true },
+    {
+      key: 'messages',
+      label: 'Messages',
+      labelKey: 'from',
+      listItems: [
+        { key: 'from', label: 'From' },
+        { key: 'to', label: 'To' },
+        { key: 'text', label: 'Text' },
+        { key: 'at', label: 'At', format: 'datetime' },
+      ],
+    },
+    {
+      key: 'participants',
+      label: 'Participants',
+      labelKey: 'key',
+      listItems: [
+        { key: 'key', label: 'Participant' },
+        { key: 'agent', label: 'Agent' },
+        { key: 'project', label: 'Project' },
+        { key: 'sessionId', label: 'Session Id' },
+        { key: 'adminPanelUrl', label: 'Admin Panel Link', format: 'url' },
+      ],
+    },
+  ],
+};
+
 export const outputSchemas = {
   runAgent,
   runCommand,
   continueSession,
   sendToInbox,
+  agentChannel,
 };

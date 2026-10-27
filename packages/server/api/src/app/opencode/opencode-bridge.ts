@@ -7,6 +7,7 @@ import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
 import { rejectedPromiseHandler } from '../helper/promise-handler'
 import { opencodeAsks } from './opencode-asks'
+import { opencodeChannels } from './opencode-channels'
 import { opencodeCompletion } from './opencode-completion'
 import { OpencodeConnectionEntity } from './opencode-connection.entity'
 import { opencodeConnectionService } from './opencode-connection.service'
@@ -100,11 +101,13 @@ export const opencodeBridge = (log: FastifyBaseLogger) => ({
             case 'session.idle':
                 await completeSession({ platformId, sessionId: payload.properties.sessionID, log })
                 await completeInboxWaits({ platformId, log })
+                await completeChannels({ platformId, sessionId: payload.properties.sessionID, log })
                 return
             case 'session.status':
                 if (payload.properties.status.type === IDLE) {
                     await completeSession({ platformId, sessionId: payload.properties.sessionID, log })
                     await completeInboxWaits({ platformId, log })
+                    await completeChannels({ platformId, sessionId: payload.properties.sessionID, log })
                 }
                 return
             case 'session.error':
@@ -152,6 +155,18 @@ async function completeSession({ platformId, sessionId, log }: SessionEventParam
     for (const step of steps) {
         const { nextStepId } = await opencodeCompletion(log).complete({ stepId: step.id })
         opencodeDispatch(log).dispatchLater({ stepId: nextStepId })
+    }
+}
+
+async function completeChannels({ platformId, sessionId, log }: SessionEventParams): Promise<void> {
+    const stepIds = await opencodeChannels(log).stepsWaitingOn({ platformId, sessionId })
+    for (const stepId of stepIds) {
+        const { data: result, error } = await tryCatch(() => opencodeCompletion(log).complete({ stepId }))
+        if (isNil(result)) {
+            log.warn({ opencodeStep: { id: stepId }, error }, '[opencodeBridge] Could not check an agent channel')
+            continue
+        }
+        opencodeDispatch(log).dispatchLater({ stepId: result.nextStepId })
     }
 }
 

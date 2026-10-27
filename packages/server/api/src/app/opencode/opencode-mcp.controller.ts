@@ -10,8 +10,10 @@ import { z } from 'zod'
 import { repoFactory } from '../core/db/repo-factory'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { OPENCODE_RUN_AGENT } from './opencode-agent-prompt'
+import { opencodeChannels } from './opencode-channels'
 import { opencodeMcpToken } from './opencode-mcp-token'
 import { OpencodeMcpTool, opencodeMcpTools } from './opencode-mcp-tools'
+import { OPENCODE_PIECE_ACTION } from './opencode-piece-steps'
 import { OpencodeStepEntity, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
 import { opencodeStoredRequest } from './opencode-stored-request'
 import { opencodeToolGuards } from './opencode-tool-guards'
@@ -42,16 +44,18 @@ export const opencodeMcpController: FastifyPluginAsyncZod = async (app) => {
             return refuse({ reply })
         }
         const stored = opencodeStoredRequest.parse(step.request)
-        if (isNil(stored) || stored.request.action !== OPENCODE_RUN_AGENT) {
+        if (isNil(stored) || (stored.request.action !== OPENCODE_RUN_AGENT && stored.request.action !== OPENCODE_PIECE_ACTION.AGENT_CHANNEL)) {
             return refuse({ reply })
         }
-        const tools = await opencodeMcpTools(request.log).build({
-            stepId: step.id,
-            projectId: step.projectId,
-            platformId: step.platformId,
-            tools: stored.request.tools ?? [],
-            withSchemas: listsTools({ body: request.body }),
-        })
+        const tools = stored.request.action === OPENCODE_PIECE_ACTION.AGENT_CHANNEL
+            ? [opencodeChannels(request.log).finishTool({ stepId: step.id })]
+            : await opencodeMcpTools(request.log).build({
+                stepId: step.id,
+                projectId: step.projectId,
+                platformId: step.platformId,
+                tools: stored.request.tools ?? [],
+                withSchemas: listsTools({ body: request.body }),
+            })
         const server = buildServer({ step, tools, log: request.log })
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
         reply.raw.on('close', () => {

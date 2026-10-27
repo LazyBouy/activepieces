@@ -41,6 +41,26 @@ export const opencodeMcpBridge = (log: FastifyBaseLogger) => ({
         log.info({ opencodeStep: { id: step.id }, flowRun: { id: step.flowRunId } }, '[opencodeMcpBridge] Gave the agent session its step tools')
     },
 
+    async attachChannel({ step, client, directory }: ChannelServerParams): Promise<void> {
+        const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
+        const token = await opencodeMcpToken.sign({ stepId: step.id, projectId: step.projectId, platformId: step.platformId })
+        await addServer({
+            client,
+            directory,
+            log,
+            name: opencodeMcpNames.serverName({ stepId: step.id }),
+            config: { type: 'remote', url: endpointOf({ callbackUrl: connection.callbackUrl }), headers: { Authorization: `Bearer ${token}` }, oauth: false, enabled: true },
+            failure: () => opencodeErrors.callbackUnreachable({ url: connection.callbackUrl }),
+        })
+    },
+
+    async detachChannel({ step, client, directory }: ChannelServerParams): Promise<void> {
+        const { error } = await tryCatch(() => client.mcp.disconnect({ name: opencodeMcpNames.serverName({ stepId: step.id }), directory }))
+        if (!isNil(error)) {
+            log.warn({ opencodeStep: { id: step.id }, error }, '[opencodeMcpBridge] Could not disconnect a channel\'s MCP server')
+        }
+    },
+
     async detach({ step, client, tools }: AttachParams): Promise<void> {
         const names = [
             ...(opencodeMcpNames.bridgedTools({ tools }).length > 0 ? [opencodeMcpNames.serverName({ stepId: step.id })] : []),
@@ -101,6 +121,12 @@ type AttachParams = {
     step: OpencodeStepRow
     client: OpencodeClient
     tools: AgentTool[]
+}
+
+type ChannelServerParams = {
+    step: Pick<OpencodeStepRow, 'id' | 'platformId' | 'projectId'>
+    client: OpencodeClient
+    directory: string
 }
 
 type AddServerParams = {

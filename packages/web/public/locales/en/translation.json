@@ -3645,5 +3645,22 @@
   "Allowlisted projects": "Allowlisted projects",
   "Nothing from OpenCode is allowlisted yet.": "Nothing from OpenCode is allowlisted yet.",
   "Providers and models": "Providers and models",
-  "No provider is connected in OpenCode.": "No provider is connected in OpenCode."
+  "No provider is connected in OpenCode.": "No provider is connected in OpenCode.",
+  "Agent channel": "Agent channel",
+  "Open": "Open",
+  "Closed": "Closed",
+  "Could not read the conversation from OpenCode: {reason}": "Could not read the conversation from OpenCode: {reason}",
+  "Participants": "Participants",
+  "Messages ({count})": "Messages ({count})",
+  "No messages yet.": "No messages yet.",
+  "No messages were sent.": "No messages were sent.",
+  "{from} to {to}": "{from} to {to}",
+  "Ended when the finishing agent called finish_channel.": "Ended when the finishing agent called finish_channel.",
+  "Ended at the message limit.": "Ended at the message limit.",
+  "Ended at the timeout.": "Ended at the timeout.",
+  "Closed when the run ended.": "Closed when the run ended.",
+  "Closed because the step failed.": "Closed because the step failed.",
+  "Ended: {reason}": "Ended: {reason}",
+  "Joins the channel an earlier Agent Channel step left open, so this step's agent can message its participants.": "Joins the channel an earlier Agent Channel step left open, so this step's agent can message its participants.",
+  "That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another.": "That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another."
 }

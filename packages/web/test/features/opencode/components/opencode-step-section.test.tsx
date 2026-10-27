@@ -13,7 +13,10 @@ import { useForm } from 'react-hook-form';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Form } from '@/components/ui/form';
-import { OpencodeStepSection } from '@/features/opencode/components/opencode-step-section';
+import {
+  OpencodeChannelStepChoice,
+  OpencodeStepSection,
+} from '@/features/opencode/components/opencode-step-section';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -153,12 +156,62 @@ describe('OpenCode section of an AI step', () => {
     );
     expect(optionsOf('settings.opencode.namespace')).toContain('vault');
   });
+
+  it('hides the channel picker when no earlier step leaves a channel open', async () => {
+    mocks.options.mockResolvedValue(OPTIONS);
+    mocks.agents.mockResolvedValue(AGENTS);
+
+    await renderSection({ opencode: undefined });
+
+    expect(text()).not.toContain('Agent channel');
+    expect(container!.querySelectorAll('select')).toHaveLength(4);
+  });
+
+  it('joins an earlier open channel and leaves it with None', async () => {
+    mocks.options.mockResolvedValue(OPTIONS);
+    mocks.agents.mockResolvedValue(AGENTS);
+    await renderSection({
+      opencode: undefined,
+      channelSteps: [{ name: 'step_2', displayName: 'Writers room' }],
+    });
+
+    expect(text()).toContain('Agent channel');
+    expect(optionsOf('settings.opencode.channel')).toEqual([
+      '__none__',
+      'step_2',
+    ]);
+
+    await choose({ name: 'settings.opencode.channel', value: 'step_2' });
+
+    expect(latest).toEqual({ channel: 'step_2' });
+
+    await choose({ name: 'settings.opencode.channel', value: '__none__' });
+
+    expect(latest).toBeUndefined();
+  });
+
+  it('keeps and warns about a saved channel step that no longer fits', async () => {
+    mocks.options.mockResolvedValue(OPTIONS);
+    mocks.agents.mockResolvedValue(AGENTS);
+
+    await renderSection({ opencode: { channel: 'step_9' }, channelSteps: [] });
+
+    expect(optionsOf('settings.opencode.channel')).toEqual([
+      '__none__',
+      'step_9',
+    ]);
+    expect(text()).toContain(
+      'That Agent Channel step is not before this step on its path',
+    );
+  });
 });
 
 async function renderSection({
   opencode,
+  channelSteps = [],
 }: {
   opencode: OpencodeStepSettings | undefined;
+  channelSteps?: OpencodeChannelStepChoice[];
 }): Promise<void> {
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -169,14 +222,20 @@ async function renderSection({
   await act(async () => {
     root!.render(
       <QueryClientProvider client={queryClient}>
-        <Harness opencode={opencode} />
+        <Harness opencode={opencode} channelSteps={channelSteps} />
       </QueryClientProvider>,
     );
   });
   await flush();
 }
 
-function Harness({ opencode }: { opencode: OpencodeStepSettings | undefined }) {
+function Harness({
+  opencode,
+  channelSteps,
+}: {
+  opencode: OpencodeStepSettings | undefined;
+  channelSteps: OpencodeChannelStepChoice[];
+}) {
   const form = useForm<HarnessForm>({
     defaultValues: { settings: { opencode } },
   });
@@ -188,6 +247,7 @@ function Harness({ opencode }: { opencode: OpencodeStepSettings | undefined }) {
           projectId="project-1"
           readonly={false}
           flowSessionMode="ONE_PER_RUN"
+          channelSteps={channelSteps}
         />
       </form>
     </Form>
@@ -242,6 +302,7 @@ const FIELD_ORDER = [
   'settings.opencode.namespace',
   'settings.opencode.project',
   'settings.opencode.agent',
+  'settings.opencode.channel',
 ];
 
 const OPTIONS: OpencodeProjectOptions = {

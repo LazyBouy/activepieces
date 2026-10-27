@@ -25,6 +25,21 @@ export const opencodePieceOptions = (log: FastifyBaseLogger) => ({
         }
     },
 
+    async participants({ platformId, projectId }: { platformId: string, projectId: string }): Promise<OpencodeParticipantList> {
+        const options = await opencodeOptionsService(log).options({ platformId, projectId })
+        if (!options.enabled) {
+            return { participants: [], error: opencodeErrors.routingOff() }
+        }
+        const client = await opencodeConnectionService(log).client({ platformId })
+        const listed = await Promise.all(options.namespaces.flatMap((namespace) => namespace.projects.map(async (project) => {
+            const { data: result } = await tryCatch(() => client.operator.agent.list({ directory: project.folder }, { throwOnError: true }))
+            return (result?.data ?? [])
+                .filter((agent) => agent.mode !== SUBAGENT && agent.hidden !== true && !agent.disabled)
+                .map((agent) => ({ namespace: namespace.id, namespaceName: namespace.name, project: project.id, projectName: project.name, agent: agent.name }))
+        })))
+        return { participants: listed.flat(), ...(isNil(options.error) ? {} : { error: options.error }) }
+    },
+
     async groups({ platformId, projectId, namespace, project }: ListParams): Promise<OpencodeGroupList> {
         const located = await opencodeOptionsService(log).locate({ platformId, projectId, namespace, project })
         if (located.kind !== 'found') {
@@ -41,6 +56,20 @@ export const opencodePieceOptions = (log: FastifyBaseLogger) => ({
 })
 
 const COMMAND_SOURCE = 'command'
+
+const SUBAGENT = 'subagent'
+
+export const OpencodeParticipantList = z.object({
+    participants: z.array(z.object({
+        namespace: z.string(),
+        namespaceName: z.string(),
+        project: z.string(),
+        projectName: z.string(),
+        agent: z.string(),
+    })),
+    error: z.string().optional(),
+})
+export type OpencodeParticipantList = z.infer<typeof OpencodeParticipantList>
 
 export const OpencodeCommandList = z.object({
     commands: z.array(z.object({

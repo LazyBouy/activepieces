@@ -1,4 +1,5 @@
 import { createPiece, PieceAuth, PieceCategory } from '@activepieces/pieces-framework';
+import { agentChannelAction } from './lib/actions/agent-channel';
 import { continueSessionAction } from './lib/actions/continue-session';
 import { runAgentAction } from './lib/actions/run-agent';
 import { runCommandAction } from './lib/actions/run-command';
@@ -12,7 +13,7 @@ export const opencode = createPiece({
   logoUrl: opencodeLogo,
   auth: PieceAuth.None(),
   categories: [PieceCategory.ARTIFICIAL_INTELLIGENCE],
-  actions: [runAgentAction, runCommandAction, sendToInboxAction, continueSessionAction],
+  actions: [runAgentAction, runCommandAction, sendToInboxAction, continueSessionAction, agentChannelAction],
   authors: ['LazyBouy'],
   triggers: [],
 });

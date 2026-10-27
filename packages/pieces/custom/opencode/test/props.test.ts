@@ -42,6 +42,13 @@ function serve(): ReturnType<typeof mockServer> {
           return { providers: [{ id: 'openrouter', name: 'OpenRouter', models: [{ id: 'qwen/qwen3-coder', name: 'Qwen3 Coder' }] }] };
         case '/groups':
           return { groups: [{ id: 'g1', name: 'Writers' }] };
+        case '/participants':
+          return {
+            participants: [
+              { namespace: 'iphi-flow', namespaceName: 'iphi-flow', project: 'p0001', projectName: 'Sales', agent: 'writer' },
+              { namespace: 'iphi-flow', namespaceName: 'iphi-flow', project: 'p0002', projectName: 'Legal', agent: 'critic' },
+            ],
+          };
         default:
           throw new Error(`unexpected ${path}`);
       }
@@ -116,5 +123,37 @@ describe('OpenCode piece dropdowns', () => {
     expect(session['id']).toMatchObject({ displayName: 'Session id' });
     expect(none).toEqual({});
     expect(requests.map((request) => request.queryParams)).toEqual([{ namespace: 'crew', project: 'c0001' }, { namespace: 'crew', project: 'c0001' }]);
+  });
+
+  test('participants list the allowlisted agents, and Start with and Done when list only the picked ones', async () => {
+    serve();
+    const picked = [
+      { namespace: 'iphi-flow', project: 'p0002', agent: 'critic' },
+      { namespace: 'iphi-flow', project: 'p0009', agent: 'gone' },
+    ];
+
+    const participants = await opencodeProps.participants.options({}, ctx);
+    const startWith = await opencodeProps.startWith.options({ participants: picked }, ctx);
+    const doneWhen = await opencodeProps.doneWhen.options({ participants: picked }, ctx);
+    const nothingPicked = await opencodeProps.doneWhen.options({}, ctx);
+
+    expect(participants).toEqual({
+      disabled: false,
+      options: [
+        { label: 'iphi-flow / Sales · writer', value: { namespace: 'iphi-flow', project: 'p0001', agent: 'writer' } },
+        { label: 'iphi-flow / Legal · critic', value: { namespace: 'iphi-flow', project: 'p0002', agent: 'critic' } },
+      ],
+      placeholder: 'Pick at least two agents',
+    });
+    expect(startWith.options).toEqual([
+      { label: 'All participants', value: 'ALL' },
+      { label: 'iphi-flow / Legal · critic', value: 'iphi-flow/p0002/critic' },
+      { label: 'p0009 · gone', value: 'iphi-flow/p0009/gone' },
+    ]);
+    expect(doneWhen.options).toEqual([
+      { label: 'iphi-flow / Legal · critic', value: 'iphi-flow/p0002/critic' },
+      { label: 'p0009 · gone', value: 'iphi-flow/p0009/gone' },
+    ]);
+    expect(nothingPicked).toEqual({ disabled: true, options: [], placeholder: 'Pick the participants first' });
   });
 });

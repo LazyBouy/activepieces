@@ -34,6 +34,7 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         groups: {},
         inboxMessages: [],
         nextInboxId: 1,
+        inboxRules: {},
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
@@ -54,6 +55,7 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
             return id
         },
         emit: (payload) => emit({ state, payload }),
+        ping: (params) => ping({ state, ...params }),
         close: async () => {
             state.eventClients.forEach((client) => client.end())
             server.closeAllConnections()
@@ -93,6 +95,27 @@ function answer({ state, sessionId, text = '', structured, error, finish = 'stop
         },
         parts: parts ?? [{ id: `${id}_p1`, sessionID: sessionId, messageID: id, type: 'text', text }],
     })
+}
+
+function ping({ state, project, agent, to, text, correlationID }: PingParams & { state: OpencodeStubState }): StubInboxMessage {
+    const message: StubInboxMessage = {
+        id: `msg_${String(state.nextInboxId++).padStart(4, '0')}`,
+        project,
+        folder: state.projects.find((candidate) => candidate.id === project)?.key ?? '',
+        from: { kind: 'agent', project, agent },
+        to,
+        body: { type: 'text', text },
+        priority: 'normal',
+        steer: false,
+        correlationID,
+        hops: 1,
+        status: 'delivered',
+        inbox: project,
+        createdAt: Date.now() + state.nextInboxId,
+        trail: [],
+    }
+    state.inboxMessages.push(message)
+    return message
 }
 
 function emit({ state, payload }: { state: OpencodeStubState, payload: Record<string, unknown> }): void {
@@ -229,6 +252,15 @@ function routeInbox({ state, method, url, json, res }: Omit<SessionRouteParams, 
     if (method === 'GET' && record !== null) {
         const found = state.inboxMessages.find((message) => message.id === record[1])
         send({ res, status: found === undefined ? 404 : 200, value: found ?? { name: 'OperatorProjectInboxNotFoundError', data: { message: `No message ${record[1]}` } } })
+        return true
+    }
+    const rules = url.pathname.match(/^\/operator\/project-inbox\/([^/]+)\/rules$/)
+    if (rules !== null) {
+        const project = rules[1]
+        if (method === 'PUT') {
+            state.inboxRules[project] = Array.isArray(json['rules']) ? json['rules'] : []
+        }
+        send({ res, value: { rules: state.inboxRules[project] ?? [REPLIES_PRESET], unmatched: 'dead-letter' } })
         return true
     }
     const conversation = url.pathname.match(/^\/operator\/conversation\/([^/]+)$/)
@@ -664,8 +696,8 @@ type StubInboxMessage = {
     id: string
     project: string
     folder: string
-    from: { kind: string, project: string }
-    to: { type: string, id?: string }
+    from: { kind: string, project: string, agent?: string }
+    to: { type: string, id?: string, project?: string }
     body: { type: string, text: string }
     priority: string
     steer: boolean
@@ -691,7 +723,17 @@ type DeliverCopyParams = {
     sessionId: string | undefined
 }
 
+type PingParams = {
+    project: string
+    agent: string
+    to: { type: string, id: string, project?: string }
+    text: string
+    correlationID: string
+}
+
 const InboxTarget = z.object({ type: z.enum(['agent', 'session', 'group']), id: z.string() })
+
+const REPLIES_PRESET = { id: 'replies', name: 'Replies go to their sender', enabled: true, preset: 'replies', match: { reply: true }, action: { kind: 'reply' } }
 
 export type OpencodeStubState = {
     namespaces: StubNamespace[]
@@ -724,6 +766,7 @@ export type OpencodeStubState = {
     groups: Record<string, { id: string, name: string, members: string[] }[]>
     inboxMessages: StubInboxMessage[]
     nextInboxId: number
+    inboxRules: Record<string, unknown[]>
 }
 
 export type OpencodeStub = {
@@ -733,5 +776,6 @@ export type OpencodeStub = {
     answer: (params: AnswerParams) => void
     createSession: (params: { directory: string, parentId?: string }) => Promise<string>
     emit: (payload: Record<string, unknown>) => void
+    ping: (params: PingParams) => StubInboxMessage
     close: () => Promise<void>
 }
