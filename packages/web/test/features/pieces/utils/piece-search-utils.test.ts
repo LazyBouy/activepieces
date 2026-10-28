@@ -479,6 +479,57 @@ describe('piece category map, trigger mode', () => {
   });
 });
 
+describe('official vendor chat actions while AI runs on OpenCode (OCI-31)', () => {
+  it('hides only the chat and text actions of the official vendor pieces', () => {
+    const openai = actionPiece({
+      slug: 'openai',
+      displayName: 'OpenAI',
+      actions: [
+        action('ask_chatgpt', 'Ask ChatGPT'),
+        action('generate_image', 'Generate Image'),
+        action('vision_prompt', 'Vision Prompt'),
+      ],
+    });
+    const slack = actionPiece({
+      slug: 'slack',
+      displayName: 'Slack',
+      actions: [action('ask_chatgpt', 'Same name, other piece')],
+    });
+    const visible = pieceSearchUtils.withoutOfficialVendorChatActions({
+      steps: [builtInStep(FlowActionType.CODE), openai, slack],
+    });
+    expect(
+      visible.map((step) =>
+        step.type === FlowActionType.PIECE
+          ? (step.suggestedActions ?? []).map((item) => item.name)
+          : step.type,
+      ),
+    ).toEqual([FlowActionType.CODE, ['generate_image'], ['ask_chatgpt']]);
+  });
+
+  it('hides a catalog piece only when all its actions are chat actions', () => {
+    const summary = (name: string, actions: number) =>
+      ({ name, actions }) as Parameters<
+        typeof pieceSearchUtils.isHiddenCatalogPiece
+      >[0]['piece'];
+    expect(
+      pieceSearchUtils.isHiddenCatalogPiece({
+        piece: summary(pieceName('perplexity-ai'), 1),
+      }),
+    ).toBe(true);
+    expect(
+      pieceSearchUtils.isHiddenCatalogPiece({
+        piece: summary(pieceName('azure-openai'), 2),
+      }),
+    ).toBe(false);
+    expect(
+      pieceSearchUtils.isHiddenCatalogPiece({
+        piece: summary(pieceName('slack'), 1),
+      }),
+    ).toBe(false);
+  });
+});
+
 function sectionsFor({
   category,
   pinnedPieceNames = [],

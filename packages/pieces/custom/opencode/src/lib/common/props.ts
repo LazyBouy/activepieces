@@ -1,5 +1,5 @@
 import { DropdownState, InputPropertyMap, isNil, PieceAuth, Property } from '@activepieces/pieces-framework';
-import { opencodeServer, ServerAccess } from './server';
+import { opencodeServer, ServerAccess } from '@iphi-flow/opencode-pieces-common';
 
 async function namespaceOptions({ server }: { server: ServerAccess }): Promise<DropdownState<string>> {
   const options = await opencodeServer.read<ProjectOptions>({ server, path: '/options' });

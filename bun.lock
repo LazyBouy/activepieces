@@ -122,7 +122,7 @@
     },
     "packages/core/execution": {
       "name": "@activepieces/core-execution",
-      "version": "0.30.0",
+      "version": "0.31.0",
       "dependencies": {
         "@activepieces/core-piece-types": "workspace:*",
         "@activepieces/core-utils": "workspace:*",
@@ -10828,6 +10828,18 @@
         "vitest": "3.2.6",
       },
     },
+    "packages/pieces/custom/common": {
+      "name": "@iphi-flow/opencode-pieces-common",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
     "packages/pieces/custom/gzip": {
       "name": "@iphi-flow/piece-gzip",
       "version": "0.1.0",
@@ -10884,6 +10896,137 @@
       "dependencies": {
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-azure-openai": {
+      "name": "@iphi-flow/piece-opencode-azure-openai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-claude": {
+      "name": "@iphi-flow/piece-opencode-claude",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-deepseek": {
+      "name": "@iphi-flow/piece-opencode-deepseek",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-google-gemini": {
+      "name": "@iphi-flow/piece-opencode-google-gemini",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-google-vertexai": {
+      "name": "@iphi-flow/piece-opencode-google-vertexai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-groq": {
+      "name": "@iphi-flow/piece-opencode-groq",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-localai": {
+      "name": "@iphi-flow/piece-opencode-localai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-mistral-ai": {
+      "name": "@iphi-flow/piece-opencode-mistral-ai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-openai": {
+      "name": "@iphi-flow/piece-opencode-openai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
+      },
+      "devDependencies": {
+        "tslib": "2.6.2",
+        "vitest": "3.2.6",
+      },
+    },
+    "packages/pieces/custom/opencode-perplexity-ai": {
+      "name": "@iphi-flow/piece-opencode-perplexity-ai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@activepieces/pieces-common": "workspace:*",
+        "@activepieces/pieces-framework": "workspace:*",
+        "@iphi-flow/opencode-pieces-common": "workspace:*",
       },
       "devDependencies": {
         "tslib": "2.6.2",
@@ -10949,7 +11092,7 @@
         "@fastify/static": "10.1.2",
         "@fastify/swagger": "9.5.1",
         "@modelcontextprotocol/sdk": "1.27.1",
-        "@opencode-ai/sdk": "file:../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-5187d0e487-fa1bae55.tgz",
+        "@opencode-ai/sdk": "file:../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-52e152b6fc-34a1552a.tgz",
         "@openrouter/ai-sdk-provider": "3.0.0",
         "@openrouter/sdk": "0.2.9",
         "@sentry/node": "7.120.0",
@@ -13672,6 +13815,8 @@
 
     "@ioredis/commands": ["@ioredis/commands@1.7.0", "", {}, "sha512-5E3KP12g1Po3xMdaym6N3VBibWAH/vv7XxGl8M20KQyPfZWB7sAhLb90+9IX/WJWFHuRFai5caz+DXKQbLI51g=="],
 
+    "@iphi-flow/opencode-pieces-common": ["@iphi-flow/opencode-pieces-common@workspace:packages/pieces/custom/common"],
+
     "@iphi-flow/piece-gzip": ["@iphi-flow/piece-gzip@workspace:packages/pieces/custom/gzip"],
 
     "@iphi-flow/piece-json-web-tokens": ["@iphi-flow/piece-json-web-tokens@workspace:packages/pieces/custom/json-web-tokens"],
@@ -13681,6 +13826,26 @@
     "@iphi-flow/piece-one-time-passwords": ["@iphi-flow/piece-one-time-passwords@workspace:packages/pieces/custom/one-time-passwords"],
 
     "@iphi-flow/piece-opencode": ["@iphi-flow/piece-opencode@workspace:packages/pieces/custom/opencode"],
+
+    "@iphi-flow/piece-opencode-azure-openai": ["@iphi-flow/piece-opencode-azure-openai@workspace:packages/pieces/custom/opencode-azure-openai"],
+
+    "@iphi-flow/piece-opencode-claude": ["@iphi-flow/piece-opencode-claude@workspace:packages/pieces/custom/opencode-claude"],
+
+    "@iphi-flow/piece-opencode-deepseek": ["@iphi-flow/piece-opencode-deepseek@workspace:packages/pieces/custom/opencode-deepseek"],
+
+    "@iphi-flow/piece-opencode-google-gemini": ["@iphi-flow/piece-opencode-google-gemini@workspace:packages/pieces/custom/opencode-google-gemini"],
+
+    "@iphi-flow/piece-opencode-google-vertexai": ["@iphi-flow/piece-opencode-google-vertexai@workspace:packages/pieces/custom/opencode-google-vertexai"],
+
+    "@iphi-flow/piece-opencode-groq": ["@iphi-flow/piece-opencode-groq@workspace:packages/pieces/custom/opencode-groq"],
+
+    "@iphi-flow/piece-opencode-localai": ["@iphi-flow/piece-opencode-localai@workspace:packages/pieces/custom/opencode-localai"],
+
+    "@iphi-flow/piece-opencode-mistral-ai": ["@iphi-flow/piece-opencode-mistral-ai@workspace:packages/pieces/custom/opencode-mistral-ai"],
+
+    "@iphi-flow/piece-opencode-openai": ["@iphi-flow/piece-opencode-openai@workspace:packages/pieces/custom/opencode-openai"],
+
+    "@iphi-flow/piece-opencode-perplexity-ai": ["@iphi-flow/piece-opencode-perplexity-ai@workspace:packages/pieces/custom/opencode-perplexity-ai"],
 
     "@isaacs/cliui": ["@isaacs/cliui@8.0.2", "", { "dependencies": { "string-width": "^5.1.2", "string-width-cjs": "npm:string-width@^4.2.0", "strip-ansi": "^7.0.1", "strip-ansi-cjs": "npm:strip-ansi@^6.0.1", "wrap-ansi": "^8.1.0", "wrap-ansi-cjs": "npm:wrap-ansi@^7.0.0" } }, "sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA=="],
 
@@ -13876,7 +14041,7 @@
 
     "@onfleet/node-onfleet": ["@onfleet/node-onfleet@1.3.3", "", { "dependencies": { "bottleneck": "^2.19.5", "node-fetch": "^2.6.7" } }, "sha512-0pcg+J9pdNEMAt/GYq96l4rmBsrsDwnTCWrjZhRCKmTlZq0QHBN/8u8smR7RPubg+DsMc5MOSPXXoLsfn03YIg=="],
 
-    "@opencode-ai/sdk": ["@opencode-ai/sdk@../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-5187d0e487-fa1bae55.tgz", {}, "sha512-W9k05mG9/tnJ3R/jwz0dJOp6K2DFBMM+5fRatxP4ByJU5WcOqUWuhYkTCSH6ucf3McqUEDnowIDtJj101TKH0g=="],
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@../../vendor/opencode-sdk/opencode-ai-sdk-1.19.4-iphi-52e152b6fc-34a1552a.tgz", {}, "sha512-9AVxGYFgy6V84yyIG68uH2s1/Fx/zz9NQPRF7s/y9S+B+ZSAATMGzBpdihb2rPGShTt1VfePzEEfxr7RKJ55ng=="],
 
     "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@3.0.0", "", { "peerDependencies": { "ai": "^7.0.0", "zod": "^3.25.76 || ^4.1.8" } }, "sha512-m9XTSWoODH2RM5OsZpaGiN7QRR8cdP5paBWq699Tu3JVmGPBKT8xF8XwV0ZBVVsjikD/JgWfak4VSsTR4wAVbg=="],
 

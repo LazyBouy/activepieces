@@ -1,0 +1,21 @@
+{
+  "LocalAI (via OpenCode)": "LocalAI (via OpenCode)",
+  "Ask models on your own LocalAI server through OpenCode.": "Ask models on your own LocalAI server through OpenCode.",
+  "Ask LocalAI": "Ask LocalAI",
+  "Ask LocalAI anything you want!": "Ask LocalAI anything you want!",
+  "Model": "Model",
+  "Question": "Question",
+  "Temperature": "Temperature",
+  "Maximum Tokens": "Maximum Tokens",
+  "Top P": "Top P",
+  "Frequency penalty": "Frequency penalty",
+  "Presence penalty": "Presence penalty",
+  "Roles": "Roles",
+  "The chat model on your LocalAI server that will write the answer, as OpenCode's localai provider lists it.": "The chat model on your LocalAI server that will write the answer, as OpenCode's localai provider lists it.",
+  "Higher is more random, lower is more focused. Defaults to 0.9.": "Higher is more random, lower is more focused. Defaults to 0.9.",
+  "Longest answer to generate, in tokens. Defaults to 2048.": "Longest answer to generate, in tokens. Defaults to 2048.",
+  "Nucleus sampling, from 0 to 1. Defaults to 1.": "Nucleus sampling, from 0 to 1. Defaults to 1.",
+  "From -2 to 2. Higher repeats lines less. Defaults to 0.": "From -2 to 2. Higher repeats lines less. Defaults to 0.",
+  "From -2 to 2. Higher moves to new topics. Defaults to 0.6.": "From -2 to 2. Higher moves to new topics. Defaults to 0.6.",
+  "Messages sent before the question, each with a role and content.": "Messages sent before the question, each with a role and content."
+}

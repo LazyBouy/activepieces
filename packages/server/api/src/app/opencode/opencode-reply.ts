@@ -33,7 +33,7 @@ async function stateOf({ client, sessionId, messageId, directory, messages }: Re
         return { kind: 'pending' }
     }
     if (!isNil(last.info.error)) {
-        return { kind: 'done', reply: { text: '', structured: undefined, error: opencodeErrors.describe({ error: last.info.error }) }, summary: summaryOf({ replies }), replies }
+        return { kind: 'done', reply: { text: '', structured: undefined, error: opencodeErrors.describe({ error: last.info.error }) }, summary: summaryOf({ replies }), replies, messages }
     }
     if (isNil(last.info.time.completed)) {
         return { kind: 'pending' }
@@ -46,6 +46,7 @@ async function stateOf({ client, sessionId, messageId, directory, messages }: Re
         reply: { text: textOf({ parts: last.parts }), structured: last.info.structured },
         summary: summaryOf({ replies }),
         replies,
+        messages,
     }
 }
 
@@ -124,7 +125,7 @@ export type ReplyState =
     | { kind: 'pending' }
     | { kind: 'gone' }
     | { kind: 'not-sent' }
-    | { kind: 'done', reply: OpencodeReply, summary: ReplySummary, replies: OpencodeReplyMessage[] }
+    | { kind: 'done', reply: OpencodeReply, summary: ReplySummary, replies: OpencodeReplyMessage[], messages: SessionMessage[] }
 
 type ReadParams = {
     client: OpencodeClient

@@ -24,6 +24,7 @@ import { opencodeSessions, SessionOutcome } from './opencode-sessions'
 import { opencodeStepContext } from './opencode-step-context'
 import { OpencodeStepEntity, OpencodeStepModel, OpencodeStepRow, OpencodeStepStatus } from './opencode-step.entity'
 import { OpencodeStepRequest, OpencodeStoredRequest } from './opencode-stored-request'
+import { opencodeVendorPrompts } from './opencode-vendor-prompts'
 
 const stepRepo = repoFactory(OpencodeStepEntity)
 
@@ -64,7 +65,7 @@ export const opencodeDispatch = (log: FastifyBaseLogger) => ({
 
 async function createStep({ platformId, projectId, requestId, webserverId, call, log }: CreateStepParams): Promise<OpencodeStepRow> {
     const context = await opencodeStepContext.resolve({ projectId, flowRunId: call.flowRunId, waitpointId: call.waitpointId, log })
-    const settings = call.settings ?? context.settings
+    const settings = call.settings ?? settingsFromStep({ request: call.request, stepSettings: context.settings })
     const stored: OpencodeStoredRequest = { request: call.request, flowName: context.flowName, settings: settings ?? null }
     const draft: OpencodeStepRow = {
         id: apId(),
@@ -114,9 +115,13 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
         await opencodeChannels(log).dispatch({ step, request: stored.request, flowName: stored.flowName })
         return
     }
-    const pinned = opencodePieceSteps.isPieceRequest(stored.request) ? opencodePieceSteps.pinnedSessionOf({ request: stored.request }) : null
-    const located = await locateOnce({ step, stored, pinned, log })
+    const kept = await usablePinned({ step, pinned: opencodePieceSteps.isPieceRequest(stored.request) ? opencodePieceSteps.pinnedSessionOf({ request: stored.request }) : null, log })
+    const pinned = kept.pinned
+    const located = await locateOnce({ step: kept.step, stored, pinned, log })
     await opencodeProvisioning(log).waitForReload({ directory: located.directory ?? '' })
+    if (stored.request.action === OPENCODE_PIECE_ACTION.VENDOR_PROMPT) {
+        await opencodeVendorPrompts.checkProvider({ client, step: located, request: stored.request })
+    }
     const outcome = await openWithRetry({ step: located, stored, client, pinnedSessionId: pinned?.sessionId, log })
     if (outcome.kind === 'queued') {
         await stepRepo().update({ id: step.id }, { status: 'QUEUED' })
@@ -147,12 +152,35 @@ async function dispatchStep({ step, log }: { step: OpencodeStepRow, log: Fastify
         agent: ready.agent ?? undefined,
         ...(isNil(ready.model) ? {} : { model: ready.model }),
         ...(isNil(prompt.format) ? {} : { format: prompt.format }),
+        ...(isNil(prompt.system) ? {} : { system: prompt.system }),
+        ...(isNil(prompt.options) ? {} : { options: prompt.options }),
+        ...(isNil(prompt.variant) ? {} : { variant: prompt.variant }),
         parts: prompt.parts,
     })
     if (!isNil(sent.error)) {
         throw new OpencodeRequestError({ status: sent.response?.status, message: opencodeErrors.describe({ error: sent.error }) })
     }
     await markDispatched({ step: ready })
+}
+
+async function usablePinned({ step, pinned, log }: { step: OpencodeStepRow, pinned: PinnedSession | null, log: FastifyBaseLogger }): Promise<KeptPinned> {
+    if (isNil(pinned) || pinned.orNew !== true || !isNil(step.sessionId)) {
+        return { step, pinned }
+    }
+    const { error } = await tryCatch(() => opencodeSessions(log).locateSession({ platformId: step.platformId, sessionId: pinned.sessionId, agent: pinned.agent }))
+    if (isNil(error)) {
+        return { step, pinned }
+    }
+    log.info({ opencodeStep: { id: step.id }, error: opencodeErrors.describe({ error }) }, '[opencodeDispatch] The step\'s remembered OpenCode session cannot be used, so it starts a new one')
+    const unlocated = { namespace: null, opencodeProjectId: null, directory: null, agent: null }
+    await stepRepo().update({ id: step.id }, unlocated)
+    return { step: { ...step, ...unlocated }, pinned: null }
+}
+
+function settingsFromStep({ request, stepSettings }: { request: OpencodeStepRequest, stepSettings: OpencodeStepSettings | undefined }): OpencodeStepSettings | undefined {
+    return opencodePieceSteps.isPieceRequest(request) && request.action === OPENCODE_PIECE_ACTION.VENDOR_PROMPT
+        ? opencodeVendorPrompts.settingsOf({ request, stepSettings })
+        : stepSettings
 }
 
 async function locateOnce({ step, stored, pinned, log }: LocateOnceParams): Promise<OpencodeStepRow> {
@@ -245,7 +273,7 @@ async function delay({ ms }: { ms: number }): Promise<void> {
 }
 
 function channelReferenceOf({ stored }: { stored: OpencodeStoredRequest }): ChannelReference | null {
-    if (opencodePieceSteps.isPieceRequest(stored.request)) {
+    if (opencodePieceSteps.isPieceRequest(stored.request) && !opencodePieceSteps.usesStepSettings({ request: stored.request })) {
         const correlationId = opencodePieceSteps.channelOf({ request: stored.request })
         return isNil(correlationId) ? null : { kind: 'correlation', value: correlationId }
     }
@@ -306,6 +334,11 @@ export type OpencodeAiCall = {
     waitpointId?: string
     request: OpencodeStepRequest
     settings?: OpencodeStepSettings
+}
+
+type KeptPinned = {
+    step: OpencodeStepRow
+    pinned: PinnedSession | null
 }
 
 type CommandOutcome =

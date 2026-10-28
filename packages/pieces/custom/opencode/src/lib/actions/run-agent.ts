@@ -1,7 +1,7 @@
 import { createAction, isNil, Property } from '@activepieces/pieces-framework';
 import { opencodeLocations } from '../common/locations';
 import { opencodeProps } from '../common/props';
-import { opencodeStepRun } from '../common/step-run';
+import { opencodeStepRun } from '@iphi-flow/opencode-pieces-common';
 import { outputSchemas } from '../output-schemas';
 
 export const runAgentAction = createAction({

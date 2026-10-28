@@ -3662,5 +3662,6 @@
   "Closed because the step failed.": "Closed because the step failed.",
   "Ended: {reason}": "Ended: {reason}",
   "Joins the channel an earlier Agent Channel step left open, so this step's agent can message its participants.": "Joins the channel an earlier Agent Channel step left open, so this step's agent can message its participants.",
-  "That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another.": "That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another."
+  "That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another.": "That Agent Channel step is not before this step on its path, or its Wait for is not None. The step will fail until you pick another.",
+  "This step calls {vendor} directly. Use {vendor} (via OpenCode) to run it on OpenCode.": "This step calls {vendor} directly. Use {vendor} (via OpenCode) to run it on OpenCode."
 }

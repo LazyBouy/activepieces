@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { DataFetchErrorState } from '@/components/custom/data-fetch-error-state';
 import { piecesHooks, piecesMutations } from '@/features/pieces';
+import { pieceSearchUtils } from '@/features/pieces/utils/piece-search-utils';
 
 import { NoResultsFound } from './no-results-found';
 import { PiecePanelSubViewHeader } from './piece-panel-header';
@@ -31,6 +32,7 @@ const CatalogView = ({
   const { pieces, isLoading, isError, refetch } = piecesHooks.usePieceCatalog();
   const { mutateAsync: downloadPiece } =
     piecesMutations.useDownloadCatalogPiece();
+  const routingOn = piecesHooks.useOpencodeRoutingOn();
   const [downloads, setDownloads] = useState<CatalogDownloads>({});
   const modePieces = piecePanelUtils.filterCatalogPieces({
     pieces: pieces ?? [],
@@ -78,12 +80,17 @@ const CatalogView = ({
         onAnnounce(
           t('Downloaded {pieceName}', { pieceName: piece.displayName }),
         );
+        const metadata = piecePanelUtils.toPieceStepMetadata({
+          piece: pieceModel,
+          stepKind,
+        });
         onPush({
           kind: 'piece',
-          metadata: piecePanelUtils.toPieceStepMetadata({
-            piece: pieceModel,
-            stepKind,
-          }),
+          metadata: routingOn
+            ? pieceSearchUtils.withoutPieceVendorChatActions({
+                piece: metadata,
+              })
+            : metadata,
         });
       })
       .catch(() => {

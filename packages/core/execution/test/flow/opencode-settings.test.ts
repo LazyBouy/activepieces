@@ -9,6 +9,7 @@ import {
     FlowVersion,
     OPENCODE_CHANNEL_ACTION,
     OPENCODE_PIECE_NAME,
+    OPENCODE_VENDOR_PIECES,
     OpencodeStepSettings,
     OpencodeStepSettingsWithValidation,
     opencodeStepUtil,
@@ -63,6 +64,35 @@ describe('opencodeStepUtil.isOpencodeStep', () => {
         expect(opencodeStepUtil.isOpencodeStep({ step: otherPiece })).toBe(false)
         expect(opencodeStepUtil.isOpencodeStep({ step: code({ name: 'step_3' }) })).toBe(false)
         expect(opencodeStepUtil.isOpencodeStep({ step: flowVersion({}).trigger })).toBe(false)
+    })
+})
+
+describe('opencodeStepUtil vendor pieces (OCI-30, OCI-31)', () => {
+    it('routes the chat actions of the fork vendor pieces, not their official twins', () => {
+        const fork = aiPiece({ name: 'step_1', actionName: 'ask_chatgpt' })
+        fork.settings.pieceName = '@iphi-flow/piece-opencode-openai'
+        const official = aiPiece({ name: 'step_2', actionName: 'ask_chatgpt' })
+        official.settings.pieceName = '@activepieces/piece-openai'
+        const unknownAction = aiPiece({ name: 'step_3', actionName: 'generate_image' })
+        unknownAction.settings.pieceName = '@iphi-flow/piece-opencode-openai'
+
+        expect(opencodeStepUtil.isOpencodeStep({ step: fork })).toBe(true)
+        expect(opencodeStepUtil.runsOnOpencode({ step: fork })).toBe(true)
+        expect(opencodeStepUtil.isOpencodeStep({ step: official })).toBe(false)
+        expect(opencodeStepUtil.isOpencodeStep({ step: unknownAction })).toBe(false)
+    })
+
+    it('names the vendor of an official chat action and lists the actions to hide', () => {
+        expect(opencodeStepUtil.vendorOfOfficialAction({ pieceName: '@activepieces/piece-claude', actionName: 'ask_claude' })).toMatchObject({
+            vendor: 'Claude',
+            forkPiece: '@iphi-flow/piece-opencode-claude',
+            provider: 'anthropic',
+        })
+        expect(opencodeStepUtil.vendorOfOfficialAction({ pieceName: '@activepieces/piece-claude', actionName: 'create_message_batch' })).toBeUndefined()
+        expect(opencodeStepUtil.vendorOfForkAction({ pieceName: '@iphi-flow/piece-opencode-google-vertexai', actionName: 'generate_content' })?.vendor).toBe('Google Vertex AI')
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-mistral-ai' })).toEqual(['create_chat_completion', 'generate_chat_completion'])
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-slack' })).toEqual([])
+        expect(OPENCODE_VENDOR_PIECES.map((vendor) => vendor.actions.length).reduce((total, count) => total + count, 0)).toBe(17)
     })
 })
 

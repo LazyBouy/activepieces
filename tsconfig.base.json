@@ -1617,8 +1617,41 @@
       "@iphi-flow/piece-one-time-passwords": [
         "packages/pieces/custom/one-time-passwords/src/index.ts"
       ],
+      "@iphi-flow/opencode-pieces-common": [
+        "packages/pieces/custom/common/src/index.ts"
+      ],
       "@iphi-flow/piece-opencode": [
         "packages/pieces/custom/opencode/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-azure-openai": [
+        "packages/pieces/custom/opencode-azure-openai/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-claude": [
+        "packages/pieces/custom/opencode-claude/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-deepseek": [
+        "packages/pieces/custom/opencode-deepseek/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-google-gemini": [
+        "packages/pieces/custom/opencode-google-gemini/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-google-vertexai": [
+        "packages/pieces/custom/opencode-google-vertexai/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-groq": [
+        "packages/pieces/custom/opencode-groq/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-localai": [
+        "packages/pieces/custom/opencode-localai/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-mistral-ai": [
+        "packages/pieces/custom/opencode-mistral-ai/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-openai": [
+        "packages/pieces/custom/opencode-openai/src/index.ts"
+      ],
+      "@iphi-flow/piece-opencode-perplexity-ai": [
+        "packages/pieces/custom/opencode-perplexity-ai/src/index.ts"
       ],
       "Aminos": ["packages/pieces/community/Aminos/src/index.ts"],
       "activepieces/piece-microsoft-dynamics-365-business-central": [

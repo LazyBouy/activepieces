@@ -17,7 +17,7 @@ import { useForm, Resolver, useFormContext } from 'react-hook-form';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
 import { Form } from '@/components/ui/form';
-import { OpencodeStepSection } from '@/features/opencode';
+import { OpencodeStepSection, OpencodeVendorNotice } from '@/features/opencode';
 import {
   stepsHooks,
   formUtils,
@@ -133,15 +133,19 @@ StepSettingsForm.displayName = 'StepSettingsForm';
 
 const StepParametersTab = () => {
   const form = useFormContext<FlowAction | FlowTrigger>();
-  const [readonly, flowVersion] = useBuilderStateContext((state) => [
+  const [readonly, flowVersion, projectId] = useBuilderStateContext((state) => [
     state.readonly,
     state.flowVersion,
+    state.flow.projectId,
   ]);
   const modifiedStep = form.getValues();
   const runAgentStep = isRunAgentStep(modifiedStep);
 
   return (
     <div className="flex flex-col gap-4">
+      {modifiedStep.type === FlowActionType.PIECE && (
+        <OpencodeVendorNotice step={modifiedStep} projectId={projectId} />
+      )}
       {modifiedStep.type === FlowActionType.LOOP_ON_ITEMS && (
         <LoopsSettings readonly={readonly}></LoopsSettings>
       )}

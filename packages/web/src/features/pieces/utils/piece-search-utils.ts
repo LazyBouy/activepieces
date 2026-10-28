@@ -1,8 +1,10 @@
 import { isNil } from '@activepieces/core-utils';
+import { PieceMetadataModelSummary } from '@activepieces/pieces-framework';
 import {
   AI_PIECE_NAME,
   FlowActionType,
   FlowTriggerType,
+  opencodeStepUtil,
   PieceCategory,
 } from '@activepieces/shared';
 import { t } from 'i18next';
@@ -133,6 +135,48 @@ function getPinnedPieces({
     ),
     names: pinnedPieceNames,
   });
+}
+
+function withoutOfficialVendorChatActions({
+  steps,
+}: {
+  steps: StepMetadataWithSuggestions[];
+}): StepMetadataWithSuggestions[] {
+  return steps.map((step) =>
+    step.type === FlowActionType.PIECE
+      ? withoutPieceVendorChatActions({ piece: step })
+      : step,
+  );
+}
+
+function withoutPieceVendorChatActions({
+  piece,
+}: {
+  piece: PieceStepMetadataWithSuggestions;
+}): PieceStepMetadataWithSuggestions {
+  const hidden = opencodeStepUtil.hiddenOfficialActions({
+    pieceName: piece.pieceName,
+  });
+  if (hidden.length === 0 || piece.type !== FlowActionType.PIECE) {
+    return piece;
+  }
+  return {
+    ...piece,
+    suggestedActions: (piece.suggestedActions ?? []).filter(
+      (action) => !hidden.includes(action.name),
+    ),
+  };
+}
+
+function isHiddenCatalogPiece({
+  piece,
+}: {
+  piece: PieceMetadataModelSummary;
+}): boolean {
+  const hidden = opencodeStepUtil.hiddenOfficialActions({
+    pieceName: piece.name,
+  });
+  return hidden.length > 0 && piece.actions <= hidden.length;
 }
 
 function isCorePiece(piece: PieceStepMetadataWithSuggestions): boolean {
@@ -717,6 +761,9 @@ export const pieceSearchUtils = {
   getTriggerListSections,
   getTriggerOptions,
   getPinnedPieces,
+  withoutOfficialVendorChatActions,
+  withoutPieceVendorChatActions,
+  isHiddenCatalogPiece,
   POPULAR_PIECES_NAMES,
 };
 

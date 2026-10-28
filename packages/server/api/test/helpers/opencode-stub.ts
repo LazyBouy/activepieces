@@ -64,7 +64,7 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
     }
 }
 
-function answer({ state, sessionId, text = '', structured, error, finish = 'stop', parts, completed = true }: AnswerParams & { state: OpencodeStubState }): void {
+function answer({ state, sessionId, text = '', structured, error, finish = 'stop', parts, sources, completed = true }: AnswerParams & { state: OpencodeStubState }): void {
     const session = state.sessions.find((candidate) => candidate.id === sessionId)
     if (session === undefined || sessionId === null) {
         throw new Error(`the stub has no session ${sessionId}`)
@@ -92,6 +92,7 @@ function answer({ state, sessionId, text = '', structured, error, finish = 'stop
             finish,
             ...(structured === undefined ? {} : { structured }),
             ...(error === undefined ? {} : { error }),
+            ...(sources === undefined ? {} : { sources }),
         },
         parts: parts ?? [{ id: `${id}_p1`, sessionID: sessionId, messageID: id, type: 'text', text }],
     })
@@ -681,6 +682,7 @@ type AnswerParams = {
     error?: Record<string, unknown>
     finish?: string
     parts?: Record<string, unknown>[]
+    sources?: { url: string, title?: string }[]
     completed?: boolean
 }
 

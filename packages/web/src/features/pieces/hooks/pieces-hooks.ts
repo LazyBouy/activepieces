@@ -34,6 +34,7 @@ import semver from 'semver';
 
 import { useTelemetry } from '@/components/providers/telemetry-provider';
 import { appConnectionsApi } from '@/features/connections/api/app-connections';
+import { opencodeOptionsQueries } from '@/features/opencode/hooks/opencode-options-hooks';
 import {
   StepMetadataWithSuggestions,
   CategorizedStepMetadataWithSuggestions,
@@ -420,6 +421,7 @@ export const piecesHooks = {
     );
     return syncMode === PieceSyncMode.OFFICIAL_SELECTED;
   },
+  useOpencodeRoutingOn,
   usePieceCatalog: () => {
     const { i18n } = useTranslation();
     const isAvailable = piecesHooks.useIsPieceCatalogAvailable();
@@ -429,8 +431,13 @@ export const piecesHooks = {
       staleTime: CATALOG_STALE_TIME_MS,
       enabled: isAvailable,
     });
+    const routingOn = useOpencodeRoutingOn();
     return {
-      pieces: query.data,
+      pieces: routingOn
+        ? query.data?.filter(
+            (piece) => !pieceSearchUtils.isHiddenCatalogPiece({ piece }),
+          )
+        : query.data,
       isLoading: query.isLoading,
       isError: query.isError,
       refetch: query.refetch,
@@ -518,13 +525,23 @@ function useSelectorSteps({
     type,
     enabled,
   });
+  const routingOn = useOpencodeRoutingOn();
   if (!metadata || isLoading) {
     return { steps: [], isLoading: true };
   }
+  const visible = routingOn
+    ? pieceSearchUtils.withoutOfficialVendorChatActions({ steps: metadata })
+    : metadata;
   return {
-    steps: filterOutPiecesWithNoSuggestions(metadata),
+    steps: filterOutPiecesWithNoSuggestions(visible),
     isLoading: false,
   };
+}
+
+function useOpencodeRoutingOn(): boolean {
+  const projectId = authenticationSession.getProjectId() ?? '';
+  const { data: options } = opencodeOptionsQueries.useOptions({ projectId });
+  return options?.enabled === true;
 }
 
 const isPieceNotFoundError = (error: unknown) =>

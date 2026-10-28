@@ -1,5 +1,6 @@
 import { AiStepAction, isNil } from '@activepieces/core-utils'
 import { AiRouterMatchMode, AiStepFile, AiStepSchema } from '@activepieces/shared'
+import { MessageModelOptions } from '@opencode-ai/sdk/v2/client'
 import { z } from 'zod'
 import { opencodeErrors } from './opencode-errors'
 import { OpencodeFilePart, opencodeFilesIn, OpencodeInputFile } from './opencode-files-in'
@@ -295,6 +296,9 @@ export type OpencodeOutputFormat = {
 export type BuiltPrompt = {
     parts: (OpencodeTextPart | OpencodeFilePart)[]
     format?: OpencodeOutputFormat
+    system?: string
+    options?: MessageModelOptions
+    variant?: string
 }
 
 export type OpencodeReply = {

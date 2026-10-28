@@ -12,6 +12,7 @@ export {
   OpencodeMemoryList,
 } from './components/opencode-agent-card';
 export { OpencodeProviderModels } from './components/opencode-provider-models';
+export { OpencodeVendorNotice } from './components/opencode-vendor-notice';
 export {
   opencodeViewsKeys,
   opencodeViewsQueries,

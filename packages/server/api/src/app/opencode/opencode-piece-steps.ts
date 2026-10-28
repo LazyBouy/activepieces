@@ -6,14 +6,15 @@ import { opencodeErrors } from './opencode-errors'
 import { opencodeFilesIn, OpencodeInputFile } from './opencode-files-in'
 import { opencodeLinks } from './opencode-links'
 import { BuiltPrompt, opencodePrompts, OpencodeStepAnswer } from './opencode-prompts'
-import { OpencodeReplyMessage, ReplySummary } from './opencode-reply'
+import { OpencodeReplyMessage, ReplySummary, SessionMessage } from './opencode-reply'
 import { OpencodeStepFiles, OpencodeStepModel, OpencodeStepRow } from './opencode-step.entity'
+import { OPENCODE_VENDOR_PROMPT, OpencodeVendorPromptRequest, opencodeVendorPrompts } from './opencode-vendor-prompts'
 
 function isPieceRequest<T extends { action: string }>(request: T): request is Extract<T, OpencodePieceRequest> {
     return PIECE_ACTIONS.includes(request.action)
 }
 
-function settingsOf({ request }: { request: OpencodePieceRequest }): OpencodeStepSettings {
+function settingsOf({ request }: { request: OpencodePieceRequest }): OpencodeStepSettings | undefined {
     switch (request.action) {
         case OPENCODE_PIECE_ACTION.RUN_AGENT:
         case OPENCODE_PIECE_ACTION.RUN_COMMAND:
@@ -28,7 +29,13 @@ function settingsOf({ request }: { request: OpencodePieceRequest }): OpencodeSte
             return { sessionMode: 'NEW_PER_STEP', namespace: request.namespace, project: request.project }
         case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
             return { sessionMode: 'NEW_PER_STEP' }
+        case OPENCODE_PIECE_ACTION.VENDOR_PROMPT:
+            return undefined
     }
+}
+
+function usesStepSettings({ request }: { request: OpencodePieceRequest }): boolean {
+    return request.action === OPENCODE_PIECE_ACTION.VENDOR_PROMPT
 }
 
 function channelOf({ request }: { request: OpencodePieceRequest }): string | null {
@@ -39,6 +46,7 @@ function channelOf({ request }: { request: OpencodePieceRequest }): string | nul
             return request.channel ?? null
         case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
         case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
+        case OPENCODE_PIECE_ACTION.VENDOR_PROMPT:
             return null
     }
 }
@@ -50,6 +58,10 @@ function pinnedSessionOf({ request }: { request: OpencodePieceRequest }): Pinned
             return request.session.kind === 'EXISTING' ? { sessionId: request.session.sessionId, agent: request.agent ?? null } : null
         case OPENCODE_PIECE_ACTION.CONTINUE_SESSION:
             return { sessionId: request.sessionId, agent: null }
+        case OPENCODE_PIECE_ACTION.VENDOR_PROMPT: {
+            const sessionId = opencodeVendorPrompts.pinnedSessionOf({ request })
+            return isNil(sessionId) ? null : { sessionId, agent: null, orNew: true }
+        }
         case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
         case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
             return null
@@ -57,6 +69,9 @@ function pinnedSessionOf({ request }: { request: OpencodePieceRequest }): Pinned
 }
 
 function modelOf({ request }: { request: OpencodePieceRequest }): OpencodeStepModel | null {
+    if (request.action === OPENCODE_PIECE_ACTION.VENDOR_PROMPT) {
+        return opencodeVendorPrompts.modelOf({ request })
+    }
     return request.action === OPENCODE_PIECE_ACTION.RUN_AGENT ? request.model ?? null : null
 }
 
@@ -75,6 +90,8 @@ function build({ request, outputFolder, files }: BuildParams): BuiltPrompt {
             }
         case OPENCODE_PIECE_ACTION.RUN_COMMAND:
             return { parts: fileParts }
+        case OPENCODE_PIECE_ACTION.VENDOR_PROMPT:
+            return opencodeVendorPrompts.build({ request, files })
         case OPENCODE_PIECE_ACTION.SEND_TO_INBOX:
         case OPENCODE_PIECE_ACTION.AGENT_CHANNEL:
             throw new Error(`${request.action} is not a session prompt`)
@@ -89,7 +106,10 @@ function participantKey({ namespace, project, agent }: { namespace: string, proj
     return `${namespace}/${project}/${agent}`
 }
 
-function answer({ request, step, replies, reply, summary, adminPanelUrl, files }: AnswerParams): OpencodeStepAnswer {
+function answer({ request, step, replies, messages, reply, summary, adminPanelUrl, files }: AnswerParams): OpencodeStepAnswer {
+    if (request.action === OPENCODE_PIECE_ACTION.VENDOR_PROMPT) {
+        return opencodeVendorPrompts.answer({ request, step, replies, messages, reply, summary, adminPanelUrl })
+    }
     if (!isNil(reply.error)) {
         return { failure: opencodeErrors.sessionError({ message: reply.error }) }
     }
@@ -141,6 +161,7 @@ export const OPENCODE_PIECE_ACTION = {
     CONTINUE_SESSION: 'OPENCODE_CONTINUE_SESSION',
     SEND_TO_INBOX: 'OPENCODE_SEND_TO_INBOX',
     AGENT_CHANNEL: 'OPENCODE_AGENT_CHANNEL',
+    VENDOR_PROMPT: OPENCODE_VENDOR_PROMPT,
 } as const
 
 const PIECE_ACTIONS: string[] = Object.values(OPENCODE_PIECE_ACTION)
@@ -232,6 +253,7 @@ export const OpencodePieceRequest = z.discriminatedUnion('action', [
         correlationId: z.string().optional(),
         inboxMessageId: z.string().optional(),
     }),
+    OpencodeVendorPromptRequest,
 ])
 export type OpencodePieceRequest = z.infer<typeof OpencodePieceRequest>
 
@@ -242,6 +264,7 @@ export type OpencodeChannelRequest = Extract<OpencodePieceRequest, { action: typ
 export const opencodePieceSteps = {
     isPieceRequest,
     settingsOf,
+    usesStepSettings,
     channelOf,
     participantKey,
     pinnedSessionOf,
@@ -254,6 +277,7 @@ export const opencodePieceSteps = {
 export type PinnedSession = {
     sessionId: string
     agent: string | null
+    orNew?: boolean
 }
 
 export type OpencodePieceOutput = {
@@ -280,6 +304,7 @@ type AnswerParams = {
     request: OpencodePieceRequest
     step: OpencodeStepRow
     replies: OpencodeReplyMessage[]
+    messages: SessionMessage[]
     reply: { text: string, structured: unknown, error?: string }
     summary: ReplySummary
     adminPanelUrl: string

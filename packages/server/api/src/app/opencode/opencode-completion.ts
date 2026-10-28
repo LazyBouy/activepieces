@@ -179,7 +179,7 @@ async function answerOf({ step, state, log }: { step: OpencodeStepRow, state: Ex
         : NO_FILES
     if (opencodePieceSteps.isPieceRequest(stored.request)) {
         const connection = await opencodeConnectionService(log).getOrCreate({ platformId: step.platformId })
-        return opencodePieceSteps.answer({ request: stored.request, step, replies: state.replies, reply: state.reply, summary: state.summary, adminPanelUrl: connection.adminPanelUrl, files })
+        return opencodePieceSteps.answer({ request: stored.request, step, replies: state.replies, messages: state.messages, reply: state.reply, summary: state.summary, adminPanelUrl: connection.adminPanelUrl, files })
     }
     if (stored.request.action !== OPENCODE_RUN_AGENT) {
         return opencodePrompts.mapReply({ request: stored.request, reply: state.reply })

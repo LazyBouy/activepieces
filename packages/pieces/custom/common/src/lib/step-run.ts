@@ -26,12 +26,12 @@ async function now({ context, request, noAnswer }: NowParams): Promise<StepResul
 }
 
 async function uploadFiles({ context, value }: UploadFilesParams): Promise<UploadedFile[]> {
-  return Promise.all(
-    filesOf({ value }).map(async (file) => {
-      const uploaded = await context.files.upload({ fileName: file.filename, data: file.data });
-      return { fileId: uploaded.id, filename: file.filename };
-    }),
-  );
+  return Promise.all(filesOf({ value }).map((file) => uploadFile({ context, file })));
+}
+
+async function uploadFile({ context, file }: { context: StepContext; file: ApFile }): Promise<UploadedFile> {
+  const uploaded = await context.files.upload({ fileName: file.filename, data: file.data });
+  return { fileId: uploaded.id, filename: file.filename };
 }
 
 function filesOf({ value }: { value: unknown }): ApFile[] {
@@ -77,6 +77,7 @@ export const opencodeStepRun = {
   run,
   now,
   uploadFiles,
+  uploadFile,
   STEP_TIMEOUT_MS,
   NO_ANSWER,
 };

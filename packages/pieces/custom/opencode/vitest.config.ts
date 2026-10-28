@@ -13,6 +13,7 @@ export default defineConfig({
       '@activepieces/shared': path.resolve(repoRoot, 'packages/core/shared/src/index.ts'),
       '@activepieces/pieces-framework': path.resolve(repoRoot, 'packages/pieces/framework/src/index.ts'),
       '@activepieces/pieces-common': path.resolve(repoRoot, 'packages/pieces/common/src/index.ts'),
+      '@iphi-flow/opencode-pieces-common': path.resolve(repoRoot, 'packages/pieces/custom/common/src/index.ts'),
     },
   },
 })

@@ -1,6 +1,6 @@
 import { createAction, isNil } from '@activepieces/pieces-framework';
 import { opencodeOptions, opencodeProps } from '../common/props';
-import { opencodeStepRun } from '../common/step-run';
+import { opencodeStepRun } from '@iphi-flow/opencode-pieces-common';
 import { outputSchemas } from '../output-schemas';
 
 const MIN_PARTICIPANTS = 2;

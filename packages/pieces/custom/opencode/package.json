@@ -5,7 +5,8 @@
   "types": "./dist/src/index.d.ts",
   "dependencies": {
     "@activepieces/pieces-common": "workspace:*",
-    "@activepieces/pieces-framework": "workspace:*"
+    "@activepieces/pieces-framework": "workspace:*",
+    "@iphi-flow/opencode-pieces-common": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json && cp package.json dist/",

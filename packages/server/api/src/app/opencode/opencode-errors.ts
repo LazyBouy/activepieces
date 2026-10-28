@@ -102,6 +102,10 @@ function channelNotOpen({ channel }: { channel: string }): string {
     return `The agent channel ${channel} is not open in this run.`
 }
 
+function providerNotConnected({ vendor }: { vendor: string }): string {
+    return `Connect ${vendor} in the OpenCode admin panel to run this step.`
+}
+
 export class OpencodeRequestError extends Error {
     readonly status: number | undefined
 
@@ -140,4 +144,5 @@ export const opencodeErrors = {
     noCommand,
     channelAcrossNamespaces,
     channelNotOpen,
+    providerNotConnected,
 }

@@ -1,6 +1,6 @@
 import { createAction, isNil, Property } from '@activepieces/pieces-framework';
 import { opencodeOptions, opencodeProps } from '../common/props';
-import { opencodeStepRun } from '../common/step-run';
+import { opencodeStepRun } from '@iphi-flow/opencode-pieces-common';
 import { outputSchemas } from '../output-schemas';
 
 const DEFAULT_TIMEOUT_MINUTES = 10;
