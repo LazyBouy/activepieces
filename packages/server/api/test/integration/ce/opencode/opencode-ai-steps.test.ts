@@ -251,7 +251,7 @@ describe('AI steps on OpenCode', () => {
         await execute({ setup, waitpointId, body: { action: AiStepAction.ASK_AI, prompt: 'Anyone?' } })
 
         const body = await resumedBody({ waitpointId })
-        expect(body).toEqual({ failure: expect.stringMatching(/^Could not prepare the OpenCode project for this step: |^OpenCode did not answer at http:\/\/127\.0\.0\.1:9: /) })
+        expect(body).toEqual({ failure: expect.stringMatching(/^OpenCode did not answer at http:\/\/127\.0\.0\.1:9: .+\.$/) })
     })
 
     it('answers a step that cannot pause in the same request', async () => {
@@ -289,6 +289,23 @@ describe('AI steps on OpenCode', () => {
         expect(sessionOf({ id: endedStep.sessionId }).aborted).toBe(1)
     })
 
+    it('waits on an unfinished answer while the session is busy, and fails it as cut off once the session is idle', async () => {
+        const setup = await routedFlow({ steps: [{ name: 'step_1' }] })
+        const waitpointId = await waitpointFor({ setup, stepName: 'step_1' })
+        await execute({ setup, waitpointId, body: { action: AiStepAction.ASK_AI, prompt: 'Write a long essay' } })
+        const step = await stepRow({ waitpointId })
+        stub.answer({ sessionId: step.sessionId, completed: false, finish: 'unknown' })
+        stub.state.busy.push(step.sessionId ?? '')
+        await db.update('opencode_step', step.id, { updated: new Date(Date.now() - 120_000).toISOString() })
+
+        await opencodeSweep(app!.log).checkDispatched({ platformId: setup.ctx.platform.id })
+        expect(await stepRow({ waitpointId })).toMatchObject({ status: 'DISPATCHED' })
+
+        stub.state.busy = []
+        await opencodeSweep(app!.log).checkDispatched({ platformId: setup.ctx.platform.id })
+        expect(await resumedBody({ waitpointId })).toEqual({ failure: 'OpenCode stopped with an error: the answer was interrupted before it finished.' })
+    })
+
     it('aborts a step whose waitpoint deadline passed', async () => {
         const setup = await routedFlow({ steps: [{ name: 'step_1' }] })
         const waitpointId = await waitpointFor({ setup, stepName: 'step_1' })
@@ -314,7 +331,7 @@ describe('AI steps on OpenCode', () => {
         await execute({ setup, waitpointId: refused, body: { action: AiStepAction.ASK_AI, prompt: 'Refuse me' } })
 
         expect(await stepRow({ waitpointId: retried })).toMatchObject({ status: 'DISPATCHED' })
-        expect(await resumedBody({ waitpointId: refused })).toEqual({ failure: 'Could not prepare the OpenCode project for this step: refused with 403' })
+        expect(await resumedBody({ waitpointId: refused })).toEqual({ failure: 'Could not prepare the OpenCode project for this step: refused with 403.' })
     })
 
     it('completes a dispatched step from the live event stream', async () => {

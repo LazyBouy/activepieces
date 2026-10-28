@@ -55,6 +55,7 @@ describe('Agent channel with a finish rule', () => {
             ...closedPingLines(),
             { permission: 'ping', pattern: 'SEND(project/c0001/agent/writer)', action: 'allow' },
         ])
+        expect([writerSession.correlationId, criticSession.correlationId]).toEqual([channel.correlationId, channel.correlationId])
         expect(stub.state.inboxRules['c0001']).toEqual([
             {
                 id: `iphiflow-ch-${channel.id}-0`,
@@ -113,6 +114,7 @@ describe('Agent channel with a finish rule', () => {
         expect(criticSession.aborted).toBe(1)
         expect(writerSession.permission).toEqual([opencodeMcpNames.denyAllLine(), ...closedPingLines()])
         expect(criticSession.permission).toEqual([opencodeMcpNames.denyAllLine(), opencodeMcpNames.allowStepLine({ stepId: step.id }), ...closedPingLines()])
+        expect([writerSession.correlationId, criticSession.correlationId]).toEqual([null, null])
         expect(stub.state.inboxRules['c0001']).toEqual([expect.objectContaining({ preset: 'replies' })])
         expect(stub.state.inboxRules['c0002']).toEqual([expect.objectContaining({ preset: 'replies' })])
         expect(stub.state.disconnected).toContain(`iphiflow_${step.id}`)
@@ -278,6 +280,8 @@ describe('Agent channel with Wait for None', () => {
             { permission: 'ping', pattern: 'SEND(project/c0001/agent/writer)', action: 'allow' },
             { permission: 'ping', pattern: 'SEND(project/c0001/agent/triage)', action: 'allow' },
         ])
+        expect(joinerSession.correlationId).toBe(`iphiflow_jn_${channel.id}_${joiner.id}`)
+        expect(sessionOf({ id: writerSession }).correlationId).toBe(channel.correlationId)
         expect(joinerSession.prompts.map((prompt) => prompt['noReply'])).toEqual([true, undefined])
         expect(textOf({ prompt: joinerSession.prompts[0] })).toContain(`putting iphiflow_jn_${channel.id}_${joiner.id} in correlationID`)
         expect(textOf({ prompt: joinerSession.prompts[0] })).toContain(`- writer in this project: target {"type":"session","id":"${channel.participants[0].sessionId}"}`)
@@ -316,6 +320,7 @@ describe('Agent channel with Wait for None', () => {
         expect(joinerSession.aborted).toBe(0)
         expect(joinerSession.permission).toEqual([opencodeMcpNames.denyAllLine(), ...closedPingLines()])
         expect(sessionOf({ id: stepJoiner.sessionId }).permission).toEqual([opencodeMcpNames.denyAllLine(), ...closedPingLines()])
+        expect([joinerSession.correlationId, sessionOf({ id: stepJoiner.sessionId }).correlationId, sessionOf({ id: writerSession }).correlationId]).toEqual([null, null, null])
     })
 
     it('answers to a joining step that runs as a participant\'s agent in its project are told apart by the correlation id', async () => {

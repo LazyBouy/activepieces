@@ -84,14 +84,14 @@ export const opencodeChannels = (log: FastifyBaseLogger) => ({
             }
             const { error } = await tryCatch(async () => {
                 await client.session.abort({ sessionID: sessionId, directory: participant.directory })
-                await replacePingLines({ client, sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, peers: [] }) })
+                await replacePingLines({ client, sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, peers: [] }), correlationId: CLEARED })
             })
             if (!isNil(error)) {
                 log.warn({ opencodeChannel: { id: channel.id }, error }, '[opencodeChannels] Could not stop a participant session')
             }
         }
         for (const joined of channel.joins) {
-            const { error } = await tryCatch(() => replacePingLines({ client, sessionId: joined.sessionId, directory: joined.directory, lines: opencodeChannelText.pingLines({ directory: joined.directory, peers: [] }) }))
+            const { error } = await tryCatch(() => replacePingLines({ client, sessionId: joined.sessionId, directory: joined.directory, lines: opencodeChannelText.pingLines({ directory: joined.directory, peers: [] }), correlationId: CLEARED }))
             if (!isNil(error)) {
                 log.warn({ opencodeChannel: { id: channel.id }, opencodeStep: { id: joined.stepId }, error }, '[opencodeChannels] Could not close a joining session\'s lines')
             }
@@ -169,7 +169,7 @@ export const opencodeChannels = (log: FastifyBaseLogger) => ({
             agent: step.agent ?? '',
             messageId: opencodeIds.message(),
         }
-        await replacePingLines({ client, sessionId: joiner.sessionId, directory: joiner.directory, lines: opencodeChannelText.pingLines({ directory: joiner.directory, peers: channel.participants }) })
+        await replacePingLines({ client, sessionId: joiner.sessionId, directory: joiner.directory, lines: opencodeChannelText.pingLines({ directory: joiner.directory, peers: channel.participants }), correlationId })
         const rules = await addRules({ channel, client, log, entries: joinRules({ channel, joiner, stepName: step.stepName }) })
         const joined = { ...channel, rules: [...channel.rules, ...rules], joins: [...channel.joins, joiner] }
         await grantPeers({ channel: joined, client })
@@ -363,7 +363,7 @@ async function grantPeers({ channel, client }: { channel: OpencodeChannelRow, cl
             continue
         }
         const peers = [...channel.participants.filter((other) => other.key !== participant.key), ...channel.joins]
-        await replacePingLines({ client, sessionId: participant.sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, peers }) })
+        await replacePingLines({ client, sessionId: participant.sessionId, directory: participant.directory, lines: opencodeChannelText.pingLines({ directory: participant.directory, peers }), correlationId: channel.correlationId })
     }
 }
 
@@ -479,7 +479,7 @@ async function sendBriefs({ channel, flowName, client }: { channel: OpencodeChan
     }
 }
 
-async function replacePingLines({ client, sessionId, directory, lines }: ReplacePingLinesParams): Promise<void> {
+async function replacePingLines({ client, sessionId, directory, lines, correlationId }: ReplacePingLinesParams): Promise<void> {
     const current = await client.operator.sessionPermissions.get({ sessionID: sessionId, directory })
     if (isNil(current.data)) {
         throw new OpencodeRequestError({ status: current.response?.status, message: opencodeErrors.describe({ error: current.error }) })
@@ -489,6 +489,7 @@ async function replacePingLines({ client, sessionId, directory, lines }: Replace
         directory,
         rules: [...current.data.written.filter((line) => !opencodeChannelText.isPingLine(line)), ...lines],
         deleted: current.data.deleted,
+        correlationID: correlationId,
     })
     if (isNil(saved.data)) {
         throw new OpencodeRequestError({ status: saved.response?.status, message: opencodeErrors.describe({ error: saved.error }) })
@@ -660,6 +661,8 @@ const ASSISTANT = 'assistant'
 
 const DONE = 'done'
 
+const CLEARED = ''
+
 const MAX_MESSAGES = 'max messages'
 
 const TIMEOUT = 'timeout'
@@ -764,6 +767,7 @@ type ReplacePingLinesParams = {
     sessionId: string
     directory: string
     lines: OpencodePermissionLine[]
+    correlationId: string
 }
 
 type OutputParams = {

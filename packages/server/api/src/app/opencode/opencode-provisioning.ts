@@ -27,7 +27,7 @@ export const opencodeProvisioning = (log: FastifyBaseLogger) => ({
             fn: () => provision({ client, platformId, projectId, projectName, projectsFolder: connection.projectsFolder, log }),
         }))
         if (isNil(project)) {
-            throw new Error(`Could not prepare the OpenCode project for this step: ${opencodeErrors.describe({ error })}`)
+            throw opencodeErrors.provisioningFailed({ error })
         }
         provisionedCache.set(cacheKey, { version, project, expiresAt: Date.now() + PROVISIONED_CACHE_TTL_MS })
         return project

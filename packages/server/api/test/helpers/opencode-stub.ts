@@ -437,8 +437,11 @@ function route({ state, method, url, body, res }: RouteParams): void {
         }
         if (method === 'PUT') {
             session.permission = Array.isArray(json['rules']) ? json['rules'] : []
+            if (typeof json['correlationID'] === 'string') {
+                session.correlationId = json['correlationID'] === '' ? null : json['correlationID']
+            }
         }
-        return send({ res, value: { sessionID: session.id, agent: session.agent ?? 'flow', parent: false, rows: [], editable: { start: 0, end: 0 }, written: session.permission, deleted: [], forms: {} } })
+        return send({ res, value: { sessionID: session.id, agent: session.agent ?? 'flow', parent: false, rows: [], editable: { start: 0, end: 0 }, written: session.permission, deleted: [], forms: {}, ...(session.correlationId === undefined || session.correlationId === null ? {} : { correlationID: session.correlationId }) } })
     }
     if (key === 'GET /operator/namespaces') {
         return send({ res, value: state.namespaces.map((namespace) => summaryOf({ state, namespace })) })
@@ -639,6 +642,7 @@ type StubSession = {
     agent: string | undefined
     metadata: unknown
     permission: unknown[]
+    correlationId?: string | null
     parentId?: string
     messages: StubMessage[]
     prompts: Record<string, unknown>[]

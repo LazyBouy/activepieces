@@ -33,10 +33,10 @@ async function stateOf({ client, sessionId, messageId, directory, messages }: Re
         return { kind: 'pending' }
     }
     if (!isNil(last.info.error)) {
-        return { kind: 'done', reply: { text: '', structured: undefined, error: opencodeErrors.describe({ error: last.info.error }) }, summary: summaryOf({ replies }), replies, messages }
+        return failedReply({ error: opencodeErrors.describe({ error: last.info.error }), replies, messages })
     }
     if (isNil(last.info.time.completed)) {
-        return { kind: 'pending' }
+        return await isBusy({ client, sessionId, directory }) ? { kind: 'pending' } : failedReply({ error: opencodeErrors.interruptedReason(), replies, messages })
     }
     if (isNil(last.info.structured) && MID_TURN_FINISHES.includes(last.info.finish ?? '') && await isBusy({ client, sessionId, directory })) {
         return { kind: 'pending' }
@@ -48,6 +48,10 @@ async function stateOf({ client, sessionId, messageId, directory, messages }: Re
         replies,
         messages,
     }
+}
+
+function failedReply({ error, replies, messages }: { error: string, replies: OpencodeReplyMessage[], messages: SessionMessage[] }): ReplyState {
+    return { kind: 'done', reply: { text: '', structured: undefined, error }, summary: summaryOf({ replies }), replies, messages }
 }
 
 async function transcript({ client, sessionId, messageId, directory }: ReadParams): Promise<OpencodeReplyMessage[] | null> {

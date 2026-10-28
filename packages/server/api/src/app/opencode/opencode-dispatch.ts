@@ -212,7 +212,7 @@ async function openWithRetry({ step, stored, client, pinnedSessionId, log }: Ope
     await opencodeSessions(log).provision({ platformId: step.platformId, projectId: step.projectId })
     const retried = await tryCatch(() => opencodeSessions(log).open({ step, client, flowName: stored.flowName }))
     if (isNil(retried.data)) {
-        throw new Error(`Could not prepare the OpenCode project for this step: ${opencodeErrors.describe({ error: retried.error })}`)
+        throw opencodeErrors.provisioningFailed({ error: retried.error })
     }
     return retried.data
 }

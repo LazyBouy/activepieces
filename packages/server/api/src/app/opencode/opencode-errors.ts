@@ -1,4 +1,5 @@
 import { isNil } from '@activepieces/core-utils'
+import { isAxiosError } from 'axios'
 
 function describe({ error }: { error: unknown }): string {
     if (error instanceof Error) {
@@ -33,6 +34,13 @@ function unreachable({ serverUrl, error }: { serverUrl: string, error: unknown }
     return `OpenCode did not answer at ${serverUrl}: ${describe({ error })}.`
 }
 
+function provisioningFailed({ error }: { error: unknown }): Error {
+    if (isAxiosError(error) && isNil(error.response)) {
+        return error
+    }
+    return new Error(`Could not prepare the OpenCode project for this step: ${describe({ error })}.`)
+}
+
 function notAllowlisted({ namespace, project }: { namespace: string, project: string }): string {
     return `${namespace}/${project} is not allowlisted. A platform admin can add it in Platform → AI → OpenCode.`
 }
@@ -43,6 +51,10 @@ function sessionGone({ sessionId }: { sessionId: string }): string {
 
 function sessionError({ message }: { message: string }): string {
     return `OpenCode stopped with an error: ${message}.`
+}
+
+function interruptedReason(): string {
+    return 'the answer was interrupted before it finished'
 }
 
 function savedAgent(): string {
@@ -127,9 +139,11 @@ export const opencodeErrors = {
     describe,
     nameOf,
     unreachable,
+    provisioningFailed,
     notAllowlisted,
     sessionGone,
     sessionError,
+    interruptedReason,
     savedAgent,
     knowledgeBaseTools,
     callbackUnreachable,
