@@ -59,7 +59,7 @@ export class BuilderPage extends BasePage {
 
   async publishFlow() {
     await this.closeStepModal();
-    await this.page.getByRole('button', { name: 'Publish' }).click();
+    await this.page.getByRole('button', { name: 'Publish', exact: true }).click();
     await this.page.waitForTimeout(15000);
   }
 
