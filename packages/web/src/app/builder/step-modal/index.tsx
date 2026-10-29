@@ -196,6 +196,9 @@ function shouldKeepOpenOnEscape(target: EventTarget | null): boolean {
   if (target.isContentEditable && target.closest('[data-step-modal-name]')) {
     return true;
   }
+  if (target.closest('[data-pane-search]')) {
+    return true;
+  }
   const codeEditor = target.closest('.cm-editor');
   return (
     !isNil(codeEditor) &&

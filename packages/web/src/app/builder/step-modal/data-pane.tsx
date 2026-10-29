@@ -198,7 +198,10 @@ const DataPaneSearchBox = ({ search }: { search: PaneSearch }) => {
     return null;
   }
   return (
-    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-gray-6 pr-1 pl-4">
+    <div
+      data-pane-search
+      className="flex h-9 shrink-0 items-center gap-2 border-b border-gray-6 pr-1 pl-4"
+    >
       <Search aria-hidden className="size-3.5 shrink-0 text-gray-11" />
       <input
         autoFocus
