@@ -422,6 +422,7 @@ export const piecesHooks = {
     return syncMode === PieceSyncMode.OFFICIAL_SELECTED;
   },
   useOpencodeRoutingOn,
+  useInstalledPieceNames,
   usePieceCatalog: () => {
     const { i18n } = useTranslation();
     const isAvailable = piecesHooks.useIsPieceCatalogAvailable();
@@ -432,10 +433,15 @@ export const piecesHooks = {
       enabled: isAvailable,
     });
     const routingOn = useOpencodeRoutingOn();
+    const installedPieceNames = useInstalledPieceNames();
     return {
       pieces: routingOn
         ? query.data?.filter(
-            (piece) => !pieceSearchUtils.isHiddenCatalogPiece({ piece }),
+            (piece) =>
+              !pieceSearchUtils.isHiddenCatalogPiece({
+                piece,
+                installedPieceNames,
+              }),
           )
         : query.data,
       isLoading: query.isLoading,
@@ -526,11 +532,15 @@ function useSelectorSteps({
     enabled,
   });
   const routingOn = useOpencodeRoutingOn();
+  const installedPieceNames = useInstalledPieceNames();
   if (!metadata || isLoading) {
     return { steps: [], isLoading: true };
   }
   const visible = routingOn
-    ? pieceSearchUtils.withoutOfficialVendorChatActions({ steps: metadata })
+    ? pieceSearchUtils.withoutOfficialVendorChatActions({
+        steps: metadata,
+        installedPieceNames,
+      })
     : metadata;
   return {
     steps: filterOutPiecesWithNoSuggestions(visible),
@@ -542,6 +552,11 @@ function useOpencodeRoutingOn(): boolean {
   const projectId = authenticationSession.getProjectId() ?? '';
   const { data: options } = opencodeOptionsQueries.useOptions({ projectId });
   return options?.enabled === true;
+}
+
+function useInstalledPieceNames(): string[] {
+  const { pieces } = piecesHooks.usePieces({});
+  return useMemo(() => (pieces ?? []).map((piece) => piece.name), [pieces]);
 }
 
 const isPieceNotFoundError = (error: unknown) =>

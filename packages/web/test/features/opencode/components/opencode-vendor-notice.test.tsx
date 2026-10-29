@@ -65,9 +65,24 @@ describe('notice on an official vendor chat step (OCI-31)', () => {
     await renderNotice({ step: pieceStep({ pieceName: '@activepieces/piece-claude', actionName: 'ask_claude' }) });
     expect(container?.textContent).toBe('');
   });
+
+  it('shows nothing while the replacement piece is not installed (OCD-02)', async () => {
+    mocks.options.mockResolvedValue({ enabled: true });
+    await renderNotice({
+      step: pieceStep({ pieceName: '@activepieces/piece-openai', actionName: 'ask_chatgpt' }),
+      installedPieceNames: ['@activepieces/piece-openai', '@iphi-flow/piece-opencode-claude'],
+    });
+    expect(container?.textContent).toBe('');
+  });
 });
 
-async function renderNotice({ step }: { step: FlowAction }): Promise<void> {
+async function renderNotice({
+  step,
+  installedPieceNames = ['@iphi-flow/piece-opencode-openai', '@iphi-flow/piece-opencode-claude'],
+}: {
+  step: FlowAction;
+  installedPieceNames?: string[];
+}): Promise<void> {
   container?.remove();
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -78,7 +93,7 @@ async function renderNotice({ step }: { step: FlowAction }): Promise<void> {
   await act(async () => {
     root!.render(
       <QueryClientProvider client={queryClient}>
-        <OpencodeVendorNotice step={step} projectId="proj_1" />
+        <OpencodeVendorNotice step={step} projectId="proj_1" installedPieceNames={installedPieceNames} />
       </QueryClientProvider>,
     );
   });

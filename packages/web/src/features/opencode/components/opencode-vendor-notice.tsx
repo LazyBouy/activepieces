@@ -14,9 +14,11 @@ import { opencodeOptionsQueries } from '../hooks/opencode-options-hooks';
 export const OpencodeVendorNotice = ({
   step,
   projectId,
+  installedPieceNames,
 }: {
   step: FlowAction;
   projectId: string;
+  installedPieceNames: string[];
 }) => {
   const { data: options } = opencodeOptionsQueries.useOptions({ projectId });
   const vendor =
@@ -26,7 +28,11 @@ export const OpencodeVendorNotice = ({
           actionName: step.settings.actionName,
         })
       : undefined;
-  if (isNil(vendor) || options?.enabled !== true) {
+  if (
+    isNil(vendor) ||
+    options?.enabled !== true ||
+    !installedPieceNames.includes(vendor.forkPiece)
+  ) {
     return null;
   }
   return (

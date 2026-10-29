@@ -21,6 +21,7 @@ import { OpencodeStepSection, OpencodeVendorNotice } from '@/features/opencode';
 import {
   stepsHooks,
   formUtils,
+  piecesHooks,
   PieceStepMetadata,
   StepMetadata,
 } from '@/features/pieces';
@@ -138,13 +139,18 @@ const StepParametersTab = () => {
     state.flowVersion,
     state.flow.projectId,
   ]);
+  const installedPieceNames = piecesHooks.useInstalledPieceNames();
   const modifiedStep = form.getValues();
   const runAgentStep = isRunAgentStep(modifiedStep);
 
   return (
     <div className="flex flex-col gap-4">
       {modifiedStep.type === FlowActionType.PIECE && (
-        <OpencodeVendorNotice step={modifiedStep} projectId={projectId} />
+        <OpencodeVendorNotice
+          step={modifiedStep}
+          projectId={projectId}
+          installedPieceNames={installedPieceNames}
+        />
       )}
       {modifiedStep.type === FlowActionType.LOOP_ON_ITEMS && (
         <LoopsSettings readonly={readonly}></LoopsSettings>

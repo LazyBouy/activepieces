@@ -90,9 +90,16 @@ describe('opencodeStepUtil vendor pieces (OCI-30, OCI-31)', () => {
         })
         expect(opencodeStepUtil.vendorOfOfficialAction({ pieceName: '@activepieces/piece-claude', actionName: 'create_message_batch' })).toBeUndefined()
         expect(opencodeStepUtil.vendorOfForkAction({ pieceName: '@iphi-flow/piece-opencode-google-vertexai', actionName: 'generate_content' })?.vendor).toBe('Google Vertex AI')
-        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-mistral-ai' })).toEqual(['create_chat_completion', 'generate_chat_completion'])
-        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-slack' })).toEqual([])
+        const installedPieceNames = ['@activepieces/piece-mistral-ai', '@iphi-flow/piece-opencode-mistral-ai', '@activepieces/piece-slack']
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-mistral-ai', installedPieceNames })).toEqual(['create_chat_completion', 'generate_chat_completion'])
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-slack', installedPieceNames })).toEqual([])
         expect(OPENCODE_VENDOR_PIECES.map((vendor) => vendor.actions.length).reduce((total, count) => total + count, 0)).toBe(17)
+    })
+
+    it('hides no official action while its replacement piece is not installed (OCD-02)', () => {
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-mistral-ai', installedPieceNames: ['@activepieces/piece-mistral-ai'] })).toEqual([])
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-openai', installedPieceNames: ['@iphi-flow/piece-opencode-claude'] })).toEqual([])
+        expect(opencodeStepUtil.hiddenOfficialActions({ pieceName: '@activepieces/piece-openai', installedPieceNames: [] })).toEqual([])
     })
 })
 

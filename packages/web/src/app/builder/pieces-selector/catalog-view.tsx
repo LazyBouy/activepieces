@@ -33,6 +33,7 @@ const CatalogView = ({
   const { mutateAsync: downloadPiece } =
     piecesMutations.useDownloadCatalogPiece();
   const routingOn = piecesHooks.useOpencodeRoutingOn();
+  const installedPieceNames = piecesHooks.useInstalledPieceNames();
   const [downloads, setDownloads] = useState<CatalogDownloads>({});
   const modePieces = piecePanelUtils.filterCatalogPieces({
     pieces: pieces ?? [],
@@ -89,6 +90,7 @@ const CatalogView = ({
           metadata: routingOn
             ? pieceSearchUtils.withoutPieceVendorChatActions({
                 piece: metadata,
+                installedPieceNames,
               })
             : metadata,
         });

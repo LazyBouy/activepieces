@@ -25,8 +25,12 @@ function vendorOfOfficialAction({ pieceName, actionName }: { pieceName: string, 
     return OPENCODE_VENDOR_PIECES.find((vendor) => vendor.officialPiece === pieceName && vendor.actions.includes(actionName ?? ''))
 }
 
-function hiddenOfficialActions({ pieceName }: { pieceName: string }): string[] {
-    return OPENCODE_VENDOR_PIECES.find((vendor) => vendor.officialPiece === pieceName)?.actions ?? []
+function hiddenOfficialActions({ pieceName, installedPieceNames }: { pieceName: string, installedPieceNames: string[] }): string[] {
+    const vendor = OPENCODE_VENDOR_PIECES.find((item) => item.officialPiece === pieceName)
+    if (isNil(vendor) || !installedPieceNames.includes(vendor.forkPiece)) {
+        return []
+    }
+    return vendor.actions
 }
 
 function runsOnOpencode({ step }: { step: Step }): boolean {

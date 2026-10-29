@@ -139,23 +139,28 @@ function getPinnedPieces({
 
 function withoutOfficialVendorChatActions({
   steps,
+  installedPieceNames,
 }: {
   steps: StepMetadataWithSuggestions[];
+  installedPieceNames: string[];
 }): StepMetadataWithSuggestions[] {
   return steps.map((step) =>
     step.type === FlowActionType.PIECE
-      ? withoutPieceVendorChatActions({ piece: step })
+      ? withoutPieceVendorChatActions({ piece: step, installedPieceNames })
       : step,
   );
 }
 
 function withoutPieceVendorChatActions({
   piece,
+  installedPieceNames,
 }: {
   piece: PieceStepMetadataWithSuggestions;
+  installedPieceNames: string[];
 }): PieceStepMetadataWithSuggestions {
   const hidden = opencodeStepUtil.hiddenOfficialActions({
     pieceName: piece.pieceName,
+    installedPieceNames,
   });
   if (hidden.length === 0 || piece.type !== FlowActionType.PIECE) {
     return piece;
@@ -170,11 +175,14 @@ function withoutPieceVendorChatActions({
 
 function isHiddenCatalogPiece({
   piece,
+  installedPieceNames,
 }: {
   piece: PieceMetadataModelSummary;
+  installedPieceNames: string[];
 }): boolean {
   const hidden = opencodeStepUtil.hiddenOfficialActions({
     pieceName: piece.name,
+    installedPieceNames,
   });
   return hidden.length > 0 && piece.actions <= hidden.length;
 }

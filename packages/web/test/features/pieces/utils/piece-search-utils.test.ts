@@ -497,6 +497,7 @@ describe('official vendor chat actions while AI runs on OpenCode (OCI-31)', () =
     });
     const visible = pieceSearchUtils.withoutOfficialVendorChatActions({
       steps: [builtInStep(FlowActionType.CODE), openai, slack],
+      installedPieceNames: ALL_REPLACEMENTS,
     });
     expect(
       visible.map((step) =>
@@ -508,27 +509,98 @@ describe('official vendor chat actions while AI runs on OpenCode (OCI-31)', () =
   });
 
   it('hides a catalog piece only when all its actions are chat actions', () => {
-    const summary = (name: string, actions: number) =>
-      ({ name, actions }) as Parameters<
-        typeof pieceSearchUtils.isHiddenCatalogPiece
-      >[0]['piece'];
     expect(
       pieceSearchUtils.isHiddenCatalogPiece({
-        piece: summary(pieceName('perplexity-ai'), 1),
+        piece: catalogSummary(pieceName('perplexity-ai'), 1),
+        installedPieceNames: ALL_REPLACEMENTS,
       }),
     ).toBe(true);
     expect(
       pieceSearchUtils.isHiddenCatalogPiece({
-        piece: summary(pieceName('azure-openai'), 2),
+        piece: catalogSummary(pieceName('azure-openai'), 2),
+        installedPieceNames: ALL_REPLACEMENTS,
       }),
     ).toBe(false);
     expect(
       pieceSearchUtils.isHiddenCatalogPiece({
-        piece: summary(pieceName('slack'), 1),
+        piece: catalogSummary(pieceName('slack'), 1),
+        installedPieceNames: ALL_REPLACEMENTS,
       }),
     ).toBe(false);
   });
 });
+
+describe('official vendor chat actions without their replacement pieces (OCD-02)', () => {
+  const openai = actionPiece({
+    slug: 'openai',
+    displayName: 'OpenAI',
+    actions: [
+      action('ask_chatgpt', 'Ask ChatGPT'),
+      action('generate_image', 'Generate Image'),
+    ],
+  });
+  const claude = actionPiece({
+    slug: 'claude',
+    displayName: 'Claude',
+    actions: [action('ask_claude', 'Ask Claude')],
+  });
+
+  it('keeps every action of a vendor whose replacement is not installed', () => {
+    const visible = pieceSearchUtils.withoutOfficialVendorChatActions({
+      steps: [openai, claude],
+      installedPieceNames: ['@iphi-flow/piece-opencode-claude'],
+    });
+    expect(
+      visible.map((step) =>
+        step.type === FlowActionType.PIECE
+          ? (step.suggestedActions ?? []).map((item) => item.name)
+          : step.type,
+      ),
+    ).toEqual([['ask_chatgpt', 'generate_image'], []]);
+  });
+
+  it('keeps a downloaded piece whole when its replacement is not installed', () => {
+    const kept = pieceSearchUtils.withoutPieceVendorChatActions({
+      piece: openai,
+      installedPieceNames: [],
+    });
+    expect((kept.suggestedActions ?? []).map((item) => item.name)).toEqual([
+      'ask_chatgpt',
+      'generate_image',
+    ]);
+  });
+
+  it('lists a catalog piece when its replacement is not installed', () => {
+    expect(
+      pieceSearchUtils.isHiddenCatalogPiece({
+        piece: catalogSummary(pieceName('perplexity-ai'), 1),
+        installedPieceNames: ['@iphi-flow/piece-opencode-openai'],
+      }),
+    ).toBe(false);
+  });
+});
+
+const ALL_REPLACEMENTS = [
+  'openai',
+  'claude',
+  'google-gemini',
+  'azure-openai',
+  'mistral-ai',
+  'deepseek',
+  'groq',
+  'perplexity-ai',
+  'google-vertexai',
+  'localai',
+].map((vendor) => `@iphi-flow/piece-opencode-${vendor}`);
+
+function catalogSummary(
+  name: string,
+  actions: number,
+): Parameters<typeof pieceSearchUtils.isHiddenCatalogPiece>[0]['piece'] {
+  return { name, actions } as Parameters<
+    typeof pieceSearchUtils.isHiddenCatalogPiece
+  >[0]['piece'];
+}
 
 function sectionsFor({
   category,
