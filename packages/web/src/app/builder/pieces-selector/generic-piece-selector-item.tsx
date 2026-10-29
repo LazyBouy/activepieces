@@ -43,7 +43,7 @@ const GenericActionOrTriggerItem = ({
           size="list"
         />
       )}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col pr-2.5">
         <div className="flex min-w-0 items-center">
           <TextWithTooltip tooltipMessage={info.displayName}>
             <div className="min-w-0 text-sm leading-4.5 font-medium text-gray-12">

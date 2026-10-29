@@ -73,6 +73,7 @@ export const stepsHooks = {
           suggestionType:
             type === 'action' ? SuggestionType.ACTION : SuggestionType.TRIGGER,
           locale: i18n.language as LocalesEnum,
+          compactSuggestions: true,
         });
 
         const filteredPiecesBySuggestionType = pieces.filter(

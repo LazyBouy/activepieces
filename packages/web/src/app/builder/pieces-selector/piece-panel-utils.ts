@@ -653,6 +653,24 @@ function resolveActiveIndex({
   return index === -1 ? getFirstSelectableIndex(rows) : index;
 }
 
+function nextTabStopIndex({
+  count,
+  currentIndex,
+  backwards,
+}: {
+  count: number;
+  currentIndex: number;
+  backwards: boolean;
+}): number {
+  if (count === 0) {
+    return -1;
+  }
+  if (currentIndex === -1) {
+    return backwards ? count - 1 : 0;
+  }
+  return (currentIndex + (backwards ? count - 1 : 1)) % count;
+}
+
 function moveActiveIndex({
   rows,
   activeIndex,
@@ -801,6 +819,7 @@ export const piecePanelUtils = {
   getFirstSelectableIndex,
   resolveActiveIndex,
   moveActiveIndex,
+  nextTabStopIndex,
   resolveKeyAction,
   pushView,
   popView,

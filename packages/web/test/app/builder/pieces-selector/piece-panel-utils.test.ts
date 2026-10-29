@@ -57,6 +57,51 @@ describe('piece panel keyboard helpers', () => {
     ).toBe(1);
   });
 
+  it('cycles Tab through the panel controls in both directions and starts at either end from outside', () => {
+    expect(
+      piecePanelUtils.nextTabStopIndex({
+        count: 3,
+        currentIndex: 0,
+        backwards: false,
+      }),
+    ).toBe(1);
+    expect(
+      piecePanelUtils.nextTabStopIndex({
+        count: 3,
+        currentIndex: 2,
+        backwards: false,
+      }),
+    ).toBe(0);
+    expect(
+      piecePanelUtils.nextTabStopIndex({
+        count: 3,
+        currentIndex: 0,
+        backwards: true,
+      }),
+    ).toBe(2);
+    expect(
+      piecePanelUtils.nextTabStopIndex({
+        count: 3,
+        currentIndex: -1,
+        backwards: false,
+      }),
+    ).toBe(0);
+    expect(
+      piecePanelUtils.nextTabStopIndex({
+        count: 3,
+        currentIndex: -1,
+        backwards: true,
+      }),
+    ).toBe(2);
+    expect(
+      piecePanelUtils.nextTabStopIndex({
+        count: 0,
+        currentIndex: -1,
+        backwards: false,
+      }),
+    ).toBe(-1);
+  });
+
   it('stops at both ends of the list instead of wrapping', () => {
     expect(
       piecePanelUtils.moveActiveIndex({ rows, activeIndex: 4, step: 1 }),

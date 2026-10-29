@@ -15,6 +15,7 @@ import { system } from '../../helper/system/system'
 import { userInteractionWatcher } from '../../workers/user-interaction-watcher'
 import { pieceSyncService } from '../piece-sync-service'
 import { getPiecePackageWithoutArchive, pieceMetadataService } from './piece-metadata-service'
+import { CompactPieceSummary, pieceSuggestionsCompact } from './piece-suggestions-compact'
 import { filterActionsByAudience } from './utils'
 
 export const pieceModule: FastifyPluginAsyncZod = async (app) => {
@@ -31,7 +32,7 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
         },
     )
 
-    app.get('/', ListPiecesRequest, async (req): Promise<PieceMetadataModelSummary[]> => {
+    app.get('/', ListPiecesRequest, async (req): Promise<(PieceMetadataModelSummary | CompactPieceSummary)[]> => {
         const query = req.query
 
         const oldSyncCall = !isNil(query.release)
@@ -60,7 +61,7 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
             audience: query.audience,
         })
         return pieceMetadataSummary.map((piece) => ({
-            ...piece,
+            ...(query.compactSuggestions ? pieceSuggestionsCompact.compactPiece({ piece }) : piece),
             i18n: undefined,
         }))
     })

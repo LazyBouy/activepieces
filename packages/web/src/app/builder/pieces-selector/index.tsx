@@ -2,7 +2,12 @@ import { isNil } from '@activepieces/core-utils';
 import { FlowOperationType, flowStructureUtil } from '@activepieces/shared';
 import { t } from 'i18next';
 import { X } from 'lucide-react';
-import { AnimatePresence, motion, type Transition } from 'motion/react';
+import {
+  AnimatePresence,
+  motion,
+  useIsPresent,
+  type Transition,
+} from 'motion/react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useBuilderStateContext } from '@/app/builder/builder-hooks';
@@ -61,6 +66,7 @@ const PiecePanel = () => {
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={SLIDE_TRANSITION}
+          onKeyDown={keepTabInPanel}
           className="absolute inset-y-0 right-0 z-40 flex w-[385px] flex-col overflow-hidden border-l border-canvas-divider bg-panel text-gray-12 motion-reduce:transition-none @max-[427px]/builder-body:left-10.5 @max-[427px]/builder-body:w-auto"
         >
           <PiecePanelStack
@@ -128,35 +134,20 @@ const PiecePanelStack = ({
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
       <AnimatePresence initial={false}>
-        {stack.map((entry, index) => {
-          const isTop = index === stack.length - 1;
-          return (
-            <motion.div
-              key={entry.id}
-              data-piece-panel-view={entry.view.kind}
-              data-piece-panel-top={isTop || undefined}
-              inert={!isTop}
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={SLIDE_TRANSITION}
-              className="absolute inset-0 flex flex-col bg-panel motion-reduce:transition-none"
-            >
-              <PiecePanelEntry
-                view={entry.view}
-                operation={operation}
-                query={entry.query}
-                isTop={isTop}
-                depth={index}
-                onQueryChange={setQuery}
-                onPush={(view) => push({ view, parentId: entry.id })}
-                onPop={pop}
-                onClose={onClose}
-                onAnnounce={announce}
-              />
-            </motion.div>
-          );
-        })}
+        {stack.map((entry, index) => (
+          <PiecePanelLayer
+            key={entry.id}
+            entry={entry}
+            isTop={index === stack.length - 1}
+            depth={index}
+            operation={operation}
+            onQueryChange={setQuery}
+            onPush={(view) => push({ view, parentId: entry.id })}
+            onPop={pop}
+            onClose={onClose}
+            onAnnounce={announce}
+          />
+        ))}
       </AnimatePresence>
       <div
         role="status"
@@ -169,6 +160,36 @@ const PiecePanelStack = ({
         )}
       </div>
     </div>
+  );
+};
+
+const PiecePanelLayer = ({
+  entry,
+  isTop,
+  ...viewProps
+}: Omit<PiecePanelViewBaseProps, 'query'> & {
+  entry: PiecePanelStackEntry;
+}) => {
+  const isPresent = useIsPresent();
+  const isActive = isTop && isPresent;
+  return (
+    <motion.div
+      data-piece-panel-view={entry.view.kind}
+      data-piece-panel-top={isActive || undefined}
+      inert={!isActive}
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={SLIDE_TRANSITION}
+      className="absolute inset-0 flex flex-col bg-panel motion-reduce:transition-none"
+    >
+      <PiecePanelEntry
+        {...viewProps}
+        view={entry.view}
+        query={entry.query}
+        isTop={isActive}
+      />
+    </motion.div>
   );
 };
 
@@ -342,6 +363,44 @@ function getRootSubtitle({
       return t('Pick another piece for {stepName}', { stepName });
   }
 }
+
+function keepTabInPanel(event: React.KeyboardEvent<HTMLElement>): void {
+  if (event.key !== 'Tab' || event.defaultPrevented) {
+    return;
+  }
+  const stops = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>(TAB_STOP_SELECTOR),
+  ).filter((element) => isTabStop({ element }));
+  const next =
+    stops[
+      piecePanelUtils.nextTabStopIndex({
+        count: stops.length,
+        currentIndex: stops.findIndex(
+          (element) => element === document.activeElement,
+        ),
+        backwards: event.shiftKey,
+      })
+    ];
+  if (isNil(next)) {
+    return;
+  }
+  event.preventDefault();
+  next.focus();
+}
+
+function isTabStop({ element }: { element: HTMLElement }): boolean {
+  return (
+    element.closest('[inert]') === null &&
+    element.closest(ACTIVE_LAYER_OR_CLOSE_SELECTOR) !== null &&
+    element.getClientRects().length > 0
+  );
+}
+
+const TAB_STOP_SELECTOR =
+  'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+
+const ACTIVE_LAYER_OR_CLOSE_SELECTOR =
+  '[data-piece-panel-top], [data-piece-panel-close]';
 
 const SLIDE_TRANSITION: Transition = {
   duration: 0.2,
