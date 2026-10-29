@@ -48,8 +48,9 @@ import { flowCanvasHooks } from './hooks';
 import { canvasSelectionUtils } from './utils/canvas-selection-utils';
 import { flowCanvasConsts } from './utils/consts';
 import { flowCanvasUtils } from './utils/flow-canvas-utils';
+import { notePlacementUtils } from './utils/note-placement-utils';
 import { stepPositionUtils } from './utils/step-position-utils';
-import { ApNode, ApNodeType } from './utils/types';
+import { ApNode, ApNodeType, ApStepNode } from './utils/types';
 import { CanvasTestBar } from './widgets';
 import { Minimap, useMinimapVisibility } from './widgets/minimap';
 import { useShowChevronNextToSelection } from './widgets/selection-chevron-button';
@@ -138,6 +139,26 @@ export const FlowCanvas = React.memo(() => {
       readonly,
     });
   }, [graphKey]);
+  const [clearedVersionId, setClearedVersionId] = useState<string | null>(null);
+  useEffect(() => {
+    if (readonly || clearedVersionId === flowVersion.id) {
+      return;
+    }
+    setClearedVersionId(flowVersion.id);
+    const steps = graph.nodes
+      .filter((node): node is ApStepNode => node.type === ApNodeType.STEP)
+      .map((node) =>
+        notePlacementUtils.stepArea({
+          position: node.position,
+          height: node.data.height,
+        }),
+      );
+    notePlacementUtils
+      .clearSteps({ notes, steps })
+      .forEach(({ id, position }) =>
+        builderStore.getState().moveNote(id, position),
+      );
+  }, [readonly, clearedVersionId, flowVersion.id, graph, notes, builderStore]);
   const stepIds = useMemo(
     () =>
       new Set(
