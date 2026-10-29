@@ -45,8 +45,11 @@ import {
   DataPaneCountLine,
   DataPaneDataActions,
   DataPaneMessage,
+  DataPaneSearchBox,
+  DataPaneSearchButton,
   DataPaneStatus,
   useIsPaneCompact,
+  usePaneSearch,
 } from '../step-modal/data-pane';
 import { DataView } from '../step-modal/data-view';
 import { schemaViewUtils } from '../step-modal/schema-view-utils';
@@ -65,6 +68,7 @@ const RunStepInputPane = ({
     useSelectedStepRunOutput();
   const [viewMode, setViewMode] = useViewMode('input');
   const compact = useIsPaneCompact('input');
+  const search = usePaneSearch();
   const input = stepOutput?.input;
   const schemaNodes = useRunSchemaNodes({
     stepName: selectedStep?.name,
@@ -83,6 +87,7 @@ const RunStepInputPane = ({
       actions={
         isNil(blocker) && (
           <>
+            <DataPaneSearchButton search={search} />
             <ViewModeControl
               value={viewMode}
               onChange={setViewMode}
@@ -95,6 +100,7 @@ const RunStepInputPane = ({
           </>
         )
       }
+      subheader={isNil(blocker) && <DataPaneSearchBox search={search} />}
     >
       {blocker ?? (
         <div className="flex flex-col gap-2 pb-3">
@@ -108,6 +114,7 @@ const RunStepInputPane = ({
             data={input}
             schemaNodes={schemaNodes}
             basePath={null}
+            query={search.query}
           />
         </div>
       )}
@@ -122,6 +129,7 @@ const RunStepOutputPane = ({
     useSelectedStepRunOutput();
   const [viewMode, setViewMode] = useViewMode('output');
   const compact = useIsPaneCompact('output');
+  const search = usePaneSearch();
   const isSlicedOutput = stepOutput?.outputType === StepOutputType.SLICE;
   const parsedOutput = isSlicedOutput
     ? undefined
@@ -180,6 +188,7 @@ const RunStepOutputPane = ({
       actions={
         showData && (
           <>
+            <DataPaneSearchButton search={search} />
             <ViewModeControl
               value={viewMode}
               onChange={setViewMode}
@@ -194,7 +203,12 @@ const RunStepOutputPane = ({
       }
       subheader={
         showData && (
-          <DataPaneCountLine count={viewModeUtils.getItemCount(parsedOutput)} />
+          <>
+            <DataPaneSearchBox search={search} />
+            <DataPaneCountLine
+              count={viewModeUtils.getItemCount(parsedOutput)}
+            />
+          </>
         )
       }
     >
@@ -254,6 +268,7 @@ const RunStepOutputPane = ({
             data={parsedOutput}
             schemaNodes={schemaNodes}
             basePath={null}
+            query={search.query}
           />
         </div>
       )}

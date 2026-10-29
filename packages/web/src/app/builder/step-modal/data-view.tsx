@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 
 import { pathHelpers } from '../data-selector/path-helpers';
 
+import { DataPaneNoMatches } from './data-pane';
+import { dataSearchUtils } from './data-search-utils';
 import { useIsMappingDragSource, useMappingDragSource } from './drag-to-map';
 import { SchemaView } from './schema-view';
 import { SchemaNode } from './schema-view-utils';
@@ -15,35 +17,51 @@ const DataView = ({
   schemaNodes,
   basePath,
   onInsert,
+  query = '',
+  isReferenced,
 }: DataViewProps) => {
-  const draggable = basePath !== null;
-  if (mode === 'schema' && schemaNodes.length === 0) {
-    return <EmptyDataValue data={data} />;
-  }
+  const searching = dataSearchUtils.isActive(query);
   if (mode === 'schema') {
+    const nodes = dataSearchUtils.filterSchemaNodes({
+      nodes: schemaNodes,
+      query,
+    });
+    if (searching && nodes.length === 0) {
+      return <DataPaneNoMatches />;
+    }
+    if (nodes.length === 0) {
+      return <EmptyDataValue data={data} />;
+    }
     return (
       <div className="px-2 py-1">
         <SchemaView
-          nodes={schemaNodes}
-          draggable={draggable}
+          nodes={nodes}
+          draggable={basePath !== null}
           onInsert={onInsert}
+          expandAll={searching}
+          isReferenced={isReferenced}
         />
       </div>
     );
   }
+  const pruned = dataSearchUtils.pruneData({ value: data, query });
+  if (!pruned.matched) {
+    return <DataPaneNoMatches />;
+  }
+  const mappingPath = searching ? null : basePath;
   if (mode === 'table') {
-    return <TableView data={data} basePath={basePath} />;
+    return <TableView data={pruned.value} basePath={mappingPath} />;
   }
   return (
     <div className="px-2 py-1">
       <JsonViewer
-        json={data}
+        json={pruned.value}
         title="json"
         variant="pane"
         renderKey={
-          basePath === null
+          mappingPath === null
             ? undefined
-            : (args) => <DraggableJsonKey {...args} basePath={basePath} />
+            : (args) => <DraggableJsonKey {...args} basePath={mappingPath} />
         }
       />
     </div>
@@ -83,4 +101,6 @@ type DataViewProps = {
   schemaNodes: SchemaNode[];
   basePath: string | null;
   onInsert?: (propertyPath: string) => void;
+  query?: string;
+  isReferenced?: (propertyPath: string) => boolean;
 };

@@ -1,7 +1,15 @@
 import { isNil } from '@activepieces/core-utils';
 import { t } from 'i18next';
-import { CircleCheck, CircleX, Copy, Download, Info } from 'lucide-react';
-import React, { createContext, useContext } from 'react';
+import {
+  CircleCheck,
+  CircleX,
+  Copy,
+  Download,
+  Info,
+  Search,
+  X,
+} from 'lucide-react';
+import React, { createContext, useContext, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -161,6 +169,65 @@ const DataPaneIconButton = ({
   </Tooltip>
 );
 
+function usePaneSearch(): PaneSearch {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const close = () => {
+    setOpen(false);
+    setQuery('');
+  };
+  return {
+    open,
+    query,
+    setQuery,
+    toggle: () => (open ? close() : setOpen(true)),
+    close,
+  };
+}
+
+const DataPaneSearchButton = ({ search }: { search: PaneSearch }) => (
+  <DataPaneIconButton label={t('Search')} onClick={search.toggle}>
+    <Search
+      className={cn('size-4', { 'text-accent-9': search.query !== '' })}
+    />
+  </DataPaneIconButton>
+);
+
+const DataPaneSearchBox = ({ search }: { search: PaneSearch }) => {
+  if (!search.open) {
+    return null;
+  }
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-gray-6 pr-1 pl-4">
+      <Search aria-hidden className="size-3.5 shrink-0 text-gray-11" />
+      <input
+        autoFocus
+        value={search.query}
+        onChange={(event) => search.setQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            search.close();
+          }
+        }}
+        aria-label={t('Search fields')}
+        placeholder={t('Search fields')}
+        autoComplete="off"
+        spellCheck={false}
+        className="h-full min-w-0 flex-1 bg-transparent text-xsm text-gray-12 outline-hidden placeholder:text-gray-11"
+      />
+      <DataPaneIconButton label={t('Close search')} onClick={search.close}>
+        <X className="size-4" />
+      </DataPaneIconButton>
+    </div>
+  );
+};
+
+const DataPaneNoMatches = () => (
+  <p className="px-2 py-1 text-xs text-gray-11">{t('No matching fields')}</p>
+);
+
 const DataPaneMessage = ({
   title,
   description,
@@ -203,8 +270,20 @@ export {
   DataPaneStatus,
   DataPaneDataActions,
   DataPaneMessage,
+  DataPaneNoMatches,
+  DataPaneSearchBox,
+  DataPaneSearchButton,
   PaneWidthContext,
   useIsPaneCompact,
+  usePaneSearch,
+};
+
+export type PaneSearch = {
+  open: boolean;
+  query: string;
+  setQuery: (query: string) => void;
+  toggle: () => void;
+  close: () => void;
 };
 
 export type PaneWidths = {

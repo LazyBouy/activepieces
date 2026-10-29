@@ -1,3 +1,4 @@
+import { isNil } from '@activepieces/core-utils';
 import { t } from 'i18next';
 import {
   Braces,
@@ -19,7 +20,13 @@ import { useIsMappingDragSource, useMappingDragSource } from './drag-to-map';
 import { SchemaNode, SchemaRow, schemaViewUtils } from './schema-view-utils';
 import { ValueKind, viewModeUtils } from './view-mode-utils';
 
-const SchemaView = ({ nodes, draggable, onInsert }: SchemaViewProps) => {
+const SchemaView = ({
+  nodes,
+  draggable,
+  onInsert,
+  expandAll = false,
+  isReferenced,
+}: SchemaViewProps) => {
   const [overrides, setOverrides] =
     useState<ReadonlyMap<string, boolean>>(EMPTY_OVERRIDES);
   const rows = useMemo(
@@ -27,9 +34,11 @@ const SchemaView = ({ nodes, draggable, onInsert }: SchemaViewProps) => {
       schemaViewUtils.flattenRows({
         nodes,
         overrides,
-        defaultExpandedDepth: DEFAULT_EXPANDED_DEPTH,
+        defaultExpandedDepth: expandAll
+          ? Number.POSITIVE_INFINITY
+          : DEFAULT_EXPANDED_DEPTH,
       }),
-    [nodes, overrides],
+    [nodes, overrides, expandAll],
   );
   const setExpanded = ({ id, expanded }: { id: string; expanded: boolean }) =>
     setOverrides((current) => new Map(current).set(id, expanded));
@@ -45,6 +54,7 @@ const SchemaView = ({ nodes, draggable, onInsert }: SchemaViewProps) => {
             row={row}
             draggable={draggable}
             onInsert={onInsert}
+            isReferenced={isReferenced}
             onToggle={() =>
               setExpanded({ id: row.node.id, expanded: !row.expanded })
             }
@@ -59,6 +69,7 @@ const SchemaViewRow = ({
   row,
   draggable,
   onInsert,
+  isReferenced,
   onToggle,
 }: SchemaViewRowProps) => {
   const { node, depth, expanded, hasChildren } = row;
@@ -68,12 +79,16 @@ const SchemaViewRow = ({
       role="treeitem"
       aria-expanded={hasChildren ? expanded : undefined}
       aria-level={depth + 1}
+      data-tree-row
+      data-tree-expanded={hasChildren ? String(expanded) : undefined}
       className="flex h-7 min-w-0 items-center gap-1"
       style={{ paddingLeft: depth * INDENT_PX }}
     >
       {hasChildren ? (
         <button
           type="button"
+          tabIndex={-1}
+          data-tree-toggle
           aria-label={expanded ? t('Collapse') : t('Expand')}
           onClick={onToggle}
           className="flex size-4 shrink-0 items-center justify-center text-gray-11 hover:text-gray-12"
@@ -90,6 +105,7 @@ const SchemaViewRow = ({
       {node.kind === 'group' ? (
         <button
           type="button"
+          data-tree-focus
           onClick={onToggle}
           className={cn('truncate text-xs font-medium', {
             'text-success-11': node.tone === 'success',
@@ -101,7 +117,14 @@ const SchemaViewRow = ({
         </button>
       ) : (
         <>
-          <SchemaPill node={node} draggable={draggable} onInsert={onInsert} />
+          <SchemaPill
+            node={node}
+            draggable={draggable}
+            onInsert={onInsert}
+            referenced={
+              !isNil(node.path) && (isReferenced?.(node.path) ?? false)
+            }
+          />
           {preview !== '' && (
             <TextWithTooltip tooltipMessage={preview}>
               <span className="ml-1 min-w-0 truncate text-xs text-gray-11">
@@ -119,10 +142,12 @@ const SchemaPill = ({
   node,
   draggable,
   onInsert,
+  referenced,
 }: {
   node: SchemaNode;
   draggable: boolean;
   onInsert?: (propertyPath: string) => void;
+  referenced: boolean;
 }) => {
   const path = draggable ? node.path : null;
   const startDrag = useMappingDragSource(
@@ -134,9 +159,11 @@ const SchemaPill = ({
   return (
     <span
       data-schema-pill
+      data-tree-focus
+      data-referenced={referenced || undefined}
       data-property-path={path ?? undefined}
       role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
+      tabIndex={interactive ? 0 : -1}
       onPointerDown={startDrag}
       onClick={() => {
         if (path !== null) {
@@ -154,11 +181,16 @@ const SchemaPill = ({
         {
           'cursor-grab hover:border-gray-8 focus-visible:outline-1 focus-visible:outline-focus':
             interactive,
+          'border-accent-6 bg-accent-2 text-accent-11': referenced,
           'border-accent-7 text-accent-9': isDragged,
         },
       )}
     >
-      <Icon className="size-3 shrink-0 text-gray-11" />
+      <Icon
+        className={cn('size-3 shrink-0 text-gray-11', {
+          'text-accent-11': referenced,
+        })}
+      />
       <span aria-hidden className="h-3 w-px shrink-0 bg-canvas-pill-border" />
       <span className="truncate">{node.label}</span>
     </span>
@@ -197,11 +229,14 @@ type SchemaViewProps = {
   nodes: SchemaNode[];
   draggable: boolean;
   onInsert?: (propertyPath: string) => void;
+  expandAll?: boolean;
+  isReferenced?: (propertyPath: string) => boolean;
 };
 
 type SchemaViewRowProps = {
   row: SchemaRow;
   draggable: boolean;
   onInsert?: (propertyPath: string) => void;
+  isReferenced?: (propertyPath: string) => boolean;
   onToggle: () => void;
 };

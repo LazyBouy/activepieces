@@ -5,7 +5,7 @@ import {
   flowStructureUtil,
 } from '@activepieces/shared';
 import { t } from 'i18next';
-import { ChevronDown, ChevronRight, Variable, Zap } from 'lucide-react';
+import { ChevronDown, ChevronRight, LogIn, Variable, Zap } from 'lucide-react';
 import { RefObject, useEffect, useMemo, useRef, useState } from 'react';
 
 import { LogoPlate } from '@/components/custom/logo-plate';
@@ -23,8 +23,17 @@ import { VariablesTab } from '../data-selector/variables-tab';
 import { textMentionUtils } from '../piece-properties/text-input-with-mentions/text-input-utils';
 import { RunStepInputPane } from '../run-details/flow-step-input-output';
 
-import { DataPane, useIsPaneCompact } from './data-pane';
+import {
+  DataPane,
+  DataPaneNoMatches,
+  DataPaneSearchBox,
+  DataPaneSearchButton,
+  useIsPaneCompact,
+  usePaneSearch,
+} from './data-pane';
+import { dataSearchUtils } from './data-search-utils';
 import { DataView } from './data-view';
+import { inputTreeKeys } from './input-tree-keys';
 import { schemaViewUtils } from './schema-view-utils';
 import { useViewMode, ViewModeControl } from './view-mode-control';
 import { ViewMode, viewModeUtils } from './view-mode-utils';
@@ -38,8 +47,18 @@ const StepModalInputPane = () => {
 };
 
 const EditInputPane = () => {
-  const [steps, sampleData, zipArraysOfProperties, selectedStepName] =
-    useBuilderStateContext((state) => [
+  const [
+    steps,
+    sampleData,
+    zipArraysOfProperties,
+    selectedStepName,
+    resolvedInput,
+    referencedText,
+  ] = useBuilderStateContext((state) => {
+    const selected = state.selectedStep
+      ? flowStructureUtil.getStep(state.selectedStep, state.flowVersion.trigger)
+      : undefined;
+    return [
       state.selectedStep
         ? flowStructureUtil.findPathToStep(
             state.flowVersion.trigger,
@@ -49,8 +68,32 @@ const EditInputPane = () => {
       state.outputSampleData,
       state.isFocusInsideListMapperModeInput,
       state.selectedStep ?? '',
-    ]);
+      state.selectedStep
+        ? state.inputSampleData[state.selectedStep]
+        : undefined,
+      JSON.stringify(selected?.settings.input ?? {}),
+    ];
+  });
   const orderedSteps = useMemo(() => [...steps].reverse(), [steps]);
+  const search = usePaneSearch();
+  const searching = dataSearchUtils.isActive(search.query);
+  const isReferenced = (propertyPath: string) =>
+    referencedText.includes(JSON.stringify(`{{${propertyPath}}}`).slice(1, -1));
+  const visibleSteps = searching
+    ? orderedSteps.filter(
+        (step) =>
+          !stepNeedsTesting(step) &&
+          dataSearchUtils.pruneData({
+            value: getStepData({ step, sampleData }),
+            query: search.query,
+          }).matched,
+      )
+    : orderedSteps;
+  const showResolvedInput =
+    !isNil(resolvedInput) &&
+    (!searching ||
+      dataSearchUtils.pruneData({ value: resolvedInput, query: search.query })
+        .matched);
   const schemas = friendlyTreeUtils.useStepOutputSchemas(steps);
   const [viewMode, setViewMode] = useViewMode('input');
   const compact = useIsPaneCompact('input');
@@ -85,19 +128,36 @@ const EditInputPane = () => {
         title={t('Input')}
         testId="step-modal-input"
         actions={
-          <ViewModeControl
-            value={viewMode}
-            onChange={setViewMode}
-            compact={compact}
-          />
+          <>
+            <DataPaneSearchButton search={search} />
+            <ViewModeControl
+              value={viewMode}
+              onChange={setViewMode}
+              compact={compact}
+            />
+          </>
         }
+        subheader={<DataPaneSearchBox search={search} />}
       >
-        <div className="flex flex-col px-2 py-1">
-          {orderedSteps.map((step) => (
+        <div
+          className="flex flex-col px-2 py-1"
+          onKeyDown={(event) => inputTreeKeys.handle({ event })}
+        >
+          {showResolvedInput && (
+            <ResolvedInputRow
+              stepName={selectedStepName}
+              input={resolvedInput}
+              expanded={searching || expandedSteps.has(RESOLVED_INPUT_ROW)}
+              onToggle={() => toggleStep(RESOLVED_INPUT_ROW)}
+              viewMode={viewMode}
+              query={search.query}
+            />
+          )}
+          {visibleSteps.map((step) => (
             <InputStepRow
               key={step.name}
               step={step}
-              expanded={expandedSteps.has(step.name)}
+              expanded={searching || expandedSteps.has(step.name)}
               onToggle={() => toggleStep(step.name)}
               viewMode={viewMode}
               sampleData={sampleData}
@@ -105,12 +165,19 @@ const EditInputPane = () => {
               zipArraysOfProperties={zipArraysOfProperties}
               targetStepName={selectedStepName}
               onInsert={onInsert}
+              query={search.query}
+              isReferenced={isReferenced}
             />
           ))}
-          <VariablesRow
-            expanded={expandedSteps.has(VARIABLES_ROW)}
-            onToggle={() => toggleStep(VARIABLES_ROW)}
-          />
+          {searching && visibleSteps.length === 0 && !showResolvedInput && (
+            <DataPaneNoMatches />
+          )}
+          {!searching && (
+            <VariablesRow
+              expanded={expandedSteps.has(VARIABLES_ROW)}
+              onToggle={() => toggleStep(VARIABLES_ROW)}
+            />
+          )}
         </div>
       </DataPane>
     </div>
@@ -127,6 +194,8 @@ const InputStepRow = ({
   zipArraysOfProperties,
   targetStepName,
   onInsert,
+  query,
+  isReferenced,
 }: InputStepRowProps) => {
   const { stepMetadata } = stepsHooks.useStepMetadata({ step });
   const isTrigger = flowStructureUtil.isTrigger(step.type);
@@ -161,12 +230,19 @@ const InputStepRow = ({
   const label = `${step.dfsIndex + 1}. ${step.displayName}`;
 
   return (
-    <div data-input-step={step.name} className="flex flex-col">
+    <div
+      data-input-step={step.name}
+      data-tree-row
+      data-tree-expanded={String(expanded)}
+      className="flex flex-col"
+    >
       <button
         type="button"
         aria-expanded={expanded}
+        data-tree-focus
+        data-tree-toggle
         onClick={onToggle}
-        className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-left hover:bg-gray-4"
+        className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-left hover:bg-gray-4 focus-visible:outline-1 focus-visible:outline-focus"
       >
         {expanded ? (
           <ChevronDown className="size-3.5 shrink-0 text-gray-11" />
@@ -209,8 +285,76 @@ const InputStepRow = ({
               schemaNodes={schemaNodes}
               basePath={pathHelpers.propertyPathStarter(step.name)}
               onInsert={onInsert}
+              query={query}
+              isReferenced={isReferenced}
             />
           )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ResolvedInputRow = ({
+  stepName,
+  input,
+  expanded,
+  onToggle,
+  viewMode,
+  query,
+}: ResolvedInputRowProps) => {
+  const schemaNodes = useMemo(
+    () =>
+      expanded
+        ? schemaViewUtils.fromDataSelectorNodes({
+            nodes: schemaViewUtils.rootChildren(
+              friendlyTreeUtils.buildDataNode({
+                stepName,
+                displayName: stepName,
+                data: input,
+                schema: null,
+              }),
+            ),
+          })
+        : [],
+    [expanded, stepName, input],
+  );
+  return (
+    <div
+      data-input-resolved
+      data-tree-row
+      data-tree-expanded={String(expanded)}
+      className="flex flex-col"
+    >
+      <button
+        type="button"
+        aria-expanded={expanded}
+        data-tree-focus
+        data-tree-toggle
+        onClick={onToggle}
+        className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-left hover:bg-gray-4 focus-visible:outline-1 focus-visible:outline-focus"
+      >
+        {expanded ? (
+          <ChevronDown className="size-3.5 shrink-0 text-gray-11" />
+        ) : (
+          <ChevronRight className="size-3.5 shrink-0 text-gray-11" />
+        )}
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-sm border border-gray-6 bg-panel">
+          <LogIn className="size-3 text-gray-11" />
+        </span>
+        <span className="truncate text-xsm font-medium text-gray-12">
+          {t("This step's input (last test)")}
+        </span>
+      </button>
+      {expanded && (
+        <div className="pb-2 pl-6">
+          <DataView
+            mode={viewMode}
+            data={input}
+            schemaNodes={schemaNodes}
+            basePath={null}
+            query={query}
+          />
         </div>
       )}
     </div>
@@ -224,12 +368,18 @@ const VariablesRow = ({
   expanded: boolean;
   onToggle: () => void;
 }) => (
-  <div className="flex flex-col">
+  <div
+    data-tree-row
+    data-tree-expanded={String(expanded)}
+    className="flex flex-col"
+  >
     <button
       type="button"
       aria-expanded={expanded}
+      data-tree-focus
+      data-tree-toggle
       onClick={onToggle}
-      className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-left hover:bg-gray-4"
+      className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1 text-left hover:bg-gray-4 focus-visible:outline-1 focus-visible:outline-focus"
     >
       {expanded ? (
         <ChevronDown className="size-3.5 shrink-0 text-gray-11" />
@@ -318,6 +468,7 @@ function stepNeedsTesting(step: StepWithIndex): boolean {
 
 const EMPTY_STEPS: StepWithIndex[] = [];
 const VARIABLES_ROW = '__variables__';
+const RESOLVED_INPUT_ROW = '__resolved_input__';
 
 export { StepModalInputPane };
 
@@ -331,4 +482,15 @@ type InputStepRowProps = {
   zipArraysOfProperties: boolean;
   targetStepName: string;
   onInsert: (propertyPath: string) => void;
+  query: string;
+  isReferenced: (propertyPath: string) => boolean;
+};
+
+type ResolvedInputRowProps = {
+  stepName: string;
+  input: unknown;
+  expanded: boolean;
+  onToggle: () => void;
+  viewMode: ViewMode;
+  query: string;
 };

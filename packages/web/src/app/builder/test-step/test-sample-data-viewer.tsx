@@ -28,8 +28,11 @@ import {
   DataPane,
   DataPaneCountLine,
   DataPaneDataActions,
+  DataPaneSearchBox,
+  DataPaneSearchButton,
   DataPaneStatus,
   useIsPaneCompact,
+  usePaneSearch,
 } from '../step-modal/data-pane';
 import { DataView } from '../step-modal/data-view';
 import { schemaViewUtils } from '../step-modal/schema-view-utils';
@@ -59,6 +62,7 @@ export const TestSampleDataViewer = React.memo(
     } = props;
     const [viewMode, setViewMode] = useViewMode('output');
     const compact = useIsPaneCompact('output');
+    const search = usePaneSearch();
     const isFailed =
       !isNil(errorMessage) ||
       (isRunAgent(currentStep) &&
@@ -114,6 +118,7 @@ export const TestSampleDataViewer = React.memo(
         actions={
           showData && (
             <>
+              <DataPaneSearchButton search={search} />
               <ViewModeControl
                 value={viewMode}
                 onChange={setViewMode}
@@ -128,7 +133,12 @@ export const TestSampleDataViewer = React.memo(
         }
         subheader={
           showData && (
-            <DataPaneCountLine count={viewModeUtils.getItemCount(outputData)} />
+            <>
+              <DataPaneSearchBox search={search} />
+              <DataPaneCountLine
+                count={viewModeUtils.getItemCount(outputData)}
+              />
+            </>
           )
         }
       >
@@ -197,6 +207,7 @@ export const TestSampleDataViewer = React.memo(
               data={outputData}
               schemaNodes={schemaNodes}
               basePath={null}
+              query={search.query}
             />
             {errorMessage && (
               <div className="px-3 text-xs text-gray-11">
