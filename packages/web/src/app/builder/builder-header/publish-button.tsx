@@ -188,7 +188,7 @@ const PublishButton = ({ isLockedByAnotherEditor }: PublishButtonProps) => {
             className="rounded-none rounded-r-sm border-l border-gray-6 peer-hover/publish:border-l-transparent"
           >
             <ChevronDown className="size-4 text-gray-11" />
-            <span className="sr-only">{t('More')}</span>
+            <span className="sr-only">{t('Publish options')}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

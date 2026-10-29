@@ -182,7 +182,7 @@ export const BuilderHeader = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={t('More')}
+                  aria-label={t('Flow actions')}
                   className="ml-1 shrink-0"
                 >
                   <Ellipsis className="size-4 text-gray-11" />
