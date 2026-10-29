@@ -112,6 +112,76 @@ describe('OpenCode connection', () => {
     })
 })
 
+describe('OpenCode connection settings from the environment (OCD-01)', () => {
+    afterEach(() => {
+        delete process.env.AP_OPENCODE_USERNAME
+        delete process.env.AP_OPENCODE_PASSWORD
+        delete process.env.AP_OPENCODE_ADMIN_PANEL_URL
+        stub.state.requiredAuth = null
+    })
+
+    it('connects to an OpenCode with a password and starts switched on', async () => {
+        stub.state.requiredAuth = basicAuth({ username: 'opencode', password: 'pod-secret' })
+        process.env.AP_OPENCODE_PASSWORD = 'pod-secret'
+        const ctx = await createTestContext(app!)
+
+        const response = await ctx.get('/v1/opencode/connection')
+
+        expect(response.json()).toMatchObject({ username: 'opencode', hasPassword: true, enabled: true, lastHealth: { healthy: true, version: 'stub-1.0.0' } })
+        expect(response.json()).not.toHaveProperty('password')
+        const healthCalls = stub.callsTo({ method: 'GET', path: '/global/health' })
+        expect(healthCalls[healthCalls.length - 1].headers.authorization).toBe(basicAuth({ username: 'opencode', password: 'pod-secret' }))
+        const row = await db.findOneBy('opencode_connection', { platformId: ctx.platform.id })
+        expect(JSON.stringify(row)).not.toContain('pod-secret')
+    })
+
+    it('sends the username from the environment', async () => {
+        stub.state.requiredAuth = basicAuth({ username: 'flows', password: 'pod-secret' })
+        process.env.AP_OPENCODE_USERNAME = 'flows'
+        process.env.AP_OPENCODE_PASSWORD = 'pod-secret'
+        const ctx = await createTestContext(app!)
+
+        const response = await ctx.get('/v1/opencode/connection')
+
+        expect(response.json()).toMatchObject({ username: 'flows', hasPassword: true, enabled: true })
+    })
+
+    it('uses the admin panel URL from the environment for its links', async () => {
+        process.env.AP_OPENCODE_ADMIN_PANEL_URL = 'https://opencode.example.com'
+        const ctx = await createTestContext(app!)
+
+        const response = await ctx.get('/v1/opencode/connection')
+
+        expect(response.json()).toMatchObject({ serverUrl: stub.url, adminPanelUrl: 'https://opencode.example.com' })
+    })
+
+    it('starts switched off and names the 401 when the password is wrong', async () => {
+        stub.state.requiredAuth = basicAuth({ username: 'opencode', password: 'pod-secret' })
+        process.env.AP_OPENCODE_PASSWORD = 'wrong-secret'
+        const ctx = await createTestContext(app!)
+
+        const response = await ctx.get('/v1/opencode/connection')
+
+        expect(response.json()).toMatchObject({
+            hasPassword: true,
+            enabled: false,
+            lastHealth: { healthy: false, error: 'OpenCode refused the username or password (401)' },
+        })
+    })
+
+    it('leaves a connection that already exists as it is', async () => {
+        const ctx = await createTestContext(app!)
+        await ctx.get('/v1/opencode/connection')
+        process.env.AP_OPENCODE_USERNAME = 'flows'
+        process.env.AP_OPENCODE_PASSWORD = 'pod-secret'
+        process.env.AP_OPENCODE_ADMIN_PANEL_URL = 'https://opencode.example.com'
+
+        const response = await ctx.get('/v1/opencode/connection')
+
+        expect(response.json()).toMatchObject({ username: 'opencode', hasPassword: false, adminPanelUrl: stub.url, enabled: true })
+    })
+})
+
 describe('OpenCode provisioning', () => {
     it('creates the namespace, a git project in its folder and the flow agent once, then reuses them', async () => {
         const ctx = await createTestContext(app!)
@@ -171,3 +241,7 @@ describe('OpenCode provisioning', () => {
         stub.state.projects = stub.state.projects.filter((project) => project.id !== 'outer')
     })
 })
+
+function basicAuth({ username, password }: { username: string, password: string }): string {
+    return `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
+}

@@ -2,6 +2,7 @@ import { apId, isNil, spreadIfDefined, spreadIfNotUndefined, tryCatch } from '@a
 import { OPENCODE_DEFAULT_ASK_CAP_MINUTES, OPENCODE_DEFAULT_NAMESPACE, OpencodeCatalog, OpencodeConnection, OpencodeHealth, UpdateOpencodeConnectionRequest } from '@activepieces/shared'
 import { OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import { FastifyBaseLogger } from 'fastify'
+import { StatusCodes } from 'http-status-codes'
 import { repoFactory } from '../core/db/repo-factory'
 import { distributedLock } from '../database/redis-connections'
 import { domainHelper } from '../helper/domain-helper'
@@ -94,15 +95,16 @@ export const opencodeConnectionService = (log: FastifyBaseLogger) => ({
 
 async function createDefaultConnection({ platformId }: PlatformParams): Promise<OpencodeConnectionRow> {
     const serverUrl = system.get(AppSystemProp.OPENCODE_URL) ?? DEFAULT_SERVER_URL
+    const password = nonEmpty({ value: system.get(AppSystemProp.OPENCODE_PASSWORD) })
     const draft: OpencodeConnectionRow = {
         id: apId(),
         created: new Date().toISOString(),
         updated: new Date().toISOString(),
         platformId,
         serverUrl,
-        username: DEFAULT_USERNAME,
-        password: null,
-        adminPanelUrl: serverUrl,
+        username: nonEmpty({ value: system.get(AppSystemProp.OPENCODE_USERNAME) }) ?? DEFAULT_USERNAME,
+        password: isNil(password) ? null : await encryptUtils.encryptString(password),
+        adminPanelUrl: system.get(AppSystemProp.OPENCODE_ADMIN_PANEL_URL) ?? serverUrl,
         callbackUrl: system.get(AppSystemProp.OPENCODE_CALLBACK_URL) ?? await domainHelper.getPublicApiUrl({ path: '' }),
         projectsFolder: null,
         enabled: false,
@@ -124,9 +126,14 @@ async function checkHealth({ row }: { row: OpencodeConnectionRow }): Promise<Ope
         return { healthy: false, error: opencodeErrors.describe({ error }), checkedAt }
     }
     if (isNil(result.data)) {
-        return { healthy: false, error: opencodeErrors.describe({ error: result.error }), checkedAt }
+        const reason = result.response?.status === StatusCodes.UNAUTHORIZED ? CREDENTIALS_REFUSED : opencodeErrors.describe({ error: result.error })
+        return { healthy: false, error: reason, checkedAt }
     }
     return { healthy: result.data.healthy, version: result.data.version, checkedAt }
+}
+
+function nonEmpty({ value }: { value: string | undefined }): string | undefined {
+    return isNil(value) || value.length === 0 ? undefined : value
 }
 
 async function clientFor({ row }: { row: OpencodeConnectionRow }): Promise<OpencodeClient> {
@@ -167,6 +174,8 @@ const HEALTH_TIMEOUT_MS = 5000
 const DEFAULT_SERVER_URL = 'http://127.0.0.1:4444'
 
 const DEFAULT_USERNAME = 'opencode'
+
+const CREDENTIALS_REFUSED = 'OpenCode refused the username or password (401)'
 
 type PlatformParams = {
     platformId: string

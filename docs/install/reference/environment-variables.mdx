@@ -367,6 +367,9 @@ Defaults for the OpenCode connection a platform admin sets on the AI → OpenCod
 | Variable | Description | Default |
 |---|---|---|
 | `AP_OPENCODE_URL` | Base URL of the OpenCode server that AI steps run on. | `http://127.0.0.1:4444` |
+| `AP_OPENCODE_USERNAME` | Username for the OpenCode server's basic auth (its `OPENCODE_SERVER_USERNAME`). | `opencode` |
+| `AP_OPENCODE_PASSWORD` | Password for the OpenCode server's basic auth (its `OPENCODE_SERVER_PASSWORD`). Stored encrypted. With it set, a new connection to a secured OpenCode starts switched on. | (empty) |
+| `AP_OPENCODE_ADMIN_PANEL_URL` | Address of the OpenCode admin panel that browsers open from the "Open in admin panel" links. Set it when `AP_OPENCODE_URL` is an address only this server can reach. | the value of `AP_OPENCODE_URL` |
 | `AP_OPENCODE_CALLBACK_URL` | URL the OpenCode server uses to reach this server's API (for the tools of agent steps). | the public API URL |
 
 ---

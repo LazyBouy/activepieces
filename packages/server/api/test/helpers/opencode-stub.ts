@@ -35,11 +35,17 @@ export async function startOpencodeStub(): Promise<OpencodeStub> {
         inboxMessages: [],
         nextInboxId: 1,
         inboxRules: {},
+        requiredAuth: null,
     }
     const server = http.createServer((req, res) => {
         readBody({ req }).then((body) => {
             const url = new URL(req.url ?? '/', 'http://stub')
             state.calls.push({ method: req.method ?? '', path: url.pathname, query: Object.fromEntries(url.searchParams), headers: req.headers, body })
+            if (state.requiredAuth !== null && req.headers.authorization !== state.requiredAuth) {
+                res.writeHead(401, { 'www-authenticate': 'Basic realm="Secure Area"' })
+                res.end()
+                return
+            }
             route({ state, method: req.method ?? '', url, body, res })
         }).catch(() => res.destroy())
     })
@@ -773,6 +779,7 @@ export type OpencodeStubState = {
     inboxMessages: StubInboxMessage[]
     nextInboxId: number
     inboxRules: Record<string, unknown[]>
+    requiredAuth: string | null
 }
 
 export type OpencodeStub = {
