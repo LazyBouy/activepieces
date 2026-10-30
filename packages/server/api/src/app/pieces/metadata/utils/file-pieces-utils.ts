@@ -2,6 +2,7 @@ import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { cwd } from 'node:process'
 import { sep } from 'path'
+import { tryCatch } from '@activepieces/core-utils'
 import { Piece, PieceMetadata, pieceTranslation } from '@activepieces/pieces-framework'
 import { extractPieceFromModule } from '@activepieces/shared'
 import clearModule from 'clear-module'
@@ -58,7 +59,11 @@ export const filePiecesUtils = (log: FastifyBaseLogger) => ({
     loadDistPiecesMetadata: async (piecesNames: string[]): Promise<PieceMetadata[]> => {
         try {
             const devPieces = await findAllDistPiecesFolders(SOURCE_PIECES_PATH)
-            const paths = devPieces.filter(path => piecesNames.some(name => path.endsWith(sep + name + sep + 'dist')))
+            const paths = devPieces.filter(path => piecesNames.some(name => isDistFolderOf({ path, name })))
+            const unmatchedNames = piecesNames.filter(name => !paths.some(path => isDistFolderOf({ path, name })))
+            if (unmatchedNames.length > 0) {
+                log.warn({ piece: { names: unmatchedNames } }, '[filePieceMetadataService#loadDistPiecesMetadata] No built piece folder found for these AP_DEV_PIECES names')
+            }
             const pieces = await Promise.all(paths.map((p) => loadPieceFromFolder(p)))
             return pieces.filter((p): p is PieceMetadata => p !== null)
         }
@@ -96,7 +101,19 @@ const findAllPiecesFolder = async (folderPath: string): Promise<string[]> => {
             paths.push(folderPath)
         }
     }
+    if (!files.includes('package.json') && await hasBuiltManifest(folderPath)) {
+        paths.push(folderPath)
+    }
     return paths
+}
+
+async function hasBuiltManifest(folderPath: string): Promise<boolean> {
+    const { data: manifestStats } = await tryCatch(() => stat(join(folderPath, 'dist', 'package.json')))
+    return manifestStats?.isFile() ?? false
+}
+
+function isDistFolderOf({ path, name }: { path: string, name: string }): boolean {
+    return path.endsWith(sep + name + sep + 'dist')
 }
 
 const findAllDistPiecesFolders = async (sourcePiecesPath: string): Promise<string[]> => {

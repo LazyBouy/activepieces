@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
-import { copyFile, cp } from 'node:fs/promises'
+import { copyFile, cp, stat } from 'node:fs/promises'
 import { join } from 'path'
-import { isNil } from '@activepieces/core-utils'
+import { isNil, tryCatch } from '@activepieces/core-utils'
 import { memoryLock } from '@activepieces/server-utils'
 import { WebsocketClientEvent } from '@activepieces/shared'
 import chokidar from 'chokidar'
@@ -73,6 +73,10 @@ export async function startDevPieceWatcher(app: FastifyInstance): Promise<void> 
         const pieceDirectory = await utils.findSourcePiecePathByPieceName(pieceName)
         if (isNil(pieceDirectory)) {
             app.log.warn(`Piece directory not found for: ${pieceName}`)
+            return null
+        }
+        if (!await hasSource(pieceDirectory)) {
+            app.log.info(`Not watching ${pieceName}: it has no source, only a built dist`)
             return null
         }
         const packageName = await utils.getPackageNameFromFolderPath(pieceDirectory)
@@ -162,6 +166,11 @@ function spawnAndWait(cmd: string, args: string[]): Promise<void> {
         })
         child.on('error', reject)
     })
+}
+
+async function hasSource(pieceDirectory: string): Promise<boolean> {
+    const { data: manifestStats } = await tryCatch(() => stat(join(pieceDirectory, 'package.json')))
+    return manifestStats?.isFile() ?? false
 }
 
 async function copyPackageJsonToDist(sourceDir: string): Promise<void> {
